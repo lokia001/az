@@ -113,12 +113,21 @@ firebase-admin.json
 *.private.*
 *credential*
 *.credential.*
-*auth*
-*.auth.*
+# Avoid ignoring auth folders/files in source code
+# Ignore only specific auth config files
+*auth.json
+*auth.config.*
+*auth.secret.*
 **/secrets/
 **/keys/
 **/private/
 **/credentials/
+
+# Explicitly include important source code directories that might be ignored by rules above
+!**/features/auth/
+!**/components/auth/
+!**/layouts/auth/
+!**/pages/auth/
 
 # Misc
 *.cache

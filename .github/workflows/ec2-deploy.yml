@@ -102,15 +102,15 @@ jobs:
           sudo chmod -R 755 /var/www/html
 
     # ---------- UPLOAD NGINX CONFIG ----------
-    - name: 📤 Upload Nginx Configuration
-      uses: appleboy/scp-action@v0.1.4
-      with:
-        host: ${{ secrets.EC2_IP }}
-        username: ${{ secrets.EC2_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "./nginx/working.conf"
-        target: "/home/${{ secrets.EC2_USER }}/app/"
-        overwrite: true
+    # - name: 📤 Upload Nginx Configuration
+    #   uses: appleboy/scp-action@v0.1.4
+    #   with:
+    #     host: ${{ secrets.EC2_IP }}
+    #     username: ${{ secrets.EC2_USER }}
+    #     key: ${{ secrets.SSH_PRIVATE_KEY }}
+    #     source: "./nginx/working.conf"
+    #     target: "/home/${{ secrets.EC2_USER }}/app/"
+    #     overwrite: true
 
     # ---------- UPLOAD BACKEND ----------
     - name: 🚀 Upload Backend to EC2
