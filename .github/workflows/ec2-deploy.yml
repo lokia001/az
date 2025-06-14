@@ -20,7 +20,7 @@ jobs:
 
     - name: 📦 Install & Build Frontend
       run: |
-        cd Frontendtest # << THAY ĐỔI: Đường dẫn tới thư mục frontend của bạn (Frontendtest)
+        cd Frontend # << THAY ĐỔI: Đường dẫn tới thư mục frontend của bạn (Frontendtest)
         npm install
         npm run build
         ls -la dist
@@ -85,7 +85,7 @@ jobs:
         host: ${{ secrets.EC2_IP }}
         username: ${{ secrets.EC2_USER }}
         key: ${{ secrets.SSH_PRIVATE_KEY }}
-        source: "./Frontendtest/dist" # Đường dẫn mới tới thư mục dist của frontend
+        source: "./Frontend/dist" # Đường dẫn mới tới thư mục dist của frontend
         target: "/home/${{ secrets.EC2_USER }}/webclient/"
         debug: true
 
@@ -97,7 +97,7 @@ jobs:
         key: ${{ secrets.SSH_PRIVATE_KEY }}
         script: |
           sudo rm -rf /var/www/html/*
-          sudo mv /home/${{ secrets.EC2_USER }}/webclient/Frontendtest/dist/* /var/www/html/ # Đường dẫn mới dist
+          sudo mv /home/${{ secrets.EC2_USER }}/webclient/Frontend/dist/* /var/www/html/ # Đường dẫn mới dist
           sudo chown -R www-data:www-data /var/www/html
           sudo chmod -R 755 /var/www/html
 
