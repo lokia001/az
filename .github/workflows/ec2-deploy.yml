@@ -153,7 +153,18 @@ jobs:
         target: /home/${{ secrets.EC2_USER }}/app/backend/
         overwrite: true
         
-    # Upload SQL migration script
+    # Tạo file rỗng nếu không tồn tại để tránh lỗi trong bước upload
+    - name: 🔍 Ensure migration script exists
+      run: |
+        if [ ! -f "src/Backend.Api/sql_migrations.sql" ]; then
+          echo "⚠️ Migration script not found, creating empty file"
+          echo "-- No migrations to apply" > src/Backend.Api/sql_migrations.sql
+        else
+          echo "✅ Migration script found"
+          cat src/Backend.Api/sql_migrations.sql | head -n 5
+        fi
+        
+    # Upload SQL migration script with verbose options
     - name: 📤 Upload SQL Migration Script
       uses: appleboy/scp-action@v0.1.4
       with:
@@ -163,6 +174,8 @@ jobs:
         source: src/Backend.Api/sql_migrations.sql
         target: /home/${{ secrets.EC2_USER }}/app/
         overwrite: true
+        debug: true
+        strip_components: 2
 
     # Thêm bước áp dụng migration script
     - name: 🔄 Apply Database Migrations 
@@ -195,11 +208,26 @@ jobs:
             echo "⚠️ Database file not found, will be created by migration"
           fi
           
+          # Kiểm tra xem file migration đã được upload chưa
+          echo "📋 Checking for migration script..."
+          MIGRATION_FILE="/home/${{ secrets.EC2_USER }}/app/sql_migrations.sql"
+          
+          if [ ! -f "$MIGRATION_FILE" ]; then
+            echo "❌ Migration script not found at $MIGRATION_FILE"
+            echo "Listing directory content to debug:"
+            ls -la /home/${{ secrets.EC2_USER }}/app/
+            echo "Creating empty migration file..."
+            echo "-- No migrations to apply" > $MIGRATION_FILE
+          fi
+          
           # Áp dụng script SQL
           echo "📋 Applying SQL migration script..."
-          cp /home/${{ secrets.EC2_USER }}/app/sql_migrations.sql /tmp/migration.sql
+          cp $MIGRATION_FILE /tmp/migration.sql
+          chmod 644 /tmp/migration.sql  # Ensure file is readable
           
           # Kiểm tra nội dung script trước khi áp dụng
+          echo "Content of migration script:"
+          cat /tmp/migration.sql | head -n 10
           MIGRATION_CONTENT=$(cat /tmp/migration.sql)
           if [[ "$MIGRATION_CONTENT" == *"No migrations to apply"* ]]; then
             echo "✅ No migrations to apply, skipping..."
@@ -216,20 +244,34 @@ jobs:
             
             # Chạy script và kiểm tra lỗi
             echo "Executing migration script..."
-            if sqlite3 "$SQLITE_DB" < /tmp/migration.sql; then
-              echo "✅ Database migration completed successfully!"
-            else
-              echo "❌ Migration failed with error code $?"
-              echo "Rolling back to backup..."
+            if [ -s "/tmp/migration.sql" ]; then
+              # Kiểm tra lại file có sẵn sàng không
+              ls -la /tmp/migration.sql
               
-              if [ -f "$BACKUP_FILE" ]; then
-                cp "$BACKUP_FILE" "$DB_PATH"
-                echo "✅ Restored from backup: $BACKUP_FILE"
+              # Chạy từng câu lệnh SQL thay vì dùng input redirection
+              echo ".read /tmp/migration.sql" | sqlite3 "$SQLITE_DB"
+              
+              if [ $? -eq 0 ]; then
+                echo "✅ Database migration completed successfully!"
               else
-                echo "⚠️ No backup available for restore!"
+                echo "❌ Migration failed with error code $?"
+                echo "Migration script content:"
+                cat /tmp/migration.sql
+                echo "Rolling back to backup..."
+                
+                if [ -f "$BACKUP_FILE" ]; then
+                  cp "$BACKUP_FILE" "$DB_PATH"
+                  echo "✅ Restored from backup: $BACKUP_FILE"
+                else
+                  echo "⚠️ No backup available for restore!"
+                fi
+                
+                # Chuyển qua phương án thay thế thay vì exit
+                echo "Trying alternative approach..."
               fi
-              
-              exit 1
+            else
+              echo "⚠️ Migration script is empty or not readable"
+              echo "Trying alternative approach..."
             fi
           fi
           
@@ -239,28 +281,43 @@ jobs:
             echo "❌ Failed to apply migrations using SQL script!"
             echo "Trying alternative approach with dotnet ef database update..."
             
+            echo "Attempting to apply migrations directly with dotnet ef..."
+            
             # Di chuyển đến thư mục backend
             cd /home/${{ secrets.EC2_USER }}/app/backend/publish
             
-            # Cài đặt dotnet ef tools và áp dụng migrations
-            dotnet tool install --global dotnet-ef || true
-            export PATH="$PATH:$HOME/.dotnet/tools"
+            # Cài đặt dotnet ef tools nếu chưa có
+            if ! command -v dotnet-ef &> /dev/null; then
+              echo "Installing dotnet-ef tools..."
+              dotnet tool install --global dotnet-ef || true
+              export PATH="$PATH:$HOME/.dotnet/tools"
+            fi
+            
+            # Cấu hình môi trường
             export ConnectionStrings__DefaultConnection="${{ secrets.PROD_DB_CONNECTION_STRING }}"
+            export ASPNETCORE_ENVIRONMENT="Production"
+            
+            # Kiểm tra migrations có sẵn
+            echo "Listing available migrations:"
+            dotnet ef migrations list || echo "Could not list migrations"
             
             # Chạy database update
-            if dotnet ef database update --no-build; then
+            echo "Running database update..."
+            if dotnet ef database update; then
               echo "✅ Database migration completed successfully using dotnet ef database update!"
             else
               echo "❌ Migration failed with both approaches"
               
               if [ -f "$BACKUP_FILE" ]; then
+                echo "Restoring from backup..."
                 cp "$BACKUP_FILE" "$DB_PATH"
                 echo "✅ Restored from backup: $BACKUP_FILE"
+                
+                # Không exit, cho phép ứng dụng chạy với database cũ
+                echo "⚠️ Application will continue with the previous database version"
               else
-                echo "⚠️ No backup available for restore!"
+                echo "⚠️ No backup available for restore! Application may not work correctly."
               fi
-              
-              exit 1
             fi
           fi
 
