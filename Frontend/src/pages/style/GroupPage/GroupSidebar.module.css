@@ -1,0 +1,49 @@
+.groupSidebarContainer {
+    width: 100px;
+    /* Đặt chiều rộng cố định cho sidebar */
+    padding: 20px;
+    background: black;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    /* Các стили khác cho sidebar */
+}
+
+.groupsSection h2,
+.yourGroupsSection h2 {
+    font-size: 1.3em;
+    color: #333;
+    margin-bottom: 15px;
+}
+
+.searchBar input {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.createGroupButton {
+    width: 100%;
+    padding: 10px;
+    background-color: #e9ebee;
+    color: #333;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-bottom: 20px;
+}
+
+.yourGroupsHeader {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.seeAllButton {
+    background: none;
+    border: none;
+    color: #1877f2;
+    cursor: pointer;
+    font-size: 0.9em;
+}

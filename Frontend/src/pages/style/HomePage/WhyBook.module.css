@@ -1,0 +1,79 @@
+.whyBook {
+    padding: 40px 20px;
+    text-align: center;
+    background-color: #fff;
+    /* Màu nền trắng */
+}
+
+.whyBookTitle {
+    font-size: 2em;
+    color: #333;
+    margin-bottom: 30px;
+    font-weight: bold;
+}
+
+.whyBookContainer {
+    display: flex;
+    justify-content: space-around;
+    align-items: flex-start;
+    /* Căn chỉnh các item lên trên */
+    flex-wrap: wrap;
+    max-width: 960px;
+    margin: 0 auto;
+}
+
+.whyBookItem {
+    text-align: center;
+    margin-bottom: 40px;
+    max-width: 45%;
+    /* Để hai mục nằm trên một hàng ở kích thước lớn */
+}
+
+.iconContainer {
+    background-color: #f9f9f9;
+    /* Màu nền nhạt cho icon */
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 15px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 60px;
+    /* Kích thước cố định cho container icon */
+    height: 60px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.whyBookIcon {
+    max-width: 100%;
+    height: auto;
+    color: #2ecc71;
+    /* Màu xanh lá cây cho icon (nếu là SVG có thể стилизовать trực tiếp) */
+}
+
+.itemTitle {
+    font-size: 1.3em;
+    color: #333;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.itemDescription {
+    color: #555;
+    line-height: 1.6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .whyBookItem {
+        max-width: 100%;
+        /* Mỗi mục chiếm toàn bộ chiều rộng trên màn hình nhỏ */
+    }
+
+    .whyBookContainer {
+        flex-direction: column;
+        /* Xếp dọc các item trên màn hình nhỏ */
+        align-items: center;
+    }
+}

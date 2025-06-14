@@ -1,0 +1,24 @@
+.groupJoinedContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.createPost {
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.createPost h3 {
+    font-size: 1.2em;
+    color: #555;
+}
+
+.recentActivitySection h2 {
+    font-size: 1.5em;
+    color: #333;
+    margin-bottom: 15px;
+}

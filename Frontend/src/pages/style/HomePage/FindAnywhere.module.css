@@ -1,0 +1,14 @@
+.findAnywhere {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.worldMap {
+    /* CSS cho bản đồ thế giới */
+    /* marginTop: 20px; */
+}
+
+.worldMap img {
+    maxWidth: 100%;
+    height: auto;
+}

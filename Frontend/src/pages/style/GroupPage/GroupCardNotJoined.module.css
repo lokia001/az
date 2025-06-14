@@ -1,0 +1,47 @@
+.groupCardNotJoinedContainer {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    padding: 10px;
+}
+
+.groupCover {
+    width: 100px;
+    height: 80px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-right: 10px;
+}
+
+.groupCardInfo {
+    flex-grow: 1;
+}
+
+.groupName {
+    font-weight: bold;
+    color: #333;
+    font-size: 0.95em;
+    margin-bottom: 5px;
+}
+
+.groupMeta {
+    color: #777;
+    font-size: 0.85em;
+    margin-bottom: 2px;
+}
+
+.groupActions {
+    margin-left: auto;
+}
+
+.viewGroupButton {
+    background-color: #e9ebee;
+    color: #333;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+}

@@ -1,0 +1,144 @@
+{
+    "ownerProfile": {
+        "userId": "user-owner-001",
+        "companyName": "Wonderland Co-working Spaces",
+        "contactInfo": "0909123456 - contact@wonderland.co",
+        "website": "https://wonderland.co",
+        "logoUrl": "https://via.placeholder.com/150/FFC107/000000?Text=Wonderland",
+        "isVerified": true,
+        "createdAt": "2023-01-10T10:05:00Z",
+        "user": {
+            "id": "user-owner-001",
+            "fullName": "Alice Wonderland",
+            "email": "alice.owner@example.com",
+            "username": "alicew",
+            "role": "Owner",
+            "avatarUrl": "https://i.pravatar.cc/150?u=aliceowner",
+            "createdAt": "2023-01-10T10:00:00Z"
+        }
+    },
+    "amenity": [
+        {
+            "id": "amenity-001",
+            "name": "High-Speed WiFi",
+            "description": "Fiber optic internet connection."
+        },
+        {
+            "id": "amenity-002",
+            "name": "Free Coffee/Tea",
+            "description": "Complimentary beverages."
+        },
+        {
+            "id": "amenity-003",
+            "name": "Projector",
+            "description": "HD Projector available."
+        },
+        {
+            "id": "amenity-004",
+            "name": "Whiteboard",
+            "description": "Large whiteboard with markers."
+        }
+    ],
+    "services": [
+        {
+            "id": "service-001",
+            "name": "Catering Package A",
+            "description": "Basic snacks and drinks for 10 people.",
+            "basePrice": 50.00
+        },
+        {
+            "id": "service-002",
+            "name": "AV Equipment Rental",
+            "description": "Microphone, speakers, and additional screen.",
+            "basePrice": 75.00
+        }
+    ],
+    "spaces": [
+        {
+            "id": "space-001",
+            "name": "The Rabbit Hole - Meeting Room",
+            "description": "A cozy and quiet meeting room...",
+            "address": "123 Wonderland Ave, Suite 101, Dream City",
+            "latitude": 10.7769,
+            "longitude": 106.7009,
+            "type": "MeetingRoom",
+            "status": "Available",
+            "capacity": 8,
+            "basePrice": 50.00,
+            "hourlyPrice": 15.00,
+            "dailyPrice": 100.00,
+            "openTime": "08:00:00",
+            "closeTime": "22:00:00",
+            "cleaningDurationMinutes": 30,
+            "bufferMinutes": 15,
+            "minBookingDurationMinutes": 60,
+            "maxBookingDurationMinutes": 480,
+            "cancellationNoticeHours": 24,
+            "createdAt": "2023-05-15T09:30:00Z",
+            "updatedAt": "2023-10-01T14:00:00Z",
+            "createdByUserId": "user-owner-001",
+            "ownerProfileId": "user-owner-001",
+            "spaceImages": [
+                {
+                    "id": "img-001a",
+                    "imageUrl": "https://images.unsplash.com/photo-1560439514-494f3026198c?auto=format&fit=crop&w=300&q=60",
+                    "displayOrder": 0
+                },
+                {
+                    "id": "img-001b",
+                    "imageUrl": "https://images.unsplash.com/photo-1573496130141-209d200cee78?auto=format&fit=crop&w=300&q=60",
+                    "displayOrder": 1
+                }
+            ],
+            "amenities": [
+                "amenity-001",
+                "amenity-003",
+                "amenity-004"
+            ],
+            "activeServices": [
+                {
+                    "serviceId": "service-001",
+                    "priceOverride": null,
+                    "notes": "Standard catering package.",
+                    "isIncludedInBasePrice": false
+                }
+            ]
+        },
+        {
+            "id": "space-002",
+            "name": "Mad Hatter's Den - Individual Desk",
+            "description": "A quiet individual desk...",
+            "address": "123 Wonderland Ave, Floor 2, Dream City",
+            "latitude": 10.7765,
+            "longitude": 106.7005,
+            "type": "Individual",
+            "status": "Booked",
+            "capacity": 1,
+            "basePrice": 20.00,
+            "hourlyPrice": 5.00,
+            "dailyPrice": 35.00,
+            "openTime": "09:00:00",
+            "closeTime": "18:00:00",
+            "cleaningDurationMinutes": 10,
+            "bufferMinutes": 5,
+            "minBookingDurationMinutes": 120,
+            "maxBookingDurationMinutes": 540,
+            "cancellationNoticeHours": 12,
+            "createdAt": "2023-06-20T11:00:00Z",
+            "createdByUserId": "user-owner-001",
+            "ownerProfileId": "user-owner-001",
+            "spaceImages": [
+                {
+                    "id": "img-002a",
+                    "imageUrl": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&w=300&q=60",
+                    "displayOrder": 0
+                }
+            ],
+            "amenities": [
+                "amenity-001",
+                "amenity-002"
+            ],
+            "activeServices": []
+        }
+    ]
+}

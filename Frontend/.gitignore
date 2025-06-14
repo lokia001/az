@@ -1,0 +1,41 @@
+# Node modules
+/node_modules
+
+# build output directory
+/dist
+/build
+
+# dependencies
+/package-lock.json
+/.pnpm-store
+/yarn.lock # if you use yarn
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Environment variables
+.env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.local
+
+# Local development
+.vscode/
+.history/
+.DS_Store # macOS specific
+Thumbs.db # Windows specific
+
+# Other common ignores
+*.log
+*.log.*
+*.stackdump
+.env.*.local
+.eslintcache
+coverage
+
+# Vite specific
+.vite/

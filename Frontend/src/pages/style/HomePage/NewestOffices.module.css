@@ -1,0 +1,13 @@
+.newestOffices {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.officesList {
+    display: flex;
+    justify-content: space-around;
+    align-items: stretch;
+    /* Các phần tử con có chiều cao bằng nhau */
+    flex-wrap: wrap;
+    margin-top: 20px;
+}

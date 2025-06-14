@@ -1,0 +1,128 @@
+/* NotFoundPage.module.css */
+
+.notFoundContainer {
+  padding: 2rem;
+  max-width: 900px;
+  margin: 0 auto;
+  text-align: center;
+  min-height: 80vh; 
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.contentWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.illustration {
+  max-width: 300px;
+  margin-bottom: 2rem;
+}
+
+.illustrationPlaceholder {
+  width: 300px;
+  height: 200px;
+  background-color: #f0f0f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  color: #777;
+}
+
+.errorCode {
+  font-size: 5rem;
+  font-weight: 800;
+  margin: 0;
+  color: #e74c3c;
+}
+
+.errorTitle {
+  font-size: 1.8rem;
+  margin: 0.5rem 0 1.5rem;
+  font-weight: 600;
+  color: #333;
+}
+
+.errorMessage {
+  font-size: 1.1rem;
+  color: #666;
+  max-width: 600px;
+  margin-bottom: 2rem;
+  line-height: 1.5;
+}
+
+.actionsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.actionButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.buttonPrimary {
+  background-color: #3498db;
+  color: white;
+}
+
+.buttonPrimary:hover {
+  background-color: #2980b9;
+}
+
+.buttonSecondary {
+  background-color: #2ecc71;
+  color: white;
+}
+
+.buttonSecondary:hover {
+  background-color: #27ae60;
+}
+
+.buttonOutline {
+  border: 2px solid #95a5a6;
+  color: #34495e;
+}
+
+.buttonOutline:hover {
+  background-color: #ecf0f1;
+}
+
+.contactNote {
+  color: #7f8c8d;
+  font-size: 0.9rem;
+}
+
+.contactLink {
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.contactLink:hover {
+  text-decoration: underline;
+}
+
+.icon {
+  width: 20px;
+  height: 20px;
+}

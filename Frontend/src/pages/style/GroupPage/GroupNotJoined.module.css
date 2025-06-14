@@ -1,0 +1,16 @@
+.groupNotJoinedContainer {
+    display: flex;
+    flex-direction: column;
+
+    gap: 20px;
+}
+
+.allGroupsSection {
+    margin-top: 20px;
+}
+
+.allGroupsSection h2 {
+    font-size: 1.5em;
+    color: #333;
+    margin-bottom: 15px;
+}

@@ -1,0 +1,15 @@
+.cityCard {
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    /* overflow: hidden; */
+}
+
+.cityCard img {
+    width: 100%;
+    display: block;
+}
+
+.cityInfo {
+    padding: 15px;
+    text-align: left;
+}

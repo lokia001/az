@@ -1,0 +1,82 @@
+.footer {
+    background-color: #f8f8f8;
+    /* Màu nền nhạt */
+    padding: 20px 0;
+    color: #333;
+    /* Màu chữ tối */
+    font-size: 0.9em;
+    /* Các style của footer của bạn */
+    flex-shrink: 0;
+    /* Đảm bảo footer không bị co lại khi không gian hẹp */
+    /* background-color: #f0f2f5; ví dụ */
+    /* padding: 20px 0; ví dụ */
+}
+
+.footer-container {
+    display: flex;
+    justify-content: space-around;
+    /* Phân bố đều các cột */
+    max-width: 1200px;
+    /* Giới hạn chiều rộng container */
+    margin: 0 auto;
+    /* Căn giữa container */
+    padding: 0 20px;
+}
+
+.footer-column {
+    flex: 1;
+    /* Các cột có chiều rộng tương đương */
+    margin: 0 10px;
+}
+
+.footer-column h3 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    font-weight: bold;
+}
+
+.footer-column ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.footer-column li {
+    margin-bottom: 5px;
+}
+
+.footer-column a {
+    color: #555;
+    text-decoration: none;
+}
+
+.footer-column a:hover {
+    color: #007bff;
+    /* Màu khi hover */
+}
+
+.footer-copyright {
+    text-align: center;
+    margin-top: 20px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+    /* Đường kẻ trên copyright */
+    font-size: 0.8em;
+    color: #777;
+}
+
+/* Responsive (tùy chỉnh theo nhu cầu) */
+@media (max-width: 768px) {
+    .footer-container {
+        flex-direction: column;
+        /* Chuyển sang bố cục dọc trên màn hình nhỏ */
+        align-items: center;
+        /* Căn giữa các cột */
+    }
+
+    .footer-column {
+        margin: 10px 0;
+        text-align: center;
+    }
+}

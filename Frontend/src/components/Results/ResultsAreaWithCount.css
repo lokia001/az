@@ -1,0 +1,14 @@
+/* src/components/Results/ResultsAreaWithCount.css */
+.results-area-with-count-container {
+    /* Các style cho container */
+}
+
+.results-count {
+    margin-bottom: 10px;
+    font-size: 0.9em;
+    color: #555;
+}
+
+.results-list {
+    /* Các style cho danh sách kết quả */
+}

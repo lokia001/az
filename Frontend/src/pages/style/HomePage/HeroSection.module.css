@@ -1,0 +1,132 @@
+.heroSection {
+    /* Đảm bảo hero section chiếm toàn bộ chiều rộng của viewport */
+    /* width: 100vw; */
+    /* Sử dụng vw (viewport width) thay vì % */
+    /* Thiết lập background image */
+    background-image: url('/banner.jpg');
+    /* **ĐÂY LÀ CHỖ BẠN ĐẶT ĐƯỜNG DẪN ẢNH NỀN** */
+    background-size: cover;
+    background-position: center;
+    color: white;
+    box-sizing: border-box;
+    padding: 80px 20px 120px;
+    margin: 0;
+    /* Loại bỏ margin mặc định có thể gây ra khoảng trắng */
+    position: relative;
+    /* Để có thể định vị các phần tử con tuyệt đối nếu cần */
+}
+
+.heroContent {
+    max-width: 960px;
+    /* Giữ nguyên chiều rộng tối đa cho nội dung */
+    margin: 0 auto;
+    /* Căn giữa nội dung bên trong */
+    padding: 40px;
+    background-color: rgba(255, 255, 255, 0.8);
+    border-radius: 8px;
+    color: #333;
+    box-sizing: border-box;
+}
+
+.heroTitle {
+    font-size: 2.5em;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+.heroWork {
+    color: #2ecc71;
+}
+
+.heroOptions {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.optionLabel {
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    color: #333;
+    border-radius: 20px;
+    padding: 8px 15px;
+    font-size: 0.9em;
+    border: 1px solid #ccc;
+    margin-bottom: 5px;
+}
+
+.optionLabel input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.optionText {
+    /* Стилизация cho text nếu cần */
+}
+
+.searchContainer {
+    position: relative;
+    margin-bottom: 30px;
+}
+
+.searchInput {
+    width: 100%;
+    padding: 15px 20px;
+    border-radius: 30px;
+    border: 1px solid #ccc;
+    font-size: 1em;
+    box-sizing: border-box;
+}
+
+.heroStats {
+    display: flex;
+    justify-content: space-around;
+    margin-bottom: 30px;
+    flex-wrap: wrap;
+}
+
+.statItem {
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+.statNumber {
+    font-size: 1.8em;
+    font-weight: bold;
+    color: #2ecc71;
+}
+
+.statLabel {
+    font-size: 0.9em;
+    color: #555;
+}
+
+.heroSubtitle {
+    font-size: 1.1em;
+    color: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .heroTitle {
+        font-size: 2em;
+    }
+
+    .heroOptions {
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .optionLabel {
+        width: 80%;
+        justify-content: center;
+    }
+
+    .heroStats {
+        flex-direction: column;
+        gap: 15px;
+    }
+}

@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <OutputType>Exe</OutputType> <!-- Đảm bảo đây là OutputType, không phải OuputType -->
+    <UserSecretsId>d4d78fd1-83c2-43d3-8500-8ac54f4ed4d3</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Các package cần thiết cho ứng dụng chính -->
+    <PackageReference Include="AutoMapper" Version="13.0.1" /> <!-- Hoặc version mới nhất ổn định, 14.0.0 có thể quá mới -->
+    <!-- Nếu dùng AutoMapper.Extensions.Microsoft.DependencyInjection riêng thì thêm vào -->
+    <!-- <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" /> -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <PackageReference Include="Google.Cloud.Dialogflow.V2" Version="4.11.0" />
+    <PackageReference Include="Google.Api.Gax.Grpc" Version="4.9.0" />
+    <PackageReference Include="Grpc.Net.Client" Version="2.66.0" />
+    <PackageReference Include="MailKit" Version="4.7.0" /> <!-- Cập nhật version nếu cần -->
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" /> <!-- Hoặc version mới nhất cho .NET 8 -->
+    <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.2.0" /> <!-- Version cho .NET Core 2.2, nên dùng version cho .NET 8 -->
+    <!-- <PackageReference Include="Microsoft.AspNetCore.Cors" Version="8.0.x" /> -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.0" /> <!-- Đồng bộ version EF Core -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.0">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
+    <!-- Microsoft.Extensions.Configuration, .Json, .Logging, .Console thường được bao gồm -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
+    <!-- Microsoft.IdentityModel.Tokens và System.IdentityModel.Tokens.Jwt thường là dependency của JwtBearer -->
+  </ItemGroup>
+
+</Project>

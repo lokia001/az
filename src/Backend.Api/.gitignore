@@ -1,0 +1,113 @@
+# Visual Studio files
+.vs/
+*.suo
+*.user
+*.pdb
+*.opensdf
+*.VC.opendb
+*.sdf
+*.vssscc
+*.buildscc
+*.log
+
+# NuGet packages
+packages/ # Old style NuGet packages
+/bin/
+/obj/
+
+# Rider IDE
+.idea/
+*.iml
+
+# Node.js (if applicable, e.g., for frontend in an ASP.NET Core project)
+node_modules/
+npm-debug.log
+yarn-error.log
+
+# Build results
+[Dd]ebug/
+[Rr]elease/
+[Aa]rm/
+[Aa]rm64/
+[Xx]64/
+[Xx]86/
+[Bb]uild/
+[Dd]ist/
+bld/
+out/
+
+# Npm build results (if using frontend build tools)
+dist/
+build/
+
+# Miscellaneous
+*.orig
+*.bak
+*.old
+*.obj
+*.lib
+*.ncb
+*.opendb
+*.aps
+*.bsc
+*.cache
+*.com
+*.dll
+*.exe
+*.ilk
+*.map
+*.msi
+*.msp
+*.nupkg
+*.resharper
+*.dbmdl
+*.lic
+*.appx
+*.appxbundle
+*.vsix
+*.vsixmanifest
+_ReSharper.*/
+[Tt]emp/
+[Tt]est[Rr]esults/
+*.xps
+profile/
+Ancillary/
+
+# Source control
+*.scc
+
+# StyleCop
+StyleCop.Cache
+
+# FxCop
+*.fxcop
+
+# Windows Azure Tools
+*.cscfg
+*.csdef
+*.publishprofile
+
+# Mac OS X
+.DS_Store
+
+# ReSharper
+*.dotSettings
+*.DotSettings.user
+
+# Dotfuscator
+*.dotfuscator
+
+# Local machine specific files
+*.user
+*.config.user
+*.suo
+
+# Test results
+TestResults/
+
+# Azure Pipelines / DevOps
+.azuredevops/
+
+# Coverlet
+coverage.json
+coverage.cobertura.xml

@@ -1,0 +1,74 @@
+/* .pendingRequestsContainer {
+
+    background-color: #fff;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+} */
+
+.pendingRequestsContainer {
+    display: flex;
+    flex-direction: row;
+    display: flex;
+    flex-direction: row;
+    font-size: 1.1em;
+    color: #333;
+    margin-bottom: 10px;
+}
+
+.pendingRequestsInfo {
+    color: #777;
+    font-size: 0.9em;
+    margin-bottom: 15px;
+}
+
+.requestsList {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, auto));
+    gap: 10px;
+}
+
+.requestItem {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+}
+
+.requestAvatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.requestDetails {
+    flex-grow: 1;
+}
+
+.requestUser {
+    font-weight: bold;
+    color: #333;
+    font-size: 0.95em;
+}
+
+.requestTime {
+    color: #777;
+    font-size: 0.85em;
+}
+
+.requestActions {
+    margin-left: auto;
+}
+
+.updateResponsesButton {
+    background-color: #e9ebee;
+    color: #333;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.85em;
+    margin-right: 5px;
+}

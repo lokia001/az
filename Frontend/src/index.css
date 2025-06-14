@@ -1,0 +1,44 @@
+/* Reset style cho input type text, number */
+input[type="text"],
+input[type="number"] {
+  background-color: white;
+  /* Đặt màu nền trắng */
+  color: black;
+  /* Đặt màu chữ đen (hoặc màu bạn muốn) */
+  border: 1px solid #ddd;
+  /* Giữ hoặc điều chỉnh border */
+  /* Thêm các style khác nếu cần */
+}
+
+/* Reset style cho select */
+select {
+  background-color: white;
+  /* Đặt màu nền trắng */
+  color: black;
+  /* Đặt màu chữ đen (hoặc màu bạn muốn) */
+  border: 1px solid #ddd;
+  /* Giữ hoặc điều chỉnh border */
+  /* Thêm các style khác nếu cần */
+}
+
+/* Reset style cho button */
+button {
+  background-color: #f44336;
+  /* Giữ màu nền bạn đã định nghĩa */
+  color: white;
+  /* Giữ màu chữ bạn đã định nghĩa */
+  border: none;
+  /* Giữ hoặc điều chỉnh border */
+  /* Thêm các style khác nếu cần */
+}
+
+/* Nếu button có style mặc định màu đen từ reset, bạn có thể cần thêm: */
+button:not([class]) {
+  /* Chỉ nhắm mục tiêu các button không có class */
+  background-color: initial;
+  /* Hoặc màu bạn muốn */
+  color: initial;
+  /* Hoặc màu bạn muốn */
+  border: initial;
+  /* Hoặc style bạn muốn */
+}

@@ -1,0 +1,56 @@
+.helpedCompanies {
+    padding: 40px 20px;
+    text-align: left;
+    flex: 1;
+    /* Chiếm không gian còn lại */
+    min-width: 300px;
+    /* Chiều rộng tối thiểu */
+    box-sizing: border-box;
+}
+
+.helpedTitle {
+    font-size: 1.1em;
+    /* Giảm kích thước tiêu đề */
+    color: #555;
+    margin-bottom: 20px;
+}
+
+.companiesGrid {
+    display: grid;
+    /* Sử dụng grid layout cho bố cục 2x3 */
+    grid-template-columns: repeat(3, 1fr);
+    /* Tạo 3 cột bằng nhau */
+    gap: 15px;
+    /* Khoảng cách giữa các logo */
+    align-items: center;
+    /* Căn giữa các logo theo chiều dọc */
+}
+
+.companyLogo {
+    text-align: center;
+}
+
+.companyLogo img {
+    max-width: 80px;
+    /* Giảm kích thước tối đa của logo */
+    height: auto;
+    opacity: 0.7;
+    transition: opacity 0.3s ease;
+}
+
+.companyLogo img:hover {
+    opacity: 1;
+}
+
+/* Responsive adjustments (nếu cần) */
+@media (max-width: 768px) {
+    .helpedCompanies {
+        text-align: center;
+        margin-top: 30px;
+    }
+
+    .companiesGrid {
+        grid-template-columns: repeat(2, 1fr);
+        /* Chuyển sang 2 cột trên màn hình nhỏ */
+    }
+}

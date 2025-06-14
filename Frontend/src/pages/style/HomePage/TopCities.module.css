@@ -1,0 +1,13 @@
+.topCities {
+    padding: 40px 20px;
+    text-align: center;
+}
+
+.citiesGrid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    /* Tạo lưới linh hoạt với tối thiểu 300px mỗi cột */
+    gap: 20px;
+    /* Khoảng cách giữa các ô */
+    margin-top: 20px;
+}

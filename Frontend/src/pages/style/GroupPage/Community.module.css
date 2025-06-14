@@ -1,0 +1,12 @@
+.communityContainer {
+    display: flex;
+    min-height: 100vh;
+    background-color: #f0f2f5;
+    /* Màu nền Facebook */
+}
+
+.communityContent {
+    flex: 1;
+    /* Nội dung chính chiếm phần lớn không gian */
+    padding: 20px;
+}

@@ -1,0 +1,61 @@
+/* src/features/manageSpace/styles/OwnerSpacesPage.css */
+
+.owner-spaces-page {
+  background-color: #f8f9fa;
+  min-height: calc(100vh - 60px);
+}
+
+.space-card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.space-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1) !important;
+}
+
+.space-image {
+  height: 160px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  border-top-left-radius: calc(0.375rem - 1px);
+  border-top-right-radius: calc(0.375rem - 1px);
+}
+
+.sortable-header {
+  cursor: pointer;
+}
+
+.sortable-header:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+/* Responsive adjustments */
+@media (max-width: 767.98px) {
+  .owner-spaces-page {
+    padding: 1rem !important;
+  }
+  
+  .space-image {
+    height: 140px;
+  }
+}
+
+/* Status badge colors */
+.badge-pending {
+  background-color: #17a2b8;
+}
+
+.badge-active {
+  background-color: #28a745;
+}
+
+.badge-inactive {
+  background-color: #6c757d;
+}
+
+.badge-maintenance {
+  background-color: #ffc107;
+  color: #212529;
+}

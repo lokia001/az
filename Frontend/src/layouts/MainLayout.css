@@ -1,0 +1,25 @@
+.site-wrapper {
+    min-height: 100vh;
+    /* Đảm bảo wrapper ít nhất bằng chiều cao viewport */
+    display: flex;
+    /* Sử dụng Flexbox */
+    flex-direction: column;
+    /* Sắp xếp các phần tử con theo cột */
+}
+
+.content {
+    flex: 1;
+    /* RẤT QUAN TRỌNG: Phần nội dung sẽ co giãn và lấp đầy không gian trống */
+    padding-bottom: 20px;
+    padding-top: 70px;
+    /* Add padding for fixed navbar */
+    /* Thêm padding nếu bạn muốn có khoảng trống giữa content và footer */
+}
+
+.site-footer {
+    /* Các style của footer của bạn */
+    flex-shrink: 0;
+    /* Đảm bảo footer không bị co lại khi không gian hẹp */
+    /* background-color: #f0f2f5; ví dụ */
+    /* padding: 20px 0; ví dụ */
+}

@@ -1,0 +1,16 @@
+.results-area .results-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.results-area .sort-by label {
+    margin-right: 10px;
+}
+
+.results-area .sort-by select {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}

@@ -1,0 +1,241 @@
+name: Auto Deploy to EC2 on Push to Main
+
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: ✅ Checkout code
+      uses: actions/checkout@v3
+
+    # ----------- FRONTEND ----------
+    - name: 🔧 Setup Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '22'
+
+    - name: 📦 Install & Build Frontend
+      run: |
+        cd Frontendtest # << THAY ĐỔI: Đường dẫn tới thư mục frontend của bạn (Frontendtest)
+        npm install
+        npm run build
+        ls -la dist
+
+    # ----------- BACKEND -----------
+    - name: 🔧 Setup .NET
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: '8.x'
+
+    - name: 📦 Publish Backend
+      run: dotnet publish -c Release -o publish
+      working-directory: src/Backend.Api # << THAY ĐỔI: Đường dẫn tới Backend.Api của bạn (src/Backend.Api)
+
+
+ # ----------- PREPARE SERVER (Optional, if needed for first time or permissions) -----------
+    - name: 📦 Prepare Database Directory on EC2
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          DB_DIR="/var/app_data/my_backend_db" # Đường dẫn database giống file cũ
+          APP_USER="${{ secrets.EC2_USER }}"
+
+          echo "Ensuring database directory $DB_DIR exists..."
+          sudo mkdir -p $DB_DIR
+          echo "Setting ownership of $DB_DIR to $APP_USER..."
+          sudo chown -R $APP_USER:$APP_USER $DB_DIR
+          sudo chmod -R 700 $DB_DIR
+          echo "Database directory prepared."
+
+
+    # ----------- CLEAN REMOTE FOLDERS -----------
+    - name: 🧹 Clean remote frontend folder
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo rm -rf /var/www/html/*
+          sudo mkdir -p /var/www/html
+          sudo chown -R ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /var/www/html
+
+    - name: 🧹 Clean remote backend folder
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo rm -rf /home/${{ secrets.EC2_USER }}/app/backend/* # << THAY ĐỔI: Đường dẫn backend trên EC2
+          sudo mkdir -p /home/${{ secrets.EC2_USER }}/app/backend
+          sudo chown -R ${{ secrets.EC2_USER }}:${{ secrets.EC2_USER }} /home/${{ secrets.EC2_USER }}/app/backend
+
+    # ---------- UPLOAD FRONTEND ----------
+    - name: 📤 Upload Frontend to EC2 (~/webclient)
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "./Frontendtest/dist" # Đường dẫn mới tới thư mục dist của frontend
+        target: "/home/${{ secrets.EC2_USER }}/webclient/"
+        debug: true
+
+    - name: 🚚 Move Frontend to Nginx folder
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          sudo rm -rf /var/www/html/*
+          sudo mv /home/${{ secrets.EC2_USER }}/webclient/Frontendtest/dist/* /var/www/html/ # Đường dẫn mới dist
+          sudo chown -R www-data:www-data /var/www/html
+          sudo chmod -R 755 /var/www/html
+
+    # ---------- UPLOAD NGINX CONFIG ----------
+    - name: 📤 Upload Nginx Configuration
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: "./nginx/working.conf"
+        target: "/home/${{ secrets.EC2_USER }}/app/"
+        overwrite: true
+
+    # ---------- UPLOAD BACKEND ----------
+    - name: 🚀 Upload Backend to EC2
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: src/Backend.Api/publish/ # Đường dẫn mới tới thư mục publish của backend
+        target: /home/${{ secrets.EC2_USER }}/app/backend/
+        overwrite: true
+
+# ---------- SSH & RESTART ----------
+    - name: ⚙️ Configure Backend Environment and Restart Service
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "Updating systemd service environment variables for backend..."
+
+          # Định nghĩa tên service và đường dẫn đến thư mục drop-in
+          SERVICE_NAME="xyz-backend.service" # << THAY ĐỔI: Tên service của bạn
+          OVERRIDE_DIR="/etc/systemd/system/${SERVICE_NAME}.d"
+          OVERRIDE_FILE="$OVERRIDE_DIR/99-app-secrets.conf"
+
+          # Tạo thư mục drop-in nếu chưa tồn tại
+          sudo mkdir -p $OVERRIDE_DIR
+
+          # Tạo hoặc ghi đè file drop-in với các biến môi trường mới
+          echo "[Service]" | sudo tee $OVERRIDE_FILE > /dev/null
+          echo "Environment=\"ASPNETCORE_ENVIRONMENT=Production\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          
+          # Database Connection
+          echo "Environment=\"ConnectionStrings__DefaultConnection=${{ secrets.PROD_DB_CONNECTION_STRING }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          
+          # JWT Configuration
+          echo "Environment=\"Jwt__Key=${{ secrets.PROD_JWT_KEY }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          echo "Environment=\"Jwt__Issuer=${{ secrets.PROD_JWT_ISSUER }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          echo "Environment=\"Jwt__Audience=${{ secrets.PROD_JWT_AUDIENCE }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          
+          # Storage & Email đã được cấu hình
+          
+          # DialogFlow Configuration
+          echo "Environment=\"DialogFlow__ProjectId=${{ secrets.DIALOGFLOW_PROJECT_ID }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          echo "Environment=\"DialogFlow__JsonPath=${{ secrets.DIALOGFLOW_JSON_PATH }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          echo "Environment=\"GOOGLE_APPLICATION_CREDENTIALS=${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+
+          echo "Reloading systemd daemon and restarting service..."
+          sudo systemctl daemon-reload
+          sudo systemctl restart ${SERVICE_NAME}
+
+          echo "Backing up existing Nginx configuration..."
+          sudo mkdir -p /etc/nginx/sites-available/backup
+          timestamp=$(date +%Y%m%d_%H%M%S)
+          if [ -f /etc/nginx/sites-available/working.conf ]; then
+            sudo cp /etc/nginx/sites-available/working.conf "/etc/nginx/sites-available/backup/working.conf.$timestamp"
+          fi
+
+          echo "Updating Nginx configuration..."
+          # Copy new config
+          sudo cp /home/${{ secrets.EC2_USER }}/app/nginx/working.conf /etc/nginx/sites-available/
+
+          # Remove existing symlink if it exists
+          sudo rm -f /etc/nginx/sites-enabled/working.conf
+          
+          # Create new symlink
+          sudo ln -sf /etc/nginx/sites-available/working.conf /etc/nginx/sites-enabled/
+
+          # Test nginx configuration
+          echo "Testing Nginx configuration..."
+          if sudo nginx -t; then
+            echo "Nginx configuration test passed. Reloading Nginx..."
+            sudo systemctl reload nginx
+          else
+            echo "Nginx configuration test failed. Rolling back to previous config..."
+            if [ -f "/etc/nginx/sites-available/backup/working.conf.$timestamp" ]; then
+              sudo cp "/etc/nginx/sites-available/backup/working.conf.$timestamp" /etc/nginx/sites-available/working.conf
+              sudo systemctl reload nginx
+            fi
+            exit 1
+          fi
+
+          echo "Checking Nginx Configuration Status..."
+          echo "----------------------------------------"
+          echo "1. Current Nginx Sites Available:"
+          ls -la /etc/nginx/sites-available/
+          echo "----------------------------------------"
+          echo "2. Current Nginx Sites Enabled:"
+          ls -la /etc/nginx/sites-enabled/
+          echo "----------------------------------------"
+          echo "3. Nginx Service Status:"
+          sudo systemctl status nginx --no-pager
+          echo "----------------------------------------"
+          echo "4. Checking Directory Contents and Permissions:"
+          echo "Frontend files in /var/www/html/:"
+          ls -la /var/www/html/
+          echo "----------------------------------------"
+          echo "Backend files in /home/${{ secrets.EC2_USER }}/app/backend/:"
+          ls -la /home/${{ secrets.EC2_USER }}/app/backend/
+          echo "----------------------------------------"
+          
+          echo "5. Nginx Configuration Test:"
+          sudo nginx -t
+          echo "----------------------------------------"
+          
+          echo "6. Current Nginx Configuration:"
+          sudo nginx -T
+          echo "----------------------------------------"
+          
+          echo "7. Checking Ports and Services:"
+          echo "Nginx ports:"
+          sudo netstat -tlpn | grep nginx
+          echo "Backend service ports:"
+          sudo netstat -tlpn | grep dotnet
+          echo "----------------------------------------"
+          
+          echo "8. Checking Logs:"
+          echo "Nginx error log:"
+          sudo tail -n 50 /var/log/nginx/error.log
+          echo "----------------------------------------"
+          echo "Nginx access log:"
+          sudo tail -n 50 /var/log/nginx/access.log
+          echo "----------------------------------------"
+
+          echo "✅ Deployment done!"
+          echo "Để xác minh biến môi trường, SSH vào server và chạy: sudo systemctl show ${SERVICE_NAME} --property=Environment"

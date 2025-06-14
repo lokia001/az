@@ -1,0 +1,11 @@
+.groupPageContainer {
+    display: flex;
+    flex-direction: row;
+    min-height: 100vh;
+}
+
+.groupContent {
+    flex: 1;
+    /* Để content chiếm phần không gian còn lại */
+    padding: 20px;
+}
