@@ -34,11 +34,32 @@ jobs:
     - name: 🔧 Install EF Core CLI Tools
       run: dotnet tool install --global dotnet-ef
 
-    - name: 📋 Generate Database Migration Script
+    - name: 📋 Prepare Database Migration Solution
       run: |
         cd src/Backend.Api # Đường dẫn tới Backend.Api của bạn
-        dotnet ef migrations script --idempotent --output sql_migrations.sql
-        cat sql_migrations.sql | head -n 20 # Hiển thị 20 dòng đầu để kiểm tra
+        echo "🔍 Checking existing migrations..."
+        dotnet ef migrations list
+        
+        echo "📝 Creating migration script for SQLite..."
+        # Tạo script migration không idempotent (SQLite không hỗ trợ idempotent)
+        dotnet ef migrations script --output sql_migrations.sql || echo "No migrations needed or error occurred"
+        
+        if [ -f sql_migrations.sql ]; then
+          echo "✅ Migration script created successfully"
+          # Thêm transaction vào script để đảm bảo tính nguyên vẹn
+          sed -i '1i BEGIN TRANSACTION;' sql_migrations.sql
+          echo "COMMIT;" >> sql_migrations.sql
+          
+          # Hiển thị preview script
+          echo "📋 Preview of migration script:"
+          cat sql_migrations.sql | head -n 20
+          echo "..."
+          wc -l sql_migrations.sql | awk '{print "Total lines in migration script:", $1}'
+        else
+          echo "⚠️ No migration script generated - no pending migrations or error occurred" 
+          # Tạo file rỗng để tiếp tục workflow
+          echo "-- No migrations to apply" > sql_migrations.sql
+        fi
 
     - name: 📦 Publish Backend
       run: dotnet publish -c Release -o publish
@@ -178,16 +199,69 @@ jobs:
           echo "📋 Applying SQL migration script..."
           cp /home/${{ secrets.EC2_USER }}/app/sql_migrations.sql /tmp/migration.sql
           
-          # Sử dụng SQLite CLI để áp dụng migrations
-          SQLITE_DB=$DB_PATH
-          echo "Running migrations on $SQLITE_DB"
-          sqlite3 $SQLITE_DB < /tmp/migration.sql
+          # Kiểm tra nội dung script trước khi áp dụng
+          MIGRATION_CONTENT=$(cat /tmp/migration.sql)
+          if [[ "$MIGRATION_CONTENT" == *"No migrations to apply"* ]]; then
+            echo "✅ No migrations to apply, skipping..."
+          else
+            # Cài đặt sqlite3 nếu chưa có
+            if ! command -v sqlite3 &> /dev/null; then
+              echo "Installing sqlite3..."
+              sudo apt-get update && sudo apt-get install -y sqlite3
+            fi
+            
+            # Sử dụng SQLite CLI để áp dụng migrations
+            SQLITE_DB=$DB_PATH
+            echo "Running migrations on $SQLITE_DB"
+            
+            # Chạy script và kiểm tra lỗi
+            echo "Executing migration script..."
+            if sqlite3 "$SQLITE_DB" < /tmp/migration.sql; then
+              echo "✅ Database migration completed successfully!"
+            else
+              echo "❌ Migration failed with error code $?"
+              echo "Rolling back to backup..."
+              
+              if [ -f "$BACKUP_FILE" ]; then
+                cp "$BACKUP_FILE" "$DB_PATH"
+                echo "✅ Restored from backup: $BACKUP_FILE"
+              else
+                echo "⚠️ No backup available for restore!"
+              fi
+              
+              exit 1
+            fi
+          fi
           
           if [ $? -eq 0 ]; then
             echo "✅ Database migrations applied successfully!"
           else
-            echo "❌ Failed to apply migrations!"
-            exit 1
+            echo "❌ Failed to apply migrations using SQL script!"
+            echo "Trying alternative approach with dotnet ef database update..."
+            
+            # Di chuyển đến thư mục backend
+            cd /home/${{ secrets.EC2_USER }}/app/backend/publish
+            
+            # Cài đặt dotnet ef tools và áp dụng migrations
+            dotnet tool install --global dotnet-ef || true
+            export PATH="$PATH:$HOME/.dotnet/tools"
+            export ConnectionStrings__DefaultConnection="${{ secrets.PROD_DB_CONNECTION_STRING }}"
+            
+            # Chạy database update
+            if dotnet ef database update --no-build; then
+              echo "✅ Database migration completed successfully using dotnet ef database update!"
+            else
+              echo "❌ Migration failed with both approaches"
+              
+              if [ -f "$BACKUP_FILE" ]; then
+                cp "$BACKUP_FILE" "$DB_PATH"
+                echo "✅ Restored from backup: $BACKUP_FILE"
+              else
+                echo "⚠️ No backup available for restore!"
+              fi
+              
+              exit 1
+            fi
           fi
 
 # ---------- SSH & RESTART ----------
