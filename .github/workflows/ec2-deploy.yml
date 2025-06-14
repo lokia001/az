@@ -31,6 +31,15 @@ jobs:
       with:
         dotnet-version: '8.x'
 
+    - name: 🔧 Install EF Core CLI Tools
+      run: dotnet tool install --global dotnet-ef
+
+    - name: 📋 Generate Database Migration Script
+      run: |
+        cd src/Backend.Api # Đường dẫn tới Backend.Api của bạn
+        dotnet ef migrations script --idempotent --output sql_migrations.sql
+        cat sql_migrations.sql | head -n 20 # Hiển thị 20 dòng đầu để kiểm tra
+
     - name: 📦 Publish Backend
       run: dotnet publish -c Release -o publish
       working-directory: src/Backend.Api # << THAY ĐỔI: Đường dẫn tới Backend.Api của bạn (src/Backend.Api)
@@ -122,6 +131,64 @@ jobs:
         source: src/Backend.Api/publish/ # Đường dẫn mới tới thư mục publish của backend
         target: /home/${{ secrets.EC2_USER }}/app/backend/
         overwrite: true
+        
+    # Upload SQL migration script
+    - name: 📤 Upload SQL Migration Script
+      uses: appleboy/scp-action@v0.1.4
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        source: src/Backend.Api/sql_migrations.sql
+        target: /home/${{ secrets.EC2_USER }}/app/
+        overwrite: true
+
+    # Thêm bước áp dụng migration script
+    - name: 🔄 Apply Database Migrations 
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "📝 Creating database backup before migrations..."
+          BACKUP_FILE="/var/app_data/backup_$(date +%Y%m%d_%H%M%S).db"
+          CONNECTION_STRING="${{ secrets.PROD_DB_CONNECTION_STRING }}"
+          DB_PATH=$(echo $CONNECTION_STRING | sed -n 's/.*Data Source=\([^;]*\).*/\1/p')
+          
+          if [ -f "$DB_PATH" ]; then
+            echo "Backing up database from $DB_PATH to $BACKUP_FILE"
+            cp "$DB_PATH" "$BACKUP_FILE"
+          else
+            echo "⚠️ Warning: Database file not found at $DB_PATH, skipping backup"
+          fi
+          
+          echo "🔄 Applying database migrations..."
+          # Khởi tạo các biến môi trường cần thiết
+          export ConnectionStrings__DefaultConnection="${{ secrets.PROD_DB_CONNECTION_STRING }}"
+          
+          # Kiểm tra kết nối
+          if [ -f "$DB_PATH" ]; then
+            echo "✅ Database file exists at $DB_PATH"
+          else
+            echo "⚠️ Database file not found, will be created by migration"
+          fi
+          
+          # Áp dụng script SQL
+          echo "📋 Applying SQL migration script..."
+          cp /home/${{ secrets.EC2_USER }}/app/sql_migrations.sql /tmp/migration.sql
+          
+          # Sử dụng SQLite CLI để áp dụng migrations
+          SQLITE_DB=$DB_PATH
+          echo "Running migrations on $SQLITE_DB"
+          sqlite3 $SQLITE_DB < /tmp/migration.sql
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ Database migrations applied successfully!"
+          else
+            echo "❌ Failed to apply migrations!"
+            exit 1
+          fi
 
 # ---------- SSH & RESTART ----------
     - name: ⚙️ Configure Backend Environment and Restart Service
