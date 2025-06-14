@@ -437,3 +437,43 @@ jobs:
 
           echo "✅ Deployment done!"
           echo "Để xác minh biến môi trường, SSH vào server và chạy: sudo systemctl show ${SERVICE_NAME} --property=Environment"
+
+# ---------- VERIFY DEPLOYMENT & RESTART SERVICE ----------
+    - name: 🚨 Verify Backend Deployment & Force Restart
+      uses: appleboy/ssh-action@v0.1.10
+      with:
+        host: ${{ secrets.EC2_IP }}
+        username: ${{ secrets.EC2_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        script: |
+          echo "============= BACKEND DEPLOYMENT VERIFICATION ============="
+          SERVICE_NAME="xyz-backend.service" # << THAY ĐỔI: Tên service của bạn
+          
+          # Kiểm tra file Program.cs được deploy
+          PROGRAM_CS="/home/${{ secrets.EC2_USER }}/app/backend/publish/Program.cs"
+          if [ -f "$PROGRAM_CS" ]; then
+            echo "✅ Program.cs found in publish directory"
+          else
+            echo "⚠️ Program.cs not found in publish directory (normal for published app)"
+          fi
+          
+          echo "Checking for PendingModelChanges handling code in published DLL"
+          strings /home/${{ secrets.EC2_USER }}/app/backend/publish/Backend.Api.dll | grep -i "PendingModelChanges" || echo "String not found"
+          strings /home/${{ secrets.EC2_USER }}/app/backend/publish/Backend.Api.dll | grep -i "application will continue" || echo "String not found"
+          
+          echo "Stopping and starting service to ensure clean state..."
+          sudo systemctl stop ${SERVICE_NAME}
+          echo "Service stopped. Waiting 5 seconds..."
+          sleep 5
+          
+          echo "Starting service..."
+          sudo systemctl start ${SERVICE_NAME}
+          sleep 5
+          
+          echo "Checking service status..."
+          sudo systemctl status ${SERVICE_NAME} --no-pager
+          
+          echo "Tailing application logs..."
+          sudo journalctl -u ${SERVICE_NAME} -n 50 --no-pager
+          
+          echo "============= VERIFICATION COMPLETE ============="

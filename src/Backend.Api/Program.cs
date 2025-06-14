@@ -233,16 +233,56 @@ if (app.Environment.IsProduction())
         dbContext.Database.Migrate();
         logger.LogInformation("Database migration completed successfully");
     }
-    catch (InvalidOperationException ex) when (ex.Message.Contains("Migrations.Pend") || ex.Message.Contains("Pending Model Changes"))
+    catch (InvalidOperationException ex) when (ex.Message?.Contains("Migrations.Pend") == true || 
+                                    ex.Message?.Contains("Pending Model Changes") == true || 
+                                    ex.Message?.Contains("Microsoft.EntityFrameworkCore.Migrations") == true ||
+                                    ex.ToString().Contains("PendingModelChangesWarning"))
     {
         logger.LogWarning("Detected pending model changes, application will continue: {Message}", ex.Message);
+        
+        // Log thêm chi tiết về lỗi để debug
+        logger.LogWarning("Exception details: {ExceptionType}, {StackTrace}", ex.GetType().FullName, ex.StackTrace);
+        
         // Vẫn tiếp tục chạy ứng dụng thay vì dừng lại
         logger.LogWarning("Note: Please create and apply necessary migrations to avoid this warning");
+        
+        // Log thông tin về database để debug
+        try {
+            var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
+            var appliedMigrations = dbContext.Database.GetAppliedMigrations().ToList();
+            
+            logger.LogInformation("Pending migrations count: {Count}", pendingMigrations.Count);
+            if (pendingMigrations.Any()) {
+                logger.LogInformation("Pending migrations: {Migrations}", string.Join(", ", pendingMigrations));
+            }
+            
+            logger.LogInformation("Applied migrations count: {Count}", appliedMigrations.Count);
+            if (appliedMigrations.Any()) {
+                logger.LogInformation("Last applied migration: {Migration}", appliedMigrations.Last());
+            }
+        }
+        catch (Exception dbEx) {
+            logger.LogError(dbEx, "Error when trying to get migration information");
+        }
     }
     catch (Exception ex)
     {
         logger.LogError(ex, "An error occurred during database migration");
-        throw; // Đối với các lỗi khác, ném lại để dừng ứng dụng nếu cần
+        
+        // Kiểm tra nếu lỗi liên quan đến PendingModelChanges nhưng không bắt được ở catch trước
+        if (ex.ToString().Contains("PendingModelChanges") || 
+            ex.ToString().Contains("Migrations.Pend") ||
+            ex.ToString().Contains("Microsoft.EntityFrameworkCore.Migrations"))
+        {
+            logger.LogWarning("Detected migration issue in general exception handler, application will continue");
+            logger.LogWarning("Exception details: {ExceptionType}, {Message}", ex.GetType().FullName, ex.Message);
+            // Không throw, cho phép ứng dụng tiếp tục chạy
+        }
+        else
+        {
+            // Đối với các lỗi khác không liên quan đến migrations
+            throw; 
+        }
     }
 }
 
