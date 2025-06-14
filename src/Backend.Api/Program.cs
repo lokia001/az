@@ -25,6 +25,7 @@ using AutoMapper;
 using Backend.Api.Modules.CommunityContent;
 using Backend.Api.Modules.Engagement;
 using Backend.Api.Modules.Chatbot;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -45,6 +46,44 @@ builder.Services.AddCommunityContentModule();
 builder.Services.AddEngagementModule();
 var configuration = builder.Configuration;
 builder.Services.AddChatbotModule(configuration);
+
+
+// Configure Kestrel to use non-privileged ports and avoid permission issues
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    // Get configured URLs from environment or config
+    var urls = configuration["ASPNETCORE_URLS"];
+    if (!string.IsNullOrEmpty(urls))
+    {
+        Console.WriteLine($"Kestrel is explicitly configured to use URLs via ASPNETCORE_URLS: {urls}");
+    }
+    else 
+    {
+        // If running in production and no explicit URL is set
+        if (builder.Environment.IsProduction())
+        {
+            // Set safe port to avoid "Permission denied" errors on Linux
+            // Port 5000 is above 1024 (non-privileged) but still may have issues on some systems
+            serverOptions.ListenAnyIP(5000, listenOptions =>
+            {
+                Console.WriteLine("Explicitly configured Kestrel to listen on port 5000 on all IPs");
+            });
+            
+            Console.WriteLine("Kestrel explicitly configured to use port 5000 to avoid permission issues");
+        }
+        else
+        {
+            Console.WriteLine("Using default Kestrel configuration for non-production environment");
+        }
+    }
+
+    // Add logging for troubleshooting
+    serverOptions.ConfigureEndpointDefaults(listenOptions =>
+    {
+        Console.WriteLine($"Configuring Kestrel endpoint defaults");
+    });
+});
+
 
 // Add services to the container.
 builder.Services.AddControllers().AddJsonOptions(options =>
@@ -68,6 +107,10 @@ builder.Services.AddSwaggerGen(options =>
         Scheme = "bearer", // Viết thường
         BearerFormat = "JWT"
     });
+
+
+
+    
 
     // 2. Yêu cầu bảo mật (Security Requirement) cho các endpoint
     options.AddSecurityRequirement(new OpenApiSecurityRequirement
@@ -286,6 +329,47 @@ if (app.Environment.IsProduction())
     }
 }
 
+// Add logging for Kestrel binding and port configuration
+if (app.Environment.IsProduction()) 
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Starting Kestrel with the following configuration:");
+    
+    if (!string.IsNullOrEmpty(builder.Configuration["ASPNETCORE_URLS"]))
+    {
+        logger.LogInformation("ASPNETCORE_URLS: {Urls}", builder.Configuration["ASPNETCORE_URLS"]);
+    }
+    
+    if (!string.IsNullOrEmpty(builder.Configuration["Kestrel:Endpoints:Http:Url"]))
+    {
+        logger.LogInformation("Kestrel endpoint from config: {Url}", builder.Configuration["Kestrel:Endpoints:Http:Url"]);
+    }
+    
+    try 
+    {
+        // Log active ports and listeners that might be in use
+        var processOutput = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+        {
+            FileName = "netstat",
+            Arguments = "-tlnp",
+            RedirectStandardOutput = true,
+            UseShellExecute = false
+        })?.StandardOutput.ReadToEnd();
+        
+        if (processOutput != null)
+        {
+            logger.LogInformation("Active ports (netstat output): {Output}", 
+                processOutput.Split('\n')
+                    .Where(line => line.Contains("LISTEN"))
+                    .Take(10)
+                    .Aggregate("", (current, line) => current + Environment.NewLine + line));
+        }
+    }
+    catch (Exception ex)
+    {
+        logger.LogWarning("Failed to get netstat information: {Error}", ex.Message);
+    }
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -326,7 +410,57 @@ app.UseAuthorization();
 
 app.MapControllers(); // Ensure controllers are mapped in all environments
 
-app.Run();
+try
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    logger.LogInformation("Starting web application...");
+    app.Run();
+}
+catch (Exception ex)
+{
+    var logger = app.Services.GetRequiredService<ILogger<Program>>();
+    
+    if (ex is System.Net.Sockets.SocketException socketEx && socketEx.Message.Contains("Permission denied"))
+    {
+        logger.LogError(socketEx, 
+            "Socket permission denied error occurred when starting the application. " +
+            "This typically happens when non-root users try to bind to privileged ports (below 1024) " +
+            "or when the port is already in use.");
+        
+        logger.LogInformation(
+            "SOLUTION OPTIONS:\n" +
+            "1. Use a higher port number (e.g., 5000 instead of 80) and proxy with Nginx\n" +
+            "2. Use setcap to grant permission: sudo setcap CAP_NET_BIND_SERVICE=+ep /path/to/dotnet\n" +
+            "3. Run the application as root (not recommended for production)");
+        
+        // Attempt to restart on a fallback port if this was a permission issue 
+        try
+        {
+            logger.LogInformation("Attempting to restart on fallback port 8000...");
+            // Force a specific port by setting environment variable
+            Environment.SetEnvironmentVariable("ASPNETCORE_URLS", "http://0.0.0.0:8000");
+            
+            // Create a new WebApplication with the updated environment
+            var fallbackBuilder = WebApplication.CreateBuilder(args);
+            fallbackBuilder.WebHost.UseUrls("http://0.0.0.0:8000");
+            
+            // Build and run the fallback app - simplified for emergency use
+            var fallbackApp = fallbackBuilder.Build();
+            fallbackApp.Run();
+        }
+        catch (Exception fallbackEx)
+        {
+            logger.LogError(fallbackEx, "Failed to start on fallback port as well. Application will exit.");
+            // Exit with error code to signal failure
+            Environment.Exit(1);
+        }
+    }
+    else
+    {
+        logger.LogError(ex, "Application terminated unexpectedly");
+        throw;
+    }
+}
 
 // --- Helper method để gọi DatabaseInitializer ---
 async Task InitializeDatabaseAsync(IHost appHost) // IHost thay vì WebApplication để tổng quát hơn
