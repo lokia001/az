@@ -4,7 +4,7 @@ import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, 
 import storage from 'redux-persist/lib/storage';
 
 // Import existing slices only
-import authReducer from '../features/auth/slices/authSlice';
+// import authReducer from '../features/auth/slices/authSlice'; // File không tồn tại
 // import chatbotReducer from '../features/chatbot/chatbotSlice';
 import spaceSearchReducer from '../features/spaceSearch/slices/spaceSearchSlice';
 import adminUserReducer from '../features/adminUserManagement/slices/adminUserSlice';
@@ -30,15 +30,15 @@ import myBookingsReducer from '../features/myBookings/slices/myBookingsSlice';
 const persistConfig = {
     key: 'root',
     storage,
-    whitelist: ['auth'] // Only persist auth state
+    whitelist: [] // Empty whitelist since auth is removed
 };
 
-const persistedAuthReducer = persistReducer(persistConfig, authReducer);
+// Removed persistedAuthReducer since authReducer doesn't exist
 
 // My bookings management
 export const store = configureStore({
     reducer: {
-        auth: persistedAuthReducer,
+        // auth: persistedAuthReducer, // Removed since authReducer doesn't exist
         // chatbot: chatbotReducer,
         spaceSearch: spaceSearchReducer,
         adminUsers: adminUserReducer,
