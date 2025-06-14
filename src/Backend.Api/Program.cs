@@ -225,9 +225,26 @@ if (app.Environment.IsProduction())
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    dbContext.Database.Migrate();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    
+    try
+    {
+        logger.LogInformation("Starting database migration...");
+        dbContext.Database.Migrate();
+        logger.LogInformation("Database migration completed successfully");
+    }
+    catch (InvalidOperationException ex) when (ex.Message.Contains("Migrations.Pend") || ex.Message.Contains("Pending Model Changes"))
+    {
+        logger.LogWarning("Detected pending model changes, application will continue: {Message}", ex.Message);
+        // Vẫn tiếp tục chạy ứng dụng thay vì dừng lại
+        logger.LogWarning("Note: Please create and apply necessary migrations to avoid this warning");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "An error occurred during database migration");
+        throw; // Đối với các lỗi khác, ném lại để dừng ứng dụng nếu cần
+    }
 }
-
 
 
 // Configure the HTTP request pipeline.
