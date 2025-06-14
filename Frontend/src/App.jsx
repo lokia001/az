@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import AppRouter from './router';
-import { loadUserFromToken } from '../features/auth/slices/authSlice';
 
 function App() {
   console.log('🚀 App component is rendering...');
@@ -16,7 +15,6 @@ function App() {
     
     if (authStatus === 'idle' && !currentUser && hasAccessToken) {
       console.log('Loading user data from token on app startup...');
-      dispatch(loadUserFromToken());
     }
   }, [dispatch, authStatus, currentUser]);
 
