@@ -35,7 +35,8 @@ namespace Backend.Api.Modules.UserRelated.Application.Mappings
     .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => src.Username))
     .ForMember(dest => dest.Gender, opt => opt.MapFrom(src => UserGender.Unknown))
     .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
-    // BẠN CẦN THÊM .Ignore() CHO CÁC THUỘC TÍNH BỊ BÁO LỖI Ở TRÊN
+    .ForMember(dest => dest.IsActive, opt => opt.MapFrom(src => true))
+    .ForMember(dest => dest.IsDeleted, opt => opt.MapFrom(src => false))
     .ForMember(dest => dest.DateOfBirth, opt => opt.Ignore())
     .ForMember(dest => dest.Bio, opt => opt.Ignore())
     .ForMember(dest => dest.PhoneNumber, opt => opt.Ignore())
@@ -59,6 +60,8 @@ namespace Backend.Api.Modules.UserRelated.Application.Mappings
                 .ForMember(dest => dest.PasswordHash, opt => opt.Ignore())
                 .ForMember(dest => dest.Role, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.IsActive, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.PasswordResetToken, opt => opt.Ignore())
                 .ForMember(dest => dest.PasswordResetTokenExpiry, opt => opt.Ignore())
                 .ForMember(dest => dest.RefreshToken, opt => opt.Ignore())

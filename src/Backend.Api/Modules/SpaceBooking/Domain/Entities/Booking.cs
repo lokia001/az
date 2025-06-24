@@ -47,6 +47,10 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         [MaxLength(500)]
         public string? NotesFromOwner { get; set; } // Ghi chú từ chủ không gian (nếu có)
 
+        // External iCal integration fields
+        public string? ExternalIcalUid { get; set; }
+        public string? ExternalIcalUrl { get; set; }
+        public bool IsExternalBooking { get; set; }
 
         // Audit fields
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -54,6 +58,9 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
 
         public DateTime? UpdatedAt { get; set; }
         public Guid? UpdatedByUserId { get; set; } // Ai đã cập nhật booking
+
+        [MaxLength(999)] // Giới hạn độ dài tên
+        public string Notes { get; set; } = string.Empty;
 
         public Booking()
         {

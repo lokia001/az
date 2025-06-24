@@ -15,7 +15,7 @@ export const fetchOwnerBookingsAPI = async (filters = {}) => {
             }
         });
 
-        const response = await api.get(`/owner/bookings?${params.toString()}`);
+        const response = await api.get(`/bookings/owner-bookings?${params.toString()}`); // Corrected API endpoint
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

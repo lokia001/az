@@ -16,6 +16,13 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Configurat
 
             builder.HasKey(s => s.Id);
 
+            // Đây là phần sửa lỗi quan trọng nhất.
+            // Vô hiệu hóa kiểm tra tương tranh trên UpdatedAt để ngăn DbUpdateConcurrencyException
+            // khi seeding dữ liệu hoặc khi một entity được cập nhật mà không theo dõi đúng concurrency token.
+            // Cách làm này tương tự như đã áp dụng trong UserConfiguration.cs.
+            builder.Property(s => s.UpdatedAt)
+                .IsConcurrencyToken(false);
+
             builder.Property(s => s.Name)
                 .IsRequired()
                 .HasMaxLength(200);

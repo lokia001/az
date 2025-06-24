@@ -25,7 +25,11 @@ namespace Backend.Api.Data
             var connectionString = configuration.GetConnectionString("DefaultConnection");
 
             Console.WriteLine($"===> [AppDbContextFactory] Connection string from factory: {connectionString}");
-            optionsBuilder.UseSqlite(connectionString)
+            // Sử dụng query splitting để ngăn vấn đề "cartesian explosion" khi include nhiều collection.
+            // Điều này giải quyết cảnh báo 'MultipleCollectionIncludeWarning' thấy trong log khi seeding.
+            optionsBuilder.UseSqlite(connectionString,
+                o => o.UseQuerySplittingBehavior(QuerySplittingBehavior.SplitQuery)
+            )
 
             .LogTo(message => System.Diagnostics.Debug.WriteLine(message), LogLevel.Information)
            // Log ra Debug output

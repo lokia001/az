@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Backend.Api.Data; // Using AppDbContext
 using Backend.Api.Modules.UserRelated.Application.Contracts.Dtos;
 using Backend.Api.Modules.UserRelated.Domain.Entities;
+using Backend.Api.Modules.UserRelated.Domain.Enums; // Thêm using này cho UserRole
 using Backend.Api.Modules.UserRelated.Domain.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore;
 
@@ -73,6 +74,13 @@ namespace Backend.Api.Modules.UserRelated.Infrastructure.Persistence.Repositorie
         {
             return await _context.Set<User>().AnyAsync(u => u.Email.ToLower() == email.ToLower());
         }
+
+        public async Task<IEnumerable<User>> GetUsersByRoleAsync(UserRole role)
+        {
+            return await _context.Set<User>().Where(u => u.Role == role).ToListAsync();
+        }
+
+
 
 
         // IMPLEMENT PHƯƠNG THỨC MỚI

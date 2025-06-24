@@ -62,6 +62,9 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         public ICollection<SpaceCustomAmenity> CustomAmenities { get; private set; } = new List<SpaceCustomAmenity>();
         public ICollection<SpaceCustomService> CustomServices { get; private set; } = new List<SpaceCustomService>();
 
+        // iCal Settings
+        public SpaceIcalSetting? IcalSettings { get; set; }
+
         // Constructor (nếu cần)
         public Space()
         {

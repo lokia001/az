@@ -25,5 +25,7 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories
         Task<IEnumerable<Space>> GetByOwnerIdAsync(Guid ownerId);
         Task<IEnumerable<Space>> GetByOwnerIdWithDetailsAsync(Guid ownerId);
         Task<(IEnumerable<Space> Items, int TotalCount)> SearchAsync(SpaceSearchCriteria criteria, bool includeDetails);
+    Task<bool> ExistsByNameAndOwnerAsync(string name, Guid ownerId); 
+    
     }
 }

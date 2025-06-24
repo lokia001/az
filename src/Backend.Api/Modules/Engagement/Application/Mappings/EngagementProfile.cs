@@ -31,7 +31,8 @@ namespace Backend.Api.Modules.Engagement.Application.Mappings
                 .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
                 .ForMember(dest => dest.IsVerifiedOwnerReply, opt => opt.Ignore());
 
-            CreateMap<Review, ReviewDto>();
+            CreateMap<Review, ReviewDto>()
+                .ForMember(dest => dest.UserName, opt => opt.Ignore()); // UserName sẽ được set riêng trong service
 
 
             // --- Comment Mappings ---

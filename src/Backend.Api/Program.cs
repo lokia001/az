@@ -1,5 +1,6 @@
 using Backend.Api.Modules.UserService.Extensions;
 using Backend.Api.Modules.SpaceService.Extensions;
+using Backend.Api.Modules.SpaceBooking.Extensions;
 using Backend.Api.Modules.PaymentService.Extensions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -7,6 +8,7 @@ using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Backend.Api.Security;
 using Backend.Api.Data;
+using Backend.Api.Data.Seeders;
 
 using System.Security.Claims;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,14 +37,23 @@ if (builder.Environment.IsDevelopment())
     builder.Configuration.AddUserSecrets<Program>();
 }
 
-// Add Google Cloud logging
-builder.Logging.AddFilter("Google", LogLevel.Debug);
-builder.Logging.AddFilter("Grpc", LogLevel.Debug);
+// Configure logging
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
+builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Information);
+builder.Logging.AddFilter("Google", LogLevel.Information);
+builder.Logging.AddFilter("Grpc", LogLevel.Information);
 
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
-builder.Services.AddUserRelatedModule(); // GỌI Ở ĐÂY
+
+// Register modules with their services and seeders
+builder.Services.AddUserRelatedModule();
 builder.Services.AddSpaceBookingModule();
 builder.Services.AddCommunityContentModule();
+
+// Register database initializer
+builder.Services.AddScoped<DatabaseInitializer>();
 builder.Services.AddEngagementModule();
 var configuration = builder.Configuration;
 builder.Services.AddChatbotModule(configuration);
@@ -225,156 +236,43 @@ builder.Services.AddScoped<IUserLookupService, MockUserLookupService>();
 
 var app = builder.Build();
 
-// Seed amenity and service data
-if (app.Environment.IsDevelopment())
+// Kiểm tra command tùy chỉnh để chạy seeder và thoát
+if (args.Contains("seed-data"))
 {
-    try
-    {
-        using (var scope = app.Services.CreateScope())
-        {
-            var serviceProvider = scope.ServiceProvider;
-            await SeedAmenityAndService.SeedAmenityAndServiceData(serviceProvider);
-        }
-    }
-    catch (Exception ex)
-    {
-        var logger = app.Services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database.");
-    }
+    Console.ForegroundColor = ConsoleColor.Yellow;
+    Console.WriteLine("Executing 'seed-data' command...");
+    Console.ResetColor();
+    
+    await InitializeDatabaseAsync(app);
+    
+    Console.ForegroundColor = ConsoleColor.Green;
+    Console.WriteLine("Data seeding completed successfully. Exiting application.");
+    Console.ResetColor();
+    
+    return; // Thoát ứng dụng sau khi seed xong
 }
 
+// --- Luồng khởi động ứng dụng web thông thường ---
 
-// DÙNG CHO DEBUG AUTOMAPPER
+// Initialize the database and run seeders
 using (var scope = app.Services.CreateScope())
 {
-    var mapper = scope.ServiceProvider.GetRequiredService<IMapper>();
     try
     {
-        Console.WriteLine("=====> Asserting AutoMapper Configuration...");
-        mapper.ConfigurationProvider.AssertConfigurationIsValid();
-        Console.WriteLine("=====> AutoMapper configuration is VALID.");
-    }
-    catch (AutoMapperConfigurationException ex)
-    {
-        Console.WriteLine("====> AutoMapper configuration is INVALID:");
-        Console.WriteLine(ex.ToString()); // In ra chi tiết lỗi mapping
-        Console.WriteLine("====> AutoMapper End<<<<<<<<<<");
-    }
-}
-
-await InitializeDatabaseAsync(app);
-
-if (app.Environment.IsProduction())
-{
-    using var scope = app.Services.CreateScope();
-    var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    
-    try
-    {
-        logger.LogInformation("Starting database migration...");
-        dbContext.Database.Migrate();
-        logger.LogInformation("Database migration completed successfully");
-    }
-    catch (InvalidOperationException ex) when (ex.Message?.Contains("Migrations.Pend") == true || 
-                                    ex.Message?.Contains("Pending Model Changes") == true || 
-                                    ex.Message?.Contains("Microsoft.EntityFrameworkCore.Migrations") == true ||
-                                    ex.ToString().Contains("PendingModelChangesWarning"))
-    {
-        logger.LogWarning("Detected pending model changes, application will continue: {Message}", ex.Message);
-        
-        // Log thêm chi tiết về lỗi để debug
-        logger.LogWarning("Exception details: {ExceptionType}, {StackTrace}", ex.GetType().FullName, ex.StackTrace);
-        
-        // Vẫn tiếp tục chạy ứng dụng thay vì dừng lại
-        logger.LogWarning("Note: Please create and apply necessary migrations to avoid this warning");
-        
-        // Log thông tin về database để debug
-        try {
-            var pendingMigrations = dbContext.Database.GetPendingMigrations().ToList();
-            var appliedMigrations = dbContext.Database.GetAppliedMigrations().ToList();
-            
-            logger.LogInformation("Pending migrations count: {Count}", pendingMigrations.Count);
-            if (pendingMigrations.Any()) {
-                logger.LogInformation("Pending migrations: {Migrations}", string.Join(", ", pendingMigrations));
-            }
-            
-            logger.LogInformation("Applied migrations count: {Count}", appliedMigrations.Count);
-            if (appliedMigrations.Any()) {
-                logger.LogInformation("Last applied migration: {Migration}", appliedMigrations.Last());
-            }
-        }
-        catch (Exception dbEx) {
-            logger.LogError(dbEx, "Error when trying to get migration information");
-        }
+        var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+        await initializer.InitializeAsync();
     }
     catch (Exception ex)
     {
-        logger.LogError(ex, "An error occurred during database migration");
-        
-        // Kiểm tra nếu lỗi liên quan đến PendingModelChanges nhưng không bắt được ở catch trước
-        if (ex.ToString().Contains("PendingModelChanges") || 
-            ex.ToString().Contains("Migrations.Pend") ||
-            ex.ToString().Contains("Microsoft.EntityFrameworkCore.Migrations"))
-        {
-            logger.LogWarning("Detected migration issue in general exception handler, application will continue");
-            logger.LogWarning("Exception details: {ExceptionType}, {Message}", ex.GetType().FullName, ex.Message);
-            // Không throw, cho phép ứng dụng tiếp tục chạy
-        }
-        else
-        {
-            // Đối với các lỗi khác không liên quan đến migrations
-            throw; 
-        }
-    }
-}
-
-// Add logging for Kestrel binding and port configuration
-if (app.Environment.IsProduction()) 
-{
-    var logger = app.Services.GetRequiredService<ILogger<Program>>();
-    logger.LogInformation("Starting Kestrel with the following configuration:");
-    
-    if (!string.IsNullOrEmpty(builder.Configuration["ASPNETCORE_URLS"]))
-    {
-        logger.LogInformation("ASPNETCORE_URLS: {Urls}", builder.Configuration["ASPNETCORE_URLS"]);
-    }
-    
-    if (!string.IsNullOrEmpty(builder.Configuration["Kestrel:Endpoints:Http:Url"]))
-    {
-        logger.LogInformation("Kestrel endpoint from config: {Url}", builder.Configuration["Kestrel:Endpoints:Http:Url"]);
-    }
-    
-    try 
-    {
-        // Log active ports and listeners that might be in use
-        var processOutput = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
-        {
-            FileName = "netstat",
-            Arguments = "-tlnp",
-            RedirectStandardOutput = true,
-            UseShellExecute = false
-        })?.StandardOutput.ReadToEnd();
-        
-        if (processOutput != null)
-        {
-            logger.LogInformation("Active ports (netstat output): {Output}", 
-                processOutput.Split('\n')
-                    .Where(line => line.Contains("LISTEN"))
-                    .Take(10)
-                    .Aggregate("", (current, line) => current + Environment.NewLine + line));
-        }
-    }
-    catch (Exception ex)
-    {
-        logger.LogWarning("Failed to get netstat information: {Error}", ex.Message);
+        var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+        logger.LogError(ex, "An error occurred while initializing the database.");
+        throw; // Re-throw to prevent app from starting with uninitialized database
     }
 }
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
-    app.UseDeveloperExceptionPage(); //Thêm
     app.UseSwagger();
 
     app.UseSwaggerUI(c =>
@@ -492,5 +390,3 @@ public class MockUserLookupService : IUserLookupService
         return Task.FromResult(dict);
     }
 }
-
-

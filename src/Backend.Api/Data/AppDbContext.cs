@@ -10,7 +10,9 @@ namespace Backend.Api.Data
         {
         }
  
+        public DbSet<Space> Spaces { get; set; } = default!;
         public DbSet<Booking> Bookings { get; set; } = default!;
+        public DbSet<SpaceIcalSetting> SpaceIcalSettings { get; set; } = default!;
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);

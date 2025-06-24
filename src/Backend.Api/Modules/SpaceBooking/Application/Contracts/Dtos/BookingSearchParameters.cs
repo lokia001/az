@@ -1,15 +1,16 @@
-using Backend.Api.Modules.SpaceBooking.Domain.Enums;
+using Backend.Api.Modules.SpaceBooking.Domain.Enums; // Assuming BookingStatus is here
+using System;
 
-namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos;
-
-public class BookingSearchParameters
+namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
 {
-    // Thêm các thuộc tính tìm kiếm cần thiết, ví dụ:
-    public BookingStatus? Status { get; set; }
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
-    public string? SortBy { get; set; }
-    public string? SortOrder { get; set; } // Added property for sort order ("asc" or "desc")
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 20;
+    public class BookingSearchParameters
+    {
+        public int PageNumber { get; set; } = 1;
+        public int PageSize { get; set; } = 10;
+        public string? SortBy { get; set; } = "StartTime"; // Default sort
+        public string? SortOrder { get; set; } = "desc"; // Default order
+        public BookingStatus? Status { get; set; }
+        public DateTime? StartDate { get; set; }
+        public DateTime? EndDate { get; set; }
+    }
 }

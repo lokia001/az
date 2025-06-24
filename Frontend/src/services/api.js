@@ -325,7 +325,7 @@ export const getUserBookings = async (userId) => {
 
 export const getOwnerBookings = async () => {
     try {
-        const response = await api.get('/owner/bookings');
+        const response = await api.get('/bookings/owner-bookings'); // Corrected API endpoint
         console.log("getOwnerBookings response:", response.data);
         return response.data;
     } catch (error) {

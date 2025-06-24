@@ -17,6 +17,7 @@
     <PackageReference Include="Google.Cloud.Dialogflow.V2" Version="4.11.0" />
     <PackageReference Include="Google.Api.Gax.Grpc" Version="4.9.0" />
     <PackageReference Include="Grpc.Net.Client" Version="2.66.0" />
+    <PackageReference Include="Ical.Net" Version="5.0.0" />
     <PackageReference Include="MailKit" Version="4.7.0" /> <!-- Cập nhật version nếu cần -->
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" /> <!-- Hoặc version mới nhất cho .NET 8 -->
     <PackageReference Include="Microsoft.AspNetCore.Cors" Version="2.2.0" /> <!-- Version cho .NET Core 2.2, nên dùng version cho .NET 8 -->
@@ -27,6 +28,11 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="9.0.6" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.6" />
+    <PackageReference Include="Quartz" Version="3.14.0" />
+    <PackageReference Include="Quartz.Extensions.DependencyInjection" Version="3.14.0" />
+    <PackageReference Include="Quartz.Extensions.Hosting" Version="3.14.0" />
     <!-- Microsoft.Extensions.Configuration, .Json, .Logging, .Console thường được bao gồm -->
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.6.2" />
     <!-- Microsoft.IdentityModel.Tokens và System.IdentityModel.Tokens.Jwt thường là dependency của JwtBearer -->

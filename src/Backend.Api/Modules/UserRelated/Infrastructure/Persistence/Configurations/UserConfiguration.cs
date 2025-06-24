@@ -16,6 +16,14 @@ namespace Backend.Api.Modules.UserRelated.Infrastructure.Persistence.Configurati
             builder.HasKey(u => u.Id);
             builder.Property(u => u.Id).ValueGeneratedOnAdd();
 
+            // By default, a DateTime property is not a concurrency token.
+            // This line explicitly ensures it's not, which can be useful if you suspect
+            // a convention or attribute is incorrectly marking it as one.
+            // For this application, we are disabling optimistic concurrency on this property
+            // to avoid issues during data seeding or complex update scenarios.
+            builder.Property(u => u.UpdatedAt)
+                .IsConcurrencyToken(false);
+
             builder.Property(u => u.Username)
                 .IsRequired()
                 .HasMaxLength(150);

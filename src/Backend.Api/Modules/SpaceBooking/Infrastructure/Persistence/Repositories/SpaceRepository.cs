@@ -22,6 +22,17 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Repositori
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
+        public async Task AddAsync(Space space)
+        {
+            await _context.Set<Space>().AddAsync(space);
+        }
+
+        public async Task<bool> ExistsByNameAndOwnerAsync(string name, Guid ownerId)
+        {
+            return await _context.Set<Space>()
+                                 .AnyAsync(s => s.Name.ToLower() == name.ToLower() && s.OwnerId == ownerId);
+        }
+
         private IQueryable<Space> ApplyIncludes(IQueryable<Space> query, bool includeDetails)
         {
             if (includeDetails)
@@ -35,7 +46,7 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Repositori
                     .Include(s => s.CustomAmenities)
                     .Include(s => s.CustomServices);
             }
-            return query;
+            return query; 
         }
 
         public async Task<Space?> GetByIdAsync(Guid id)
@@ -74,10 +85,7 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Repositori
                          .ToListAsync();
         }
 
-        public async Task AddAsync(Space space)
-        {
-            await _context.Set<Space>().AddAsync(space);
-        }
+
 
         public void Update(Space space)
         {

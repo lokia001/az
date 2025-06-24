@@ -55,7 +55,8 @@ import OwnerSpacesPage from '../features/manageSpace/components/OwnerSpacesPage.
 // import EditSpacePage from '../features/manageSpace/components/EditSpacePage.jsx';
 import SpaceDetails from '../features/manageSpace/components/SpaceDetails.jsx';
 import OwnerSpaceDetailPage from '../features/manageSpace/pages/OwnerSpaceDetailPage.jsx';
-// import OwnerBookingManagement from '../features/ownerBookingManagement/OwnerBookingManagement.jsx';
+import OwnerBookingManagement from '../features/ownerBookingManagement/OwnerBookingManagement.jsx';
+import OwnerCustomerManagement from '../features/ownerCustomerManagement/pages/OwnerCustomerManagement.jsx';
 
 
 // AppNavbar component đã được loại bỏ để tránh hiện nhiều navbar
@@ -97,9 +98,11 @@ const AppRouter = () => {
                     <Route path="/owner/spaces" element={<OwnerSpacesPage />} />
                     <Route path="/owner/manage-spaces" element={<OwnerSpacesPage />} />
                     <Route path="/owner/manage-spaces/:id" element={<OwnerSpaceDetailPage />} />
+                    <Route path="/owner/bookings" element={<OwnerBookingManagement />} />
+                    <Route path="/owner/customers" element={<OwnerCustomerManagement />} />
 
                     {/* <Route path="/bookings/space/:id" element={<OwnerBookingManagement />} /> */}
-
+{/* <Route path="/owner/bookings" element={<OwnerBookingManagement />} /> */}
 
                     {/* ok end */}
 
