@@ -19,15 +19,18 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
         private readonly AppDbContext _dbContext;
         private readonly ILogger<IcalSyncService> _logger;
         private readonly HttpClient _httpClient;
+        private readonly IBookingNotificationService _notificationService;
 
         public IcalSyncService(
             AppDbContext dbContext,
             ILogger<IcalSyncService> logger,
-            IHttpClientFactory httpClientFactory)
+            IHttpClientFactory httpClientFactory,
+            IBookingNotificationService notificationService)
         {
             _dbContext = dbContext;
             _logger = logger;
             _httpClient = httpClientFactory.CreateClient("IcalSync");
+            _notificationService = notificationService;
         }
 
         public async Task SyncAllSpacesAsync()
@@ -75,14 +78,36 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
                 settings.SyncStatus = SyncStatus.InProgress;
                 await _dbContext.SaveChangesAsync();
 
+                // Process all URLs first
                 foreach (var url in importUrls)
                 {
                     await ProcessIcalUrlAsync(settings.Space, url);
                 }
 
-                // Update sync status on success
-                settings.SyncStatus = SyncStatus.Success;
-                settings.LastSyncError = null;
+                // After all URLs are processed, check for conflicts
+                var hasConflicts = false;
+                try
+                {
+                    await DetectAndMarkConflictsAsync(settings.Space);
+                    
+                    // If we got here and any bookings were marked as conflicts,
+                    // set the sync status accordingly
+                    var conflictCount = await _dbContext.Bookings
+                        .CountAsync(b => b.SpaceId == spaceId && 
+                                       b.Status == BookingStatus.Conflict);
+                    
+                    hasConflicts = conflictCount > 0;
+                }
+                catch (Exception conflictEx)
+                {
+                    _logger.LogError(conflictEx, 
+                        "Error during conflict detection for space {SpaceId}", spaceId);
+                    hasConflicts = true; // Treat error in conflict detection as a conflict state
+                }
+
+                // Update final sync status
+                settings.SyncStatus = hasConflicts ? SyncStatus.ConflictDetected : SyncStatus.Success;
+                settings.LastSyncError = hasConflicts ? "Time conflicts detected between bookings" : null;
             }
             catch (Exception ex)
             {
@@ -94,6 +119,13 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             {
                 settings.IsSyncInProgress = false;
                 await _dbContext.SaveChangesAsync();
+                
+                _logger.LogInformation(
+                    "iCal sync completed for space {SpaceId}. Status: {Status}, Error: {Error}",
+                    spaceId,
+                    settings.SyncStatus,
+                    settings.LastSyncError ?? "None"
+                );
             }
         }
 
@@ -213,6 +245,81 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             }
 
             await _dbContext.SaveChangesAsync();
+        }
+
+        // Helper method to detect time conflicts between bookings
+        private bool HasTimeConflict(Booking booking1, Booking booking2)
+        {
+            return booking1.StartTime < booking2.EndTime && booking2.StartTime < booking1.EndTime;
+        }
+
+        private async Task DetectAndMarkConflictsAsync(Space space)
+        {
+            try
+            {
+                // Get all active bookings for this space
+                var activeBookings = await _dbContext.Bookings
+                    .Where(b => b.SpaceId == space.Id &&
+                              (b.Status == BookingStatus.Confirmed ||
+                               b.Status == BookingStatus.External ||
+                               b.Status == BookingStatus.Pending) &&
+                              b.EndTime > DateTime.UtcNow)
+                    .OrderBy(b => b.StartTime)
+                    .ToListAsync();
+
+                var conflictGroups = new List<List<Booking>>();
+                
+                // Check each booking against all others for conflicts
+                for (int i = 0; i < activeBookings.Count; i++)
+                {
+                    var booking1 = activeBookings[i];
+                    var conflictsWithCurrent = new List<Booking> { booking1 };
+
+                    for (int j = i + 1; j < activeBookings.Count; j++)
+                    {
+                        var booking2 = activeBookings[j];
+                        
+                        if (HasTimeConflict(booking1, booking2))
+                        {
+                            conflictsWithCurrent.Add(booking2);
+                        }
+                    }
+
+                    if (conflictsWithCurrent.Count > 1)
+                    {
+                        conflictGroups.Add(conflictsWithCurrent);
+                    }
+                }
+
+                // If conflicts were found, mark them and notify
+                if (conflictGroups.Any())
+                {
+                    var allConflictingBookings = new HashSet<Booking>(
+                        conflictGroups.SelectMany(g => g)
+                    );
+
+                    foreach (var booking in allConflictingBookings)
+                    {
+                        booking.Status = BookingStatus.Conflict;
+                        booking.NotesFromOwner = (booking.NotesFromOwner ?? "") +
+                            $"\nTime conflict detected on {DateTime.UtcNow:g} UTC";
+                        booking.UpdatedAt = DateTime.UtcNow;
+                    }
+
+                    // Notify for each conflict group
+                    foreach (var conflictGroup in conflictGroups)
+                    {
+                        await _notificationService.NotifyBookingConflictAsync(space, conflictGroup);
+                    }
+
+                    await _dbContext.SaveChangesAsync();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error detecting conflicts for space {SpaceId}", space.Id);
+                throw;
+            }
         }
     }
     

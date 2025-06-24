@@ -11,6 +11,7 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Enums
         NoShow,     // Khách không đến
         Cancelled,  // Đã hủy
         Abandoned,  // Bắt đầu đặt nhưng không hoàn thành (ví dụ: thanh toán lỗi - hiện tại chưa có payment)
-        External    // Booking from external iCal source
+        External,   // Booking from external iCal source
+        Conflict    // Booking has a time conflict with another booking
     }
 }

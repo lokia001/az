@@ -13,6 +13,7 @@ namespace Backend.Api.Modules.SpaceBooking.Extensions
             // Register services
             services.AddScoped<IIcalExportService, IcalExportService>();
             services.AddScoped<IIcalSyncService, IcalSyncService>();
+            services.AddScoped<IBookingNotificationService, BookingNotificationService>();
 
             // Register HTTP client
             services.AddHttpClient("IcalSync");
