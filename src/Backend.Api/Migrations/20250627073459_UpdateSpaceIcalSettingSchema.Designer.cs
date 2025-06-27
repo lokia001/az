@@ -3,6 +3,7 @@ using System;
 using Backend.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250627073459_UpdateSpaceIcalSettingSchema")]
+    partial class UpdateSpaceIcalSettingSchema
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
@@ -490,7 +493,7 @@ namespace Backend.Api.Migrations
                     b.HasIndex("Slug")
                         .IsUnique();
 
-                    b.ToTable("Spaces", (string)null);
+                    b.ToTable("Spaces", "space_booking");
                 });
 
             modelBuilder.Entity("Backend.Api.Modules.SpaceBooking.Domain.Entities.SpaceCustomAmenity", b =>
@@ -609,6 +612,7 @@ namespace Backend.Api.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("SyncStatus")
+                        .HasMaxLength(50)
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime?>("UpdatedAt")
@@ -621,7 +625,8 @@ namespace Backend.Api.Migrations
 
                     b.HasIndex("CreatedByUserId");
 
-                    b.HasIndex("SpaceId");
+                    b.HasIndex("SpaceId")
+                        .IsUnique();
 
                     b.HasIndex("SpaceId1")
                         .IsUnique();
@@ -974,8 +979,8 @@ namespace Backend.Api.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("Backend.Api.Modules.SpaceBooking.Domain.Entities.Space", "Space")
-                        .WithMany()
-                        .HasForeignKey("SpaceId")
+                        .WithOne()
+                        .HasForeignKey("Backend.Api.Modules.SpaceBooking.Domain.Entities.SpaceIcalSetting", "SpaceId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 

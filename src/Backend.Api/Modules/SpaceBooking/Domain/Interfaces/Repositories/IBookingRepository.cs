@@ -16,6 +16,7 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories
         Task<IEnumerable<Booking>> GetBySpaceIdAsync(Guid spaceId);
         Task<IEnumerable<Booking>> GetUpcomingBookingsBySpaceIdAsync(Guid spaceId, DateTime fromDate);
         Task<bool> HasOverlappingBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null);
+        Task<Booking?> GetOverlappingBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null);
         Task AddAsync(Booking booking);
         void Update(Booking booking);
         void Delete(Booking booking); // Giữ lại, implementation sẽ xử lý soft delete

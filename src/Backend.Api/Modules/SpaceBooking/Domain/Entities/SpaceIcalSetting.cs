@@ -1,6 +1,6 @@
-// File: Backend.Api/Modules/SpaceBooking/Domain/Entities/SpaceIcalSetting.cs
 using System;
-using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
+using Backend.Api.Modules.UserRelated.Domain.Entities;
 using Backend.Api.Modules.SpaceBooking.Domain.Enums;
 
 namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
@@ -8,28 +8,38 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
     public class SpaceIcalSetting
     {
         public Guid Id { get; set; }
+
+        [Required]
         public Guid SpaceId { get; set; }
-        
-        // Navigation properties with required modifier
-        public required Space Space { get; set; }
+        public Space Space { get; set; } = default!;
 
-        // iCal Import URLs from external platforms
-        public string ImportIcalUrlsJson { get; set; } = string.Empty;
+        [Required]
+        [MaxLength(2000)]
+        public string IcalUrl { get; set; } = string.Empty;
 
-        // Generated Export iCal URL for this space
+        [MaxLength(2000)]
         public string ExportIcalUrl { get; set; } = string.Empty;
 
-        // Sync Status
-        public DateTime? LastSyncAttempt { get; set; }
-        public bool IsSyncInProgress { get; set; }
-        public SyncStatus SyncStatus { get; set; } = SyncStatus.None;
-        public DateTime? LastSyncSuccess { get; set; }
-        public string? LastSyncError { get; set; }
+        [MaxLength(4000)]
+        public string ImportIcalUrlsJson { get; set; } = "[]";
 
-        // Audit Fields
+        public bool IsAutoSyncEnabled { get; set; }
+        public bool IsSyncInProgress { get; set; }
+
+        public int SyncIntervalMinutes { get; set; } = 30;
+
+        public DateTime? LastSyncTime { get; set; }
+        public DateTime? LastSyncAttempt { get; set; }
+        public string LastSyncError { get; set; } = string.Empty;
+        
+        public SyncStatus SyncStatus { get; set; } = SyncStatus.NotStarted;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-        public DateTime UpdatedAt { get; set; } = DateTime.UtcNow;
-        public string CreatedBy { get; set; } = string.Empty;
-        public string UpdatedBy { get; set; } = string.Empty;
+        public Guid? CreatedByUserId { get; set; }
+        public User CreatedBy { get; set; } = default!;
+
+        public DateTime? UpdatedAt { get; set; }
+        public Guid? UpdatedByUserId { get; set; }
+        public User UpdatedBy { get; set; } = default!;
     }
 }

@@ -2,6 +2,7 @@
 
 using Backend.Api.Modules.SpaceBooking.Domain.Entities;
 using Backend.Api.Modules.UserRelated.Domain.Entities;
+using Backend.Api.Modules.SpaceBooking.Infrastructure.Configurations;
 namespace Backend.Api.Data
 {
     public class AppDbContext : DbContext
@@ -13,6 +14,7 @@ namespace Backend.Api.Data
         public DbSet<Space> Spaces { get; set; } = default!;
         public DbSet<Booking> Bookings { get; set; } = default!;
         public DbSet<SpaceIcalSetting> SpaceIcalSettings { get; set; } = default!;
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -32,10 +34,10 @@ namespace Backend.Api.Data
             // modelBuilder.ApplyConfiguration(new SpaceDamageReportConfiguration());
             // modelBuilder.ApplyConfiguration(new PaymentConfiguration());
             // modelBuilder.ApplyConfiguration(new ReviewConfiguration());
-
+            modelBuilder.ApplyConfiguration(new SpaceIcalSettingConfiguration());
             // modelBuilder.ApplyConfiguration(new BookingConfiguration());
             // Ví dụ: modelBuilder.ApplyConfiguration(new SomeOtherEntityConfiguration());
             #endregion
         }
     }
-} 
+}

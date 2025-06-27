@@ -73,24 +73,26 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Repositori
 
         public async Task<bool> HasOverlappingBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null)
         {
-            // Logic kiểm tra trùng lịch:
-            // Một booking mới (newStartTime, newEndTime) bị trùng nếu:
-            // (oldStartTime < newEndTime) AND (oldEndTime > newStartTime)
-            var query = _context.Set<Booking>()
+            var overlappingBooking = await GetOverlappingBookingAsync(spaceId, startTime, endTime, excludeBookingId);
+            return overlappingBooking != null;
+        }
+
+        public async Task<Booking?> GetOverlappingBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null)
+        {
+            var query = GetBaseQuery()
                 .Where(b => b.SpaceId == spaceId &&
-                            !b.IsDeleted &&
-                            (b.Status == Domain.Enums.BookingStatus.Confirmed || b.Status == Domain.Enums.BookingStatus.Pending) && // Chỉ xét các booking còn hiệu lực
-                            b.StartTime < endTime && // Booking cũ bắt đầu trước khi booking mới kết thúc
-                            b.EndTime > startTime);   // Booking cũ kết thúc sau khi booking mới bắt đầu
+                           !b.IsDeleted &&
+                           (b.Status == Domain.Enums.BookingStatus.Confirmed || b.Status == Domain.Enums.BookingStatus.Pending) &&
+                           b.StartTime < endTime &&
+                           b.EndTime > startTime);
 
             if (excludeBookingId.HasValue)
             {
                 query = query.Where(b => b.Id != excludeBookingId.Value);
             }
 
-            return await query.AnyAsync();
+            return await query.OrderBy(b => b.StartTime).FirstOrDefaultAsync();
         }
-
 
         public async Task AddAsync(Booking booking)
         {

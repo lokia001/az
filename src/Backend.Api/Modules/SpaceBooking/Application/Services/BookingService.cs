@@ -416,9 +416,14 @@ public class BookingService : IBookingService
             throw new InvalidOperationException($"Booking with status '{booking.Status}' cannot be cancelled.");
         }
 
-        booking.Cancel(userId, cancellationReason); // Gọi domain method
-                                                    // booking.NotesFromUser = string.IsNullOrWhiteSpace(booking.NotesFromUser) ? $"Cancelled by user. Reason: {cancellationReason}" : $"{booking.NotesFromUser}\nCancelled by user. Reason: {cancellationReason}";
-                                                    // Hoặc nếu có trường riêng cho lý do hủy.
+        // Update booking status
+        booking.Status = BookingStatus.Cancelled;
+        booking.UpdatedAt = DateTime.UtcNow;
+        booking.UpdatedByUserId = userId;
+        booking.CancellationReason = cancellationReason;
+        booking.NotesFromUser = string.IsNullOrWhiteSpace(booking.NotesFromUser) 
+            ? $"Cancelled by user. Reason: {cancellationReason}" 
+            : $"{booking.NotesFromUser}\nCancelled by user. Reason: {cancellationReason}";
 
         _bookingRepository.Update(booking);
         var result = await _dbContext.SaveChangesAsync();
@@ -462,8 +467,6 @@ public class BookingService : IBookingService
 
         // Logic kiểm tra tính hợp lệ của việc chuyển đổi trạng thái
         // Ví dụ: không thể chuyển từ Completed sang Pending, v.v.
-        // Đây là một ví dụ đơn giản, bạn có thể có một state machine phức tạp hơn.
-        bool canUpdateStatus = true;
         string errorMessage = string.Empty;
 
         switch (booking.Status)
@@ -501,21 +504,30 @@ public class BookingService : IBookingService
 
         if (request.NewStatus == BookingStatus.Confirmed && booking.Status == BookingStatus.Pending)
         {
-            booking.Confirm(updaterUserId); // Gọi domain method
+            // Update to confirmed status
+            booking.Status = BookingStatus.Confirmed;
+            booking.UpdatedAt = DateTime.UtcNow;
+            booking.UpdatedByUserId = updaterUserId;
+            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+                ? $"[Confirmed by {updaterUserId}]"
+                : $"{booking.NotesFromOwner}\n[Confirmed by {updaterUserId}]";
         }
-        // Các trường hợp khác có thể cần xử lý đặc biệt hoặc không cho phép qua API chung này
-        // Ví dụ, nếu request.NewStatus là Cancelled, nên gọi booking.Cancel()
         else if (request.NewStatus == BookingStatus.Cancelled && (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed))
         {
-            // Kiểm tra chính sách hủy nếu Owner hủy (có thể khác User tự hủy)
-            // Hiện tại, domain method Cancel không có logic phân biệt ai hủy
-            booking.Cancel(updaterUserId, request.Notes ?? "Cancelled by administrator.");
+            // Update to cancelled status
+            booking.Status = BookingStatus.Cancelled;
+            booking.UpdatedAt = DateTime.UtcNow;
+            booking.UpdatedByUserId = updaterUserId;
+            booking.CancellationReason = request.Notes ?? "Cancelled by administrator";
+            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+                ? $"[Cancelled by administrator {updaterUserId}]"
+                : $"{booking.NotesFromOwner}\n[Cancelled by administrator {updaterUserId}]";
         }
-        else if (booking.Status != request.NewStatus) // Các thay đổi trạng thái khác ít phổ biến hơn qua API này
+        else if (booking.Status != request.NewStatus)
         {
             _logger.LogWarning("UpdateBookingStatus: Attempting a generic status update for Booking {BookingId} from {OldStatus} to {NewStatus} by {UpdaterId}. This might bypass specific business logic.",
                bookingId, booking.Status, request.NewStatus, updaterUserId);
-            booking.Status = request.NewStatus; // Cập nhật trực tiếp nếu không phải là các hành động có domain method riêng
+            booking.Status = request.NewStatus;
             booking.UpdatedAt = DateTime.UtcNow;
             booking.UpdatedByUserId = updaterUserId;
         }
@@ -570,13 +582,16 @@ public class BookingService : IBookingService
         // }
 
 
-        booking.CheckIn(staffUserId); // Gọi domain method
-        if (!string.IsNullOrWhiteSpace(request.NotesByStaff))
-        {
-            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
-                ? $"[Check-In by {staffUserId}]: {request.NotesByStaff}"
-                : $"{booking.NotesFromOwner}\n[Check-In by {staffUserId}]: {request.NotesByStaff}";
-        }
+        // Update booking status and check-in information
+        booking.Status = BookingStatus.CheckedIn;
+        booking.ActualCheckIn = DateTime.UtcNow;
+        booking.CheckedInByUserId = staffUserId;
+        booking.UpdatedAt = DateTime.UtcNow;
+        booking.UpdatedByUserId = staffUserId;
+
+        booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+            ? $"[Check-In by {staffUserId}]"
+            : $"{booking.NotesFromOwner}\n[Check-In by {staffUserId}]";
 
         _bookingRepository.Update(booking);
         await _dbContext.SaveChangesAsync();
@@ -607,21 +622,16 @@ public class BookingService : IBookingService
             throw new UnauthorizedAccessException("User is not authorized to check-out this booking.");
         }
 
-        booking.CheckOut(staffUserId); // Gọi domain method đã sửa (sẽ set Status = Completed)
-
-        if (!string.IsNullOrWhiteSpace(request.NotesByStaff))
-        {
-            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
-               ? $"[Check-Out by {staffUserId}]: {request.NotesByStaff}"
-               : $"{booking.NotesFromOwner}\n[Check-Out by {staffUserId}]: {request.NotesByStaff}";
-        }
-
-        if (request.FinalPriceAdjustment.HasValue && request.FinalPriceAdjustment.Value != 0)
-        {
-            booking.TotalPrice += request.FinalPriceAdjustment.Value;
-            _logger.LogInformation("TotalPrice for BookingId {BookingId} adjusted by {Adjustment}. New TotalPrice: {TotalPrice}",
-                bookingId, request.FinalPriceAdjustment.Value, booking.TotalPrice);
-        }
+        // Update booking status and check-out information
+        booking.Status = BookingStatus.Completed;
+        booking.ActualCheckOut = DateTime.UtcNow;
+        booking.CheckedOutByUserId = staffUserId;
+        booking.UpdatedAt = DateTime.UtcNow;
+        booking.UpdatedByUserId = staffUserId;
+        
+        booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+            ? $"[Check-Out by {staffUserId}]"
+            : $"{booking.NotesFromOwner}\n[Check-Out by {staffUserId}]";
 
         _bookingRepository.Update(booking);
         await _dbContext.SaveChangesAsync();
@@ -647,7 +657,13 @@ public class BookingService : IBookingService
             throw new UnauthorizedAccessException("User is not authorized to mark this booking as no-show.");
         }
 
-        booking.MarkAsNoShow(markerUserId); // Gọi domain method
+        // Update booking status and mark as no-show
+        booking.Status = BookingStatus.NoShow;
+        booking.UpdatedAt = DateTime.UtcNow;
+        booking.UpdatedByUserId = markerUserId;
+        booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+            ? $"[Marked as No-Show by {markerUserId}]"
+            : $"{booking.NotesFromOwner}\n[Marked as No-Show by {markerUserId}]";
 
         _bookingRepository.Update(booking);
         await _dbContext.SaveChangesAsync();

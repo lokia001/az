@@ -15,13 +15,17 @@ namespace Backend.Api.Modules.SpaceBooking.Extensions
             services.AddScoped<IIcalSyncService, IcalSyncService>();
             services.AddScoped<IBookingNotificationService, BookingNotificationService>();
 
-            // Register HTTP client
-            services.AddHttpClient("IcalSync");
+            // Register HTTP client with custom configuration
+            services.AddHttpClient("IcalSync", client =>
+            {
+                client.DefaultRequestHeaders.Add("User-Agent", "SpaceBooking-IcalSync/1.0");
+                client.Timeout = TimeSpan.FromSeconds(30);
+            });
 
-            // Configure Quartz
+            // Configure Quartz for background job scheduling
             services.AddQuartz(q =>
             {
-                // Register the job
+                // Register the iCal sync job
                 var jobKey = new JobKey("IcalSyncJob");
                 q.AddJob<IcalSyncJob>(opts => opts.WithIdentity(jobKey));
 
@@ -33,9 +37,22 @@ namespace Backend.Api.Modules.SpaceBooking.Extensions
                         .WithIntervalInMinutes(15)
                         .RepeatForever())
                 );
+
+                // Configure Quartz to use memory storage instead of persistent storage
+                q.UseInMemoryStore();
+                
+                // Set default properties
+                q.UseSimpleTypeLoader();
+                q.UseDefaultThreadPool(tp =>
+                {
+                    tp.MaxConcurrency = 10;
+                });
+
+                // Set serializer type for job data
+                q.SetProperty("quartz.serializer.type", "json");
             });
 
-            // Add the Quartz hosted service
+            // Add Quartz.NET hosted service
             services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
             return services;

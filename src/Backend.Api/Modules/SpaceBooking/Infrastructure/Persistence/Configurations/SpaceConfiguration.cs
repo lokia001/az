@@ -12,7 +12,7 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Configurat
     {
         public void Configure(EntityTypeBuilder<Space> builder)
         {
-            builder.ToTable("Spaces", "space_booking");
+            builder.ToTable("Spaces");
 
             builder.HasKey(s => s.Id);
 

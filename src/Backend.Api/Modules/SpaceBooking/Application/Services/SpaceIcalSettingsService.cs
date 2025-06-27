@@ -57,8 +57,8 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
                     Space = space,
                     ImportIcalUrlsJson = "[]",
                     ExportIcalUrl = exportUrl,
-                    CreatedBy = _currentUserService.UserId,
-                    UpdatedBy = _currentUserService.UserId
+                    CreatedByUserId = Guid.Parse(_currentUserService.UserId),
+                    UpdatedByUserId = Guid.Parse(_currentUserService.UserId)
                 };
                 _context.SpaceIcalSettings.Add(settings);
                 await _context.SaveChangesAsync();
@@ -102,7 +102,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             // Update settings
             settings.ImportIcalUrlsJson = JsonSerializer.Serialize(dto.ImportIcalUrls);
             settings.UpdatedAt = DateTime.UtcNow;
-            settings.UpdatedBy = _currentUserService.UserId;
+            settings.UpdatedByUserId = Guid.Parse(_currentUserService.UserId);
 
             await _context.SaveChangesAsync();
 
@@ -135,7 +135,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             // TODO: Trigger background job for actual sync
             // For now, we'll just mark it as successful
             settings.IsSyncInProgress = false;
-            settings.SyncStatus = SyncStatus.Success;
+            settings.SyncStatus = SyncStatus.Completed;
             await _context.SaveChangesAsync();
 
             return true;

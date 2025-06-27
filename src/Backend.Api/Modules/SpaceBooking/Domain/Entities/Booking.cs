@@ -28,6 +28,10 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
 
         public DateTime? ActualCheckIn { get; set; }
         public DateTime? ActualCheckOut { get; set; }
+        public Guid? CheckedInByUserId { get; set; } // Người thực hiện check-in
+        public Guid? CheckedOutByUserId { get; set; } // Người thực hiện check-out
+        public int? ActualNumberOfPeople { get; set; } // Số người thực tế khi check-in
+
         public bool IsDeleted { get; set; } = false;
         [Required]
         [Column(TypeName = "decimal(18,2)")]
@@ -47,10 +51,11 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         [MaxLength(500)]
         public string? NotesFromOwner { get; set; } // Ghi chú từ chủ không gian (nếu có)
 
-        // External iCal integration fields
-        public string? ExternalIcalUid { get; set; }
-        public string? ExternalIcalUrl { get; set; }
-        public bool IsExternalBooking { get; set; }
+        [MaxLength(500)]
+        public string? CancellationReason { get; set; } // Lý do hủy (nếu có)
+
+        [MaxLength(500)]
+        public string? Notes { get; set; } // Ghi chú chung
 
         // Audit fields
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -59,87 +64,21 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         public DateTime? UpdatedAt { get; set; }
         public Guid? UpdatedByUserId { get; set; } // Ai đã cập nhật booking
 
-        [MaxLength(999)] // Giới hạn độ dài tên
-        public string Notes { get; set; } = string.Empty;
+        // External iCal integration fields
+        [MaxLength(1000)]
+        public string? ExternalCalendarEventId { get; set; }
 
-        public Booking()
-        {
-            Id = Guid.NewGuid();
-            // CreatedByUserId sẽ được gán trong service khi tạo booking, thường là UserId của người đặt.
-        }
+        [MaxLength(1000)]
+        public string? ExternalCalendarEventUrl { get; set; }
 
-        // --- Domain Methods ---
-        public void Confirm(Guid confirmerUserId)
-        {
-            if (Status == BookingStatus.Pending)
-            {
-                Status = BookingStatus.Confirmed;
-                UpdatedAt = DateTime.UtcNow;
-                UpdatedByUserId = confirmerUserId;
-            }
-            else
-            {
-                // throw new InvalidOperationException("Only pending bookings can be confirmed.");
-            }
-        }
+        [MaxLength(1000)]
+        public string? ExternalIcalUrl { get; set; }
 
-        public void Cancel(Guid cancellerUserId, string? cancellationReason = null) // Thêm lý do hủy nếu cần
-        {
-            // Thêm logic kiểm tra chính sách hủy (ví dụ: dựa trên Space.CancellationNoticeHours)
-            // if (DateTime.UtcNow > StartTime.AddHours(-Space.CancellationNoticeHours))
-            // {
-            //     throw new InvalidOperationException("Cannot cancel booking due to cancellation policy.");
-            // }
+        [MaxLength(1000)]
+        public string? ExternalIcalUid { get; set; }
 
-            if (Status == BookingStatus.Pending || Status == BookingStatus.Confirmed)
-            {
-                Status = BookingStatus.Cancelled;
-                UpdatedAt = DateTime.UtcNow;
-                UpdatedByUserId = cancellerUserId;
-                // Lưu trữ cancellationReason nếu có trường riêng
-            }
-            else
-            {
-                // throw new InvalidOperationException($"Cannot cancel booking with status {Status}.");
-            }
-        }
+        public bool IsExternalBooking { get; set; }
 
-        public void CheckIn(Guid staffUserId) // staffUserId là người thực hiện check-in (có thể là owner hoặc nhân viên)
-        {
-            if (Status == BookingStatus.Confirmed)
-            {
-                Status = BookingStatus.CheckedIn;
-                ActualCheckIn = DateTime.UtcNow;
-                UpdatedAt = DateTime.UtcNow;
-                UpdatedByUserId = staffUserId;
-            }
-            // else throw error
-        }
-
-        public void CheckOut(Guid staffUserId)
-        {
-            if (Status == BookingStatus.CheckedIn)
-            {
-                Status = BookingStatus.Completed;
-                ActualCheckOut = DateTime.UtcNow;
-                UpdatedAt = DateTime.UtcNow;
-                UpdatedByUserId = staffUserId;
-                // Có thể tính toán lại TotalPrice ở đây nếu giá phụ thuộc vào thời gian sử dụng thực tế
-            }
-            // else throw error
-        }
-
-        public void MarkAsNoShow(Guid markerUserId)
-        {
-            if (Status == BookingStatus.Confirmed || Status == BookingStatus.Overdue) // Hoặc chỉ Confirmed
-            {
-                Status = BookingStatus.NoShow;
-                UpdatedAt = DateTime.UtcNow;
-                UpdatedByUserId = markerUserId;
-            }
-            // else throw error
-        }
-
-        // Các domain methods khác nếu cần...
+        public DateTime? LastSyncedAt { get; set; } // Thời điểm cuối cùng đồng bộ với lịch bên ngoài
     }
 }

@@ -1,0 +1,90 @@
+.booking-form-modal-v2 .booking-time-section .datetime-picker-wrapper {
+    position: relative;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker {
+    width: 100%;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__wrapper {
+    border: 1px solid #ced4da;
+    border-radius: 4px;
+    padding: 6px 12px;
+    background-color: white;
+    transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__wrapper:hover {
+    border-color: #adb5bd;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__wrapper:focus-within {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__inputGroup {
+    padding: 2px 0;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__button {
+    padding: 4px;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__button svg {
+    stroke: #6c757d;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__calendar {
+    z-index: 1050;
+}
+
+/* Success Modal Styling */
+.booking-success-modal .booking-success-icon {
+    color: #198754;
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.booking-success-modal .modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Duration Display */
+.booking-form-modal-v2 .booking-time-section .progress {
+    background-color: #e9ecef;
+    overflow: hidden;
+}
+
+.booking-form-modal-v2 .booking-time-section .progress-bar {
+    transition: width 0.3s ease;
+}
+
+/* Form Validation */
+.booking-form-modal-v2 .booking-time-section .invalid-feedback {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+/* Time Picker Customization */
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__inputGroup__input {
+    min-width: 2em;
+    padding: 0 2px;
+}
+
+.booking-form-modal-v2 .booking-time-section .react-datetime-picker__inputGroup__divider {
+    padding: 0 2px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .booking-form-modal-v2 .booking-time-section {
+        padding: 15px !important;
+    }
+    
+    .booking-form-modal-v2 .booking-time-section .col-md-6:first-child {
+        margin-bottom: 1rem;
+    }
+}

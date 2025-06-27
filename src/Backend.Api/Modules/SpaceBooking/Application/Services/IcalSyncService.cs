@@ -106,8 +106,8 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
                 }
 
                 // Update final sync status
-                settings.SyncStatus = hasConflicts ? SyncStatus.ConflictDetected : SyncStatus.Success;
-                settings.LastSyncError = hasConflicts ? "Time conflicts detected between bookings" : null;
+                settings.SyncStatus = hasConflicts ? SyncStatus.ConflictDetected : SyncStatus.Completed;
+                settings.LastSyncError = hasConflicts ? "Time conflicts detected between bookings" : string.Empty;
             }
             catch (Exception ex)
             {

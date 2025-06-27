@@ -9,6 +9,9 @@ using Microsoft.AspNetCore.Authorization;
 using Backend.Api.Security;
 using Backend.Api.Data;
 using Backend.Api.Data.Seeders;
+using Microsoft.EntityFrameworkCore;
+using Quartz;
+using Quartz.AspNetCore;
 
 using System.Security.Claims;
 using Microsoft.Extensions.DependencyInjection;
@@ -44,6 +47,7 @@ builder.Logging.AddFilter("Microsoft.EntityFrameworkCore", LogLevel.Warning);
 builder.Logging.AddFilter("Microsoft.AspNetCore", LogLevel.Information);
 builder.Logging.AddFilter("Google", LogLevel.Information);
 builder.Logging.AddFilter("Grpc", LogLevel.Information);
+builder.Logging.AddFilter("Quartz", LogLevel.Debug); // Add Quartz logging
 
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
@@ -97,6 +101,32 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
 
 
 // Add services to the container.
+builder.Services.Configure<QuartzOptions>(options =>
+{
+    options.Scheduling.IgnoreDuplicates = true; // default: false
+    options.Scheduling.OverWriteExistingData = true; // default: true
+});
+
+builder.Services.AddQuartz(q =>
+{
+    q.UseSimpleTypeLoader();
+    q.UseDefaultThreadPool(tp =>
+    {
+        tp.MaxConcurrency = 10;
+    });
+
+    // Don't use persistence
+    q.UseInMemoryStore();
+});
+
+// Add the Quartz.NET hosted service
+builder.Services.AddQuartzHostedService(options => 
+{
+    options.WaitForJobsToComplete = true;
+    options.AwaitApplicationStarted = true;
+});
+
+// Configure other services
 builder.Services.AddControllers().AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter());
