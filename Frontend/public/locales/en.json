@@ -82,7 +82,46 @@
     "explore_spaces": "Explore Spaces",
     "contact_us": "Contact us",
     "sign_up": "Sign up",
-    "manage_bookings": "Booking",
-    "reports": "Statistic",
-    "manage_customers": "Customer"
+    "manage_bookings": "Manage Bookings",
+    "reports": "Reports",
+    "manage_customers": "Manage Customers",
+    
+    "myBookings": {
+        "title": "My Bookings",
+        "errorLoading": "There was an error loading the data. Please try again.",
+        "noBookings": "You don't have any bookings yet.",
+        "bookingCode": "Booking Code",
+        "details": {
+            "title": "Booking Details",
+            "dates": "Time",
+            "startTime": "Start Time",
+            "endTime": "End Time",
+            "duration": "Duration",
+            "hours": "hours",
+            "actualTimes": "Actual Times",
+            "actualCheckIn": "Actual Check-in",
+            "actualCheckOut": "Actual Check-out",
+            "numberOfPeople": "Number of People",
+            "notes": "Notes",
+            "userNotes": "User Notes",
+            "ownerNotes": "Owner Notes",
+            "payment": "Payment",
+            "totalPrice": "Total Price",
+            "createdAt": "Created At",
+            "updatedAt": "Updated At"
+        },
+        "actions": {
+            "cancel": "Cancel Booking",
+            "review": "Write Review",
+            "downloadInvoice": "Download Invoice",
+            "close": "Close"
+        }
+    },
+    
+    "bookingStatus": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "cancelled": "Cancelled",
+        "completed": "Completed"
+    }
 }

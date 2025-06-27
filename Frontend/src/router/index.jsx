@@ -7,8 +7,8 @@ import { useSelector } from 'react-redux'; // Import useSelector
 import { selectIsAuthenticated, selectCurrentUser, logoutUser, selectAuthStatus } from '../features/auth/slices/authSlice';
 import {
     HomePage, NotFoundPage, AboutUs, Community
-
 } from '../pages';
+import MyBookingsPage from '../pages/MyBookings/MyBookingsPage';
 
 // import SpaceList from '../features/manageSpace/components/SpaceList';
 // import SpaceForm from '../features/manageSpace/components/SpaceForm';
@@ -118,6 +118,7 @@ const AppRouter = () => {
                     <Route path="/admin/system-amenities" element={<SystemAmenitiesPage />} />
                     <Route path="/admin/system-space-services" element={<SystemSpaceServicesPage />} />
                     <Route path="/admin/community" element={<NotFoundPage message="Admin Community Management - Coming Soon" />} />
+                    <Route path="/my-bookings" element={<MyBookingsPage />} />
                     <Route path="/admin/reports" element={<NotFoundPage message="Admin Reports - Coming Soon" />} />
                     <Route path="/admin/settings" element={<NotFoundPage message="Admin Settings - Coming Soon" />} />
                     <Route path="/admin/profile" element={<NotFoundPage message="Admin Profile - Coming Soon" />} />

@@ -87,5 +87,56 @@
     "search_placeholder_community": "Tìm kiếm cộng đồng",
     "manage_bookings": "Quản lý đặt phòng",
     "reports": "Thống kê",
-    "manage_customers": "Quản lý khách hàng"
+    "manage_customers": "Quản lý khách hàng",
+    
+    "myBookings": {
+        "title": "Đơn đặt của tôi",
+        "errorLoading": "Có lỗi khi tải dữ liệu. Vui lòng thử lại sau.",
+        "noBookings": "Bạn chưa có đơn đặt nào.",
+        "bookingCode": "Mã đơn",
+        "details": {
+            "title": "Chi tiết đơn đặt",
+            "dates": "Thời gian",
+            "startTime": "Thời gian bắt đầu",
+            "endTime": "Thời gian kết thúc",
+            "duration": "Thời lượng",
+            "hours": "giờ",
+            "actualTimes": "Thời gian thực tế",
+            "actualCheckIn": "Check-in thực tế",
+            "actualCheckOut": "Check-out thực tế",
+            "numberOfPeople": "Số người",
+            "people": "người",
+            "notes": "Ghi chú",
+            "userNotes": "Ghi chú từ người đặt",
+            "ownerNotes": "Ghi chú từ chủ không gian",
+            "payment": "Thanh toán",
+            "pricePerHour": "Giá theo giờ",
+            "totalPrice": "Tổng tiền",
+            "createdAt": "Ngày tạo",
+            "updatedAt": "Cập nhật lúc",
+            "amenities": "Tiện nghi đi kèm",
+            "paymentMethod": "Phương thức thanh toán",
+            "discount": "Giảm giá",
+            "additionalServices": "Dịch vụ thêm"
+        },
+        "actions": {
+            "cancel": "Hủy đơn",
+            "review": "Đánh giá",
+            "downloadInvoice": "Tải hóa đơn",
+            "close": "Đóng"
+        },
+        "paymentStatus": {
+            "paid": "Đã thanh toán",
+            "pending": "Chờ thanh toán",
+            "failed": "Thanh toán thất bại",
+            "refunded": "Đã hoàn tiền"
+        }
+    },
+    
+    "bookingStatus": {
+        "pending": "Chờ xác nhận",
+        "confirmed": "Đã xác nhận",
+        "cancelled": "Đã hủy",
+        "completed": "Đã hoàn thành"
+    }
 }

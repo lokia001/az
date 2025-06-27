@@ -1,0 +1,53 @@
+{
+  "myBookings": {
+    "title": "Đơn đặt của tôi",
+    "errorLoading": "Không thể tải đơn đặt. Vui lòng thử lại sau.",
+    "noBookings": "Bạn chưa có đơn đặt nào."
+  },
+  "bookingStatus": {
+    "pending": "Đang chờ xác nhận",
+    "confirmed": "Đã xác nhận",
+    "completed": "Đã hoàn thành",
+    "cancelled": "Đã hủy",
+    "awaitingPayment": "Đang chờ thanh toán",
+    "paid": "Đã thanh toán"
+  },
+  "filters": {
+    "title": "Bộ lọc",
+    "status": "Trạng thái",
+    "allStatuses": "Tất cả trạng thái",
+    "sortBy": "Sắp xếp theo",
+    "newest": "Mới nhất",
+    "oldest": "Cũ nhất",
+    "spaceName": "Tên không gian",
+    "startDate": "Ngày bắt đầu",
+    "endDate": "Ngày kết thúc"
+  },
+  "booking": {
+    "id": "Mã đơn",
+    "startTime": "Thời gian bắt đầu",
+    "endTime": "Thời gian kết thúc",
+    "capacity": "Số lượng người",
+    "basePrice": "Giá cơ bản",
+    "total": "Tổng cộng",
+    "ownerName": "Tên chủ không gian",
+    "ownerEmail": "Email chủ không gian",
+    "ownerPhone": "Số điện thoại chủ không gian",
+    "cancel": "Hủy đơn",
+    "payNow": "Thanh toán ngay",
+    "downloadInvoice": "Tải hóa đơn",
+    "writeReview": "Viết đánh giá"
+  },
+  "bookingDetail": {
+    "title": "Chi tiết đơn đặt",
+    "spaceInfo": "Thông tin không gian",
+    "bookingInfo": "Thông tin đặt chỗ",
+    "paymentInfo": "Thông tin thanh toán",
+    "contactInfo": "Thông tin liên hệ"
+  },
+  "common": {
+    "viewDetails": "Xem chi tiết",
+    "close": "Đóng",
+    "people": "người"
+  }
+}
