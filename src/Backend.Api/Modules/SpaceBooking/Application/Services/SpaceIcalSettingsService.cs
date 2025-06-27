@@ -135,7 +135,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             // TODO: Trigger background job for actual sync
             // For now, we'll just mark it as successful
             settings.IsSyncInProgress = false;
-            settings.SyncStatus = SyncStatus.Completed;
+            settings.SyncStatus = "Completed";
             await _context.SaveChangesAsync();
 
             return true;

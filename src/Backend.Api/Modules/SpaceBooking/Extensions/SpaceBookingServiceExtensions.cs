@@ -15,7 +15,7 @@ namespace Backend.Api.Modules.SpaceBooking.Extensions
         public static IServiceCollection AddSpaceBookingModule(this IServiceCollection services)
         {
             // Add iCal services
-            services.AddIcalServices(); // Using the merged IcalServiceExtensions
+            services.AddIcalServices(); // Using IcalServiceExtensions from the same namespace
 
             // Register repositories
             services.AddScoped<ISystemAmenityRepository, SystemAmenityRepository>();

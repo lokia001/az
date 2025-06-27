@@ -1,7 +1,6 @@
 using System;
 using System.ComponentModel.DataAnnotations;
-using Backend.Api.Modules.UserRelated.Domain.Entities;
-using Backend.Api.Modules.SpaceBooking.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
 {
@@ -31,15 +30,12 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         public DateTime? LastSyncTime { get; set; }
         public DateTime? LastSyncAttempt { get; set; }
         public string LastSyncError { get; set; } = string.Empty;
-        
-        public SyncStatus SyncStatus { get; set; } = SyncStatus.NotStarted;
+        public string SyncStatus { get; set; } = "NotStarted";
 
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public Guid? CreatedByUserId { get; set; }
-        public User CreatedBy { get; set; } = default!;
 
         public DateTime? UpdatedAt { get; set; }
         public Guid? UpdatedByUserId { get; set; }
-        public User UpdatedBy { get; set; } = default!;
     }
 }

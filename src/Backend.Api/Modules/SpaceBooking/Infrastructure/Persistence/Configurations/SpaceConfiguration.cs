@@ -93,6 +93,12 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Configurat
 
             // Navigation Properties (Nội bộ module SpaceBooking)
 
+            // 1-1: Space -> IcalSettings
+            builder.HasOne(s => s.IcalSettings)
+                  .WithOne(i => i.Space)
+                  .HasForeignKey<SpaceIcalSetting>(i => i.SpaceId)
+                  .OnDelete(DeleteBehavior.Cascade);
+
             // 1-N: Space -> SpaceImages
             builder.HasMany(s => s.SpaceImages)
                    .WithOne(img => img.Space)

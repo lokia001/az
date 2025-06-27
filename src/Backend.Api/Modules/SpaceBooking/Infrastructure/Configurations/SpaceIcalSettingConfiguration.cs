@@ -33,23 +33,21 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Configurations
                 .HasMaxLength(1000);
 
             builder.Property(x => x.SyncStatus)
+                .HasMaxLength(50)
                 .IsRequired();
 
-            // Relationships
+            builder.Property(x => x.CreatedByUserId)
+                .IsRequired(false);
+
+            builder.Property(x => x.UpdatedByUserId)
+                .IsRequired(false);
+
+            // Configure one-to-one relationship with Space
             builder.HasOne(x => x.Space)
-                .WithMany()
-                .HasForeignKey(x => x.SpaceId)
+                .WithOne(s => s.IcalSettings)
+                .HasForeignKey<SpaceIcalSetting>(x => x.SpaceId)
+                .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
-
-            builder.HasOne(x => x.CreatedBy)
-                .WithMany()
-                .HasForeignKey(x => x.CreatedByUserId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            builder.HasOne(x => x.UpdatedBy)
-                .WithMany()
-                .HasForeignKey(x => x.UpdatedByUserId)
-                .OnDelete(DeleteBehavior.SetNull);
         }
     }
 }

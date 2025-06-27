@@ -75,7 +75,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
                 // Update sync status
                 settings.LastSyncAttempt = DateTime.UtcNow;
                 settings.IsSyncInProgress = true;
-                settings.SyncStatus = SyncStatus.InProgress;
+                settings.SyncStatus = "InProgress";
                 await _dbContext.SaveChangesAsync();
 
                 // Process all URLs first
@@ -106,14 +106,14 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
                 }
 
                 // Update final sync status
-                settings.SyncStatus = hasConflicts ? SyncStatus.ConflictDetected : SyncStatus.Completed;
+                settings.SyncStatus = hasConflicts ? "ConflictDetected" : "Completed";
                 settings.LastSyncError = hasConflicts ? "Time conflicts detected between bookings" : string.Empty;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error syncing iCal for space {spaceId}");
                 settings.LastSyncError = ex.Message;
-                settings.SyncStatus = SyncStatus.Failed;
+                settings.SyncStatus = "Failed";
             }
             finally
             {
