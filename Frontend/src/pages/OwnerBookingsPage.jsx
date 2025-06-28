@@ -29,7 +29,7 @@ const OwnerBookingsPage = () => {
                 pageNumber: 1,
                 pageSize: 100 // Fetch a reasonable number for now
             };
-            const response = await api.get('/api/bookings/owner-bookings', { params });
+            const response = await api.get('/bookings/owner-bookings', { params });
             setBookings(response.data);
         } catch (err) {
             console.error("Failed to fetch owner bookings:", err);

@@ -3,20 +3,21 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {
     fetchOwnerBookingsAPI,
     updateBookingStatusAPI,
-    getOwnerBookingStatsAPI,
-    exportOwnerBookingsAPI
+    getOwnerBookingDetailsAPI
 } from '../services/ownerBookingApi';
 
 const initialFilters = {
-    customerName: '',
-    spaceName: '',
-    status: '',
+    searchTerm: '', // For searching by customer name, booking ID, space name
+    status: '', // All, Confirmed, Pending, Cancelled, Completed, Conflicted, NoShow, External
+    source: '', // All, Platform, Airbnb, GoogleCalendar, OtherICal
     dateFrom: '',
     dateTo: '',
-    spaceType: '',
+    spaceId: '', // Required for the API call
+    sort: 'startTime_desc',
 };
 
 const initialState = {
+    // Main bookings data
     bookings: [],
     filters: { ...initialFilters },
     pagination: {
@@ -25,29 +26,62 @@ const initialState = {
         totalCount: 0,
         totalPages: 0,
     },
-    status: 'idle',
+
+    // Overview stats
+    stats: {
+        totalBookings: 0,
+        upcomingBookings: 0,
+        completedBookings: 0,
+        cancelledBookings: 0,
+        conflictedBookings: 0,
+    },
+
+    // Statuses for different operations
+    status: 'idle', // For main bookings fetch
     error: null,
-    bookingStats: null,
-    statsStatus: 'idle',
-    statsError: null,
     updateStatus: 'idle',
     updateError: null,
-    exportStatus: 'idle',
-    exportError: null,
+    selectedBooking: null,
+    selectedBookingStatus: 'idle',
+    selectedBookingError: null,
+    
+    // iCal Integration
+    icalSettings: {
+        importUrls: [], // URLs from external platforms
+        exportUrl: '', // Our platform's iCal URL for this space
+        lastSync: null,
+        autoSync: true,
+    },
+    icalStatus: 'idle',
+    icalError: null,
+
+    // Conflict Detection
+    conflicts: [], // Array of booking conflicts
+    lastConflictCheck: null,
+    
+    // View Mode
+    viewMode: 'list', // 'list' or 'calendar'
 };
 
+// Thunk actions
 export const fetchOwnerBookings = createAsyncThunk(
     'ownerBooking/fetchBookings',
     async (params = {}, { getState, rejectWithValue }) => {
-        const state = getState().ownerBooking;
-        const apiParams = {
-            ...state.filters,
-            PageNumber: state.pagination.PageNumber,
-            PageSize: state.pagination.PageSize,
-            ...params,
-        };
-
         try {
+            const state = getState().ownerBooking;
+            if (!state.filters.spaceId) {
+                return rejectWithValue('Space ID is required to fetch bookings.');
+            }
+
+            const apiParams = {
+                spaceId: state.filters.spaceId,
+                PageNumber: state.pagination.PageNumber,
+                PageSize: state.pagination.PageSize,
+                sort: state.filters.sort || 'startTime_desc',
+                ...params,
+            };
+
+            console.log('Fetching with params:', apiParams);
             const response = await fetchOwnerBookingsAPI(apiParams);
             return response;
         } catch (error) {
@@ -58,9 +92,15 @@ export const fetchOwnerBookings = createAsyncThunk(
 
 export const fetchOwnerBookingStats = createAsyncThunk(
     'ownerBooking/fetchStats',
-    async (dateRange = {}, { rejectWithValue }) => {
+    async (dateRange = {}, { getState, rejectWithValue }) => {
         try {
-            const response = await getOwnerBookingStatsAPI(dateRange);
+            const state = getState().ownerBooking;
+            const params = {
+                dateFrom: state.filters.dateFrom,
+                dateTo: state.filters.dateTo,
+                ...dateRange,
+            };
+            const response = await getOwnerBookingStatsAPI(params);
             return response;
         } catch (error) {
             return rejectWithValue(error.message || 'Failed to fetch booking statistics.');
@@ -70,10 +110,9 @@ export const fetchOwnerBookingStats = createAsyncThunk(
 
 export const updateBookingStatus = createAsyncThunk(
     'ownerBooking/updateStatus',
-    async ({ bookingId, newStatus, reason }, { dispatch, rejectWithValue }) => {
+    async ({ bookingId, newStatus, reason }, { rejectWithValue }) => {
         try {
-            const response = await updateBookingStatusAPI(bookingId, newStatus, reason);
-            dispatch(fetchOwnerBookings()); // Refresh the list
+            const response = await updateBookingStatusAPI(bookingId, { status: newStatus, reason });
             return response;
         } catch (error) {
             return rejectWithValue(error.message || 'Failed to update booking status.');
@@ -84,21 +123,109 @@ export const updateBookingStatus = createAsyncThunk(
 export const exportOwnerBookings = createAsyncThunk(
     'ownerBooking/exportBookings',
     async (params = {}, { getState, rejectWithValue }) => {
-        const state = getState().ownerBooking;
-        const exportParams = {
-            ...state.filters,
-            ...params,
-        };
-
         try {
-            const response = await exportOwnerBookingsAPI(exportParams);
-            return response;
+            const state = getState().ownerBooking;
+            const exportParams = {
+                ...state.filters,
+                ...params,
+            };
+            return await exportOwnerBookingsAPI(exportParams);
         } catch (error) {
             return rejectWithValue(error.message || 'Failed to export bookings.');
         }
     }
 );
 
+export const fetchBookingDetails = createAsyncThunk(
+    'ownerBooking/fetchBookingDetails',
+    async (bookingId, { rejectWithValue }) => {
+        try {
+            const response = await getOwnerBookingDetailsAPI(bookingId);
+            return response;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to fetch booking details.');
+        }
+    }
+);
+
+// Thunk actions for iCal integration
+export const getIcalSettings = createAsyncThunk(
+    'ownerBooking/getIcalSettings',
+    async (spaceId, { rejectWithValue }) => {
+        try {
+            const response = await api.get(`/api/bookings/space/${spaceId}/ical-settings`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to get iCal settings.');
+        }
+    }
+);
+
+export const updateIcalSettings = createAsyncThunk(
+    'ownerBooking/updateIcalSettings',
+    async ({ spaceId, settings }, { rejectWithValue }) => {
+        try {
+            const response = await api.put(`/api/bookings/space/${spaceId}/ical-settings`, settings);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to update iCal settings.');
+        }
+    }
+);
+
+export const syncIcalCalendars = createAsyncThunk(
+    'ownerBooking/syncIcalCalendars',
+    async (spaceId, { rejectWithValue }) => {
+        try {
+            const response = await api.post(`/api/bookings/space/${spaceId}/ical-sync`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to sync iCal calendars.');
+        }
+    }
+);
+
+// Conflict Detection Thunks
+export const checkBookingConflicts = createAsyncThunk(
+    'ownerBooking/checkConflicts',
+    async (spaceId, { rejectWithValue }) => {
+        try {
+            const response = await api.get(`/api/bookings/space/${spaceId}/conflicts`);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to check booking conflicts.');
+        }
+    }
+);
+
+export const createBooking = createAsyncThunk(
+    'ownerBooking/createBooking',
+    async (bookingData, { rejectWithValue }) => {
+        try {
+            // First check for conflicts
+            const conflictCheck = await api.post('/api/bookings/check-conflicts', {
+                spaceId: bookingData.spaceId,
+                startTime: bookingData.startTime,
+                endTime: bookingData.endTime
+            });
+
+            if (conflictCheck.data.hasConflicts) {
+                return rejectWithValue({
+                    message: 'Time slot conflicts with existing bookings',
+                    conflicts: conflictCheck.data.conflicts
+                });
+            }
+
+            // If no conflicts, create the booking
+            const response = await api.post('/api/bookings', bookingData);
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to create booking.');
+        }
+    }
+);
+
+// Slice
 const ownerBookingSlice = createSlice({
     name: 'ownerBooking',
     initialState,
@@ -106,56 +233,80 @@ const ownerBookingSlice = createSlice({
         setOwnerBookingFilter: (state, action) => {
             const { filterName, value } = action.payload;
             state.filters[filterName] = value;
+            // Reset to first page when filters change
             state.pagination.PageNumber = 1;
-            state.status = 'idle';
         },
         setOwnerBookingPage: (state, action) => {
             state.pagination.PageNumber = action.payload;
-            state.status = 'idle';
         },
         resetOwnerBookingFilters: (state) => {
             state.filters = { ...initialFilters };
             state.pagination.PageNumber = 1;
-            state.status = 'idle';
         },
-        clearOwnerBookingErrors: (state) => {
-            state.error = null;
-            state.statsError = null;
-            state.updateError = null;
-            state.exportError = null;
+        clearSelectedBooking: (state) => {
+            state.selectedBooking = null;
+            state.selectedBookingStatus = 'idle';
+            state.selectedBookingError = null;
         },
-        clearUpdateStatus: (state) => {
-            state.updateStatus = 'idle';
-            state.updateError = null;
+    },
+    reducers: {
+        setOwnerBookingFilter: (state, action) => {
+            const { filterName, value } = action.payload;
+            state.filters[filterName] = value;
+            state.pagination.PageNumber = 1;
         },
-        clearExportStatus: (state) => {
-            state.exportStatus = 'idle';
-            state.exportError = null;
+        setOwnerBookingPage: (state, action) => {
+            state.pagination.PageNumber = action.payload;
+        },
+        resetOwnerBookingFilters: (state) => {
+            state.filters = { ...initialFilters };
+            state.pagination.PageNumber = 1;
+        },
+        clearSelectedBooking: (state) => {
+            state.selectedBooking = null;
+            state.selectedBookingStatus = 'idle';
+            state.selectedBookingError = null;
+        },
+        setViewMode: (state, action) => {
+            state.viewMode = action.payload;
+        },
+        clearConflicts: (state) => {
+            state.conflicts = [];
+            state.lastConflictCheck = new Date().toISOString();
         },
     },
     extraReducers: (builder) => {
         builder
-            // Fetch owner bookings
+            // Fetch bookings
             .addCase(fetchOwnerBookings.pending, (state) => {
                 state.status = 'loading';
                 state.error = null;
             })
             .addCase(fetchOwnerBookings.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.bookings = action.payload.items;
+                // Handle both data.items and data.data for compatibility
+                const items = action.payload.items || action.payload.data || [];
+                state.bookings = items;
+                
+                // Handle pagination with both camelCase and PascalCase fields
+                const pageNumber = action.payload.pageNumber || action.payload.PageNumber;
+                const pageSize = action.payload.pageSize || action.payload.PageSize;
+                const totalCount = action.payload.totalCount || action.payload.TotalCount;
+                const totalPages = action.payload.totalPages || action.payload.TotalPages;
+
                 state.pagination = {
-                    PageNumber: action.payload.pageNumber,
-                    PageSize: action.payload.pageSize,
-                    totalCount: action.payload.totalCount,
-                    totalPages: action.payload.totalPages,
+                    PageNumber: parseInt(pageNumber) || 1,
+                    PageSize: parseInt(pageSize) || 10,
+                    totalCount: parseInt(totalCount) || 0,
+                    totalPages: parseInt(totalPages) || 0
                 };
+                state.error = null;
             })
             .addCase(fetchOwnerBookings.rejected, (state, action) => {
                 state.status = 'failed';
                 state.error = action.payload;
-                state.bookings = [];
             })
-            // Fetch booking stats
+            // Fetch stats
             .addCase(fetchOwnerBookingStats.pending, (state) => {
                 state.statsStatus = 'loading';
                 state.statsError = null;
@@ -168,7 +319,7 @@ const ownerBookingSlice = createSlice({
                 state.statsStatus = 'failed';
                 state.statsError = action.payload;
             })
-            // Update booking status
+            // Update status
             .addCase(updateBookingStatus.pending, (state) => {
                 state.updateStatus = 'loading';
                 state.updateError = null;
@@ -180,7 +331,7 @@ const ownerBookingSlice = createSlice({
                 state.updateStatus = 'failed';
                 state.updateError = action.payload;
             })
-            // Export bookings
+            // Export
             .addCase(exportOwnerBookings.pending, (state) => {
                 state.exportStatus = 'loading';
                 state.exportError = null;
@@ -191,17 +342,89 @@ const ownerBookingSlice = createSlice({
             .addCase(exportOwnerBookings.rejected, (state, action) => {
                 state.exportStatus = 'failed';
                 state.exportError = action.payload;
+            })
+            // Fetch booking details
+            .addCase(fetchBookingDetails.pending, (state) => {
+                state.selectedBookingStatus = 'loading';
+                state.selectedBookingError = null;
+            })
+            .addCase(fetchBookingDetails.fulfilled, (state, action) => {
+                state.selectedBookingStatus = 'succeeded';
+                state.selectedBooking = action.payload;
+            })
+            .addCase(fetchBookingDetails.rejected, (state, action) => {
+                state.selectedBookingStatus = 'failed';
+                state.selectedBookingError = action.payload;
+            })
+            // iCal Settings
+            .addCase(getIcalSettings.pending, (state) => {
+                state.icalStatus = 'loading';
+                state.icalError = null;
+            })
+            .addCase(getIcalSettings.fulfilled, (state, action) => {
+                state.icalStatus = 'succeeded';
+                state.icalSettings = action.payload;
+            })
+            .addCase(getIcalSettings.rejected, (state, action) => {
+                state.icalStatus = 'failed';
+                state.icalError = action.payload;
+            })
+
+            // iCal Sync
+            .addCase(syncIcalCalendars.pending, (state) => {
+                state.icalStatus = 'syncing';
+                state.icalError = null;
+            })
+            .addCase(syncIcalCalendars.fulfilled, (state, action) => {
+                state.icalStatus = 'succeeded';
+                state.icalSettings.lastSync = new Date().toISOString();
+                // After sync, update bookings list and check conflicts
+                state.status = 'loading'; // This will trigger a re-fetch of bookings
+            })
+            .addCase(syncIcalCalendars.rejected, (state, action) => {
+                state.icalStatus = 'failed';
+                state.icalError = action.payload;
+            })
+
+            // Conflict Check
+            .addCase(checkBookingConflicts.pending, (state) => {
+                state.conflictCheckStatus = 'checking';
+            })
+            .addCase(checkBookingConflicts.fulfilled, (state, action) => {
+                state.conflicts = action.payload;
+                state.lastConflictCheck = new Date().toISOString();
+                state.stats.conflictedBookings = action.payload.length;
+            })
+            .addCase(checkBookingConflicts.rejected, (state, action) => {
+                state.conflictCheckStatus = 'failed';
+                state.error = action.payload;
+            })
+
+            // Create Booking
+            .addCase(createBooking.pending, (state) => {
+                state.createStatus = 'loading';
+                state.createError = null;
+            })
+            .addCase(createBooking.fulfilled, (state, action) => {
+                state.createStatus = 'succeeded';
+                // Don't modify bookings array here - let the main fetch handle it
+                state.status = 'loading'; // This will trigger a re-fetch
+            })
+            .addCase(createBooking.rejected, (state, action) => {
+                state.createStatus = 'failed';
+                state.createError = action.payload;
             });
     },
 });
 
+// Actions
 export const {
     setOwnerBookingFilter,
     setOwnerBookingPage,
     resetOwnerBookingFilters,
-    clearOwnerBookingErrors,
-    clearUpdateStatus,
-    clearExportStatus,
+    clearSelectedBooking,
+    setViewMode,
+    clearConflicts,
 } = ownerBookingSlice.actions;
 
 // Selectors
@@ -210,12 +433,17 @@ export const selectOwnerBookingFilters = (state) => state.ownerBooking.filters;
 export const selectOwnerBookingPagination = (state) => state.ownerBooking.pagination;
 export const selectOwnerBookingStatus = (state) => state.ownerBooking.status;
 export const selectOwnerBookingError = (state) => state.ownerBooking.error;
-export const selectOwnerBookingStats = (state) => state.ownerBooking.bookingStats;
-export const selectOwnerBookingStatsStatus = (state) => state.ownerBooking.statsStatus;
-export const selectOwnerBookingStatsError = (state) => state.ownerBooking.statsError;
-export const selectOwnerBookingUpdateStatus = (state) => state.ownerBooking.updateStatus;
-export const selectOwnerBookingUpdateError = (state) => state.ownerBooking.updateError;
-export const selectOwnerBookingExportStatus = (state) => state.ownerBooking.exportStatus;
-export const selectOwnerBookingExportError = (state) => state.ownerBooking.exportError;
+export const selectOwnerBookingStats = (state) => state.ownerBooking.stats;
+export const selectOwnerBookingViewMode = (state) => state.ownerBooking.viewMode;
+export const selectOwnerBookingIcalSettings = (state) => state.ownerBooking.icalSettings;
+export const selectOwnerBookingIcalStatus = (state) => state.ownerBooking.icalStatus;
+export const selectOwnerBookingIcalError = (state) => state.ownerBooking.icalError;
+export const selectOwnerBookingConflicts = (state) => state.ownerBooking.conflicts;
+export const selectOwnerBookingLastConflictCheck = (state) => state.ownerBooking.lastConflictCheck;
+export const selectOwnerBookingCreateStatus = (state) => state.ownerBooking.createStatus;
+export const selectOwnerBookingCreateError = (state) => state.ownerBooking.createError;
+export const selectSelectedBooking = (state) => state.ownerBooking.selectedBooking;
+export const selectSelectedBookingStatus = (state) => state.ownerBooking.selectedBookingStatus;
+export const selectSelectedBookingError = (state) => state.ownerBooking.selectedBookingError;
 
 export default ownerBookingSlice.reducer;

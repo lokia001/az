@@ -29,7 +29,7 @@ export const useBookings = (filters) => {
         params.append('sortBy', filters.sortBy);
 
         // Use apiClient which automatically includes the auth token
-        const response = await apiClient.get(`/api/bookings/my-bookings?${params.toString()}`);
+        const response = await apiClient.get(`/bookings/my-bookings?${params.toString()}`);
         setBookings(response.data);
       } catch (err) {
         setError(err.response?.data?.message || 'Failed to load bookings');
@@ -46,7 +46,7 @@ export const useBookings = (filters) => {
 
   const cancelBooking = async (bookingId) => {
     try {
-      await apiClient.post(`/api/bookings/${bookingId}/cancel`);
+      await apiClient.post(`/bookings/${bookingId}/cancel`);
 
       // Update the local state to reflect the cancellation
       setBookings(bookings.map(booking => 
@@ -63,7 +63,7 @@ export const useBookings = (filters) => {
 
   const submitReview = async (bookingId, reviewData) => {
     try {
-      await apiClient.post(`/api/bookings/${bookingId}/review`, reviewData);
+      await apiClient.post(`/bookings/${bookingId}/review`, reviewData);
 
       // Update the local state to reflect the review submission
       setBookings(bookings.map(booking => 
@@ -80,7 +80,7 @@ export const useBookings = (filters) => {
 
   const downloadInvoice = async (bookingId) => {
     try {
-      const response = await apiClient.get(`/api/bookings/${bookingId}/invoice`, {
+      const response = await apiClient.get(`/bookings/${bookingId}/invoice`, {
         responseType: 'blob'
       });
 
