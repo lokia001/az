@@ -72,10 +72,10 @@ const BookingFilters = ({ filters, onFilterChange }) => {
               value={filters.sortBy}
               onChange={handleSortChange}
             >
-              <option value="dateDesc">{t('myBookings.filters.newest')}</option>
-              <option value="dateAsc">{t('myBookings.filters.oldest')}</option>
-              <option value="priceDesc">{t('myBookings.filters.priceHighToLow')}</option>
-              <option value="priceAsc">{t('myBookings.filters.priceLowToHigh')}</option>
+              <option value="dateDesc">{t('myBookings.filters.sortOptions.dateDesc')}</option>
+              <option value="dateAsc">{t('myBookings.filters.sortOptions.dateAsc')}</option>
+              <option value="priceDesc">{t('myBookings.filters.sortOptions.priceDesc')}</option>
+              <option value="priceAsc">{t('myBookings.filters.sortOptions.priceAsc')}</option>
             </Form.Select>
           </Form.Group>
         </Form>

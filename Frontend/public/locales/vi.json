@@ -94,6 +94,21 @@
         "errorLoading": "Có lỗi khi tải dữ liệu. Vui lòng thử lại sau.",
         "noBookings": "Bạn chưa có đơn đặt nào.",
         "bookingCode": "Mã đơn",
+        "filters": {
+            "title": "Bộ lọc",
+            "status": "Trạng thái",
+            "dateRange": "Thời gian",
+            "startDate": "Từ ngày",
+            "endDate": "Đến ngày",
+            "sortBy": "Sắp xếp theo",
+            "allStatuses": "Tất cả trạng thái",
+            "sortOptions": {
+                "dateDesc": "Mới nhất",
+                "dateAsc": "Cũ nhất",
+                "priceDesc": "Giá cao nhất",
+                "priceAsc": "Giá thấp nhất"
+            }
+        },
         "details": {
             "title": "Chi tiết đơn đặt",
             "dates": "Thời gian",
