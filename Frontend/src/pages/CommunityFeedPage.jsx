@@ -1,10 +1,11 @@
 // src/pages/CommunityFeedPage.jsx
 import React, { useEffect, useState, useMemo } from 'react'; // useMemo might be useful later
 import { useSelector, useDispatch } from 'react-redux';
-import { useParams, Link } from 'react-router-dom'; // Added Link
+import { useParams, Link, useNavigate } from 'react-router-dom'; // Added Link, useNavigate
 import Sidebar from '../features/community/components/Sidebar';
 import MainFeed from '../features/community/components/MainFeed';
 import CreatePostModal from '../features/community/components/CreatePostModal'; // If create post is here
+import EditCommunityModal from '../features/community/components/EditCommunityModal'; // *** THÊM ***
 import {
     setSelectedCommunity,
     fetchCommunityPosts,
@@ -17,15 +18,27 @@ import {
     setCommunityPostsPage,
     clearSelectedCommunity, // For cleanup
     selectMyJoinedCommunities, // To get community name if not in selectedCommunityName
+    // *** THÊM imports cho community management ***
+    fetchCommunityDetail,
+    deleteCommunity,
+    selectCommunityDetail,
+    selectCommunityDetailStatus,
+    selectCommunityDetailError,
+    selectDeleteCommunityStatus,
+    selectDeleteCommunityError,
+    clearDeleteCommunityStatus,
 } from '../features/community/slices/communitySlice';
+import { selectIsAuthenticated, selectCurrentUser } from '../features/auth/slices/authSlice'; // *** THÊM ***
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import BootstrapPagination from 'react-bootstrap/Pagination';
 import Container from 'react-bootstrap/Container';
 import Button from 'react-bootstrap/Button'; // For Create Post button
+import Dropdown from 'react-bootstrap/Dropdown'; // *** THÊM cho menu actions ***
 
 const CommunityFeedPage = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate(); // *** THÊM ***
     const { communityId: communityIdFromUrl } = useParams();
 
     const selectedCommunityIdFromState = useSelector(selectSelectedCommunityId);
@@ -36,8 +49,17 @@ const CommunityFeedPage = () => {
     const postsPagination = useSelector(selectCommunityPostsPagination);
     const myJoinedCommunities = useSelector(selectMyJoinedCommunities); // To find name if needed
 
-    const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+    // *** THÊM state cho community management ***
+    const isAuthenticated = useSelector(selectIsAuthenticated);
+    const currentUser = useSelector(selectCurrentUser);
+    const communityDetail = useSelector(selectCommunityDetail);
+    const communityDetailStatus = useSelector(selectCommunityDetailStatus);
+    const communityDetailError = useSelector(selectCommunityDetailError);
+    const deleteStatus = useSelector(selectDeleteCommunityStatus);
+    const deleteError = useSelector(selectDeleteCommunityError);
 
+    const [showCreatePostModal, setShowCreatePostModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false); // *** THÊM ***
 
     // Effect 1: Set/update selected community in Redux when URL changes or component mounts
     useEffect(() => {
@@ -76,6 +98,23 @@ const CommunityFeedPage = () => {
             }));
         }
     }, [dispatch, communityIdFromUrl, selectedCommunityIdFromState, postsStatus, postsPagination.PageNumber, postsPagination.PageSize]);
+
+    // *** THÊM: Effect để fetch community detail ***
+    useEffect(() => {
+        if (communityIdFromUrl && (!communityDetail || communityDetail.id !== communityIdFromUrl)) {
+            console.log(`[CommunityFeedPage] Fetching community detail for ID: ${communityIdFromUrl}`);
+            dispatch(fetchCommunityDetail(communityIdFromUrl));
+        }
+    }, [dispatch, communityIdFromUrl, communityDetail]);
+
+    // *** THÊM: Effect để handle delete thành công ***
+    useEffect(() => {
+        if (deleteStatus === 'succeeded') {
+            console.log('[CommunityFeedPage] Community deleted successfully, navigating to community list');
+            navigate('/community');
+            dispatch(clearDeleteCommunityStatus());
+        }
+    }, [deleteStatus, navigate, dispatch]);
 
     // If selectedCommunityName from state is null but we have a communityIdFromUrl, try to use it or a placeholder
     if (!selectedCommunityName && communityIdFromUrl) {
@@ -119,21 +158,94 @@ const CommunityFeedPage = () => {
         contentToRender = <Alert variant="light" className="text-center">Đang tải hoặc không có bài đăng.</Alert>;
     }
 
+    // *** THÊM: Function kiểm tra quyền edit/delete community ***
+    const canManageCommunity = () => {
+        if (!isAuthenticated || !currentUser || !communityDetail) {
+            return false;
+        }
+        // Chỉ người tạo community (CreatedByUserId) mới có quyền edit/delete
+        return (currentUser.id || currentUser.userId) === communityDetail.createdByUserId;
+    };
+
+    // *** THÊM: Handler cho delete community ***
+    const handleDeleteCommunity = () => {
+        if (!communityDetail) return;
+        
+        const confirmMessage = `Bạn có chắc chắn muốn xóa cộng đồng "${communityDetail.name}" không?\n\nHành động này không thể hoàn tác!`;
+        if (window.confirm(confirmMessage)) {
+            dispatch(deleteCommunity(communityDetail.id));
+        }
+    };
+
     return (
         <>
             <div className="community-platform-wrapper" style={{ display: 'flex', minHeight: 'calc(100vh - 70px)' }}>
                 <Sidebar />
                 <Container fluid style={{ flexGrow: 1, padding: '20px', overflowY: 'auto' }}>
                     <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h2 className="mb-0">
-                            {selectedCommunityName || `Cộng đồng`}
-                        </h2>
-                        {communityIdFromUrl && ( // Show create post button only if on a specific community page
-                            <Button variant="success" onClick={() => setShowCreatePostModal(true)}>
-                                + Tạo Bài Đăng
-                            </Button>
-                        )}
+                        <div>
+                            <h2 className="mb-0">
+                                {selectedCommunityName || `Cộng đồng`}
+                            </h2>
+                            {/* *** THÊM: Hiển thị thông tin community detail *** */}
+                            {communityDetail && (
+                                <div className="text-muted small mt-1">
+                                    {communityDetail.memberCount || 0} thành viên • {communityDetail.postCount || 0} bài đăng
+                                    {!communityDetail.isPublic && <span className="badge bg-secondary ms-2">Riêng tư</span>}
+                                </div>
+                            )}
+                        </div>
+                        
+                        <div className="d-flex align-items-center gap-2">
+                            {communityIdFromUrl && (
+                                <Button variant="success" onClick={() => setShowCreatePostModal(true)}>
+                                    + Tạo Bài Đăng
+                                </Button>
+                            )}
+                            
+                            {/* *** THÊM: Menu quản lý community cho chủ sở hữu *** */}
+                            {canManageCommunity() && (
+                                <Dropdown>
+                                    <Dropdown.Toggle variant="outline-secondary" size="sm">
+                                        ⚙️ Quản lý
+                                    </Dropdown.Toggle>
+                                    <Dropdown.Menu>
+                                        <Dropdown.Item onClick={() => setShowEditModal(true)}>
+                                            ✏️ Chỉnh sửa cộng đồng
+                                        </Dropdown.Item>
+                                        <Dropdown.Divider />
+                                        <Dropdown.Item 
+                                            onClick={handleDeleteCommunity}
+                                            className="text-danger"
+                                            disabled={deleteStatus === 'loading'}
+                                        >
+                                            {deleteStatus === 'loading' ? (
+                                                <>
+                                                    <Spinner as="span" animation="border" size="sm" className="me-2" />
+                                                    Đang xóa...
+                                                </>
+                                            ) : (
+                                                '🗑️ Xóa cộng đồng'
+                                            )}
+                                        </Dropdown.Item>
+                                    </Dropdown.Menu>
+                                </Dropdown>
+                            )}
+                        </div>
                     </div>
+
+                    {/* *** THÊM: Hiển thị lỗi community detail hoặc delete *** */}
+                    {communityDetailStatus === 'failed' && communityDetailError && (
+                        <Alert variant="warning" className="mb-3">
+                            Không thể tải thông tin cộng đồng: {communityDetailError}
+                        </Alert>
+                    )}
+                    
+                    {deleteStatus === 'failed' && deleteError && (
+                        <Alert variant="danger" className="mb-3" onClose={() => dispatch(clearDeleteCommunityStatus())} dismissible>
+                            Lỗi xóa cộng đồng: {deleteError}
+                        </Alert>
+                    )}
                     {contentToRender}
                 </Container>
             </div>
@@ -141,6 +253,15 @@ const CommunityFeedPage = () => {
                 <CreatePostModal
                     show={showCreatePostModal}
                     onHide={() => setShowCreatePostModal(false)}
+                />
+            )}
+            
+            {/* *** THÊM: EditCommunityModal *** */}
+            {communityDetail && (
+                <EditCommunityModal
+                    show={showEditModal}
+                    onHide={() => setShowEditModal(false)}
+                    community={communityDetail}
                 />
             )}
         </>

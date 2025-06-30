@@ -5,9 +5,9 @@ import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
 import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
-import Image from 'react-bootstrap/Image';
 import { addNewComment, selectCreateCommentStatus, selectCreateCommentError, clearCreateCommentStatus } from '../slices/commentSlice';
 import { selectCurrentUser } from '../../auth/slices/authSlice'; // To get current user's avatar
+import { DEFAULT_PROFILE_AVATAR } from '../../profile/services/profileApi';
 
 const AddCommentForm = ({ parentEntityType, parentEntityId, parentCommentIdForReply = null, onCommentAdded, onCancelReply }) => {
 
@@ -57,13 +57,30 @@ const AddCommentForm = ({ parentEntityType, parentEntityId, parentCommentIdForRe
             });
     };
 
-    const userAvatar = currentUser?.avatarUrl || `https://i.pravatar.cc/40?u=${currentUser?.id || 'guest'}`;
+    const userAvatar = currentUser?.avatarUrl || DEFAULT_PROFILE_AVATAR;
     const placeholderText = parentCommentIdForReply ? "Viết trả lời..." : "Viết bình luận...";
 
     return (
         <Form onSubmit={handleSubmit} className={`mt-2 mb-2 ${parentCommentIdForReply ? 'ms-5 p-2 border-start border-2' : 'd-flex align-items-start'}`}>
             {!parentCommentIdForReply && ( // Only show avatar for top-level comment form
-                <Image src={userAvatar} alt="Your avatar" roundedCircle style={{ width: '40px', height: '40px', marginRight: '10px', marginTop: '5px' }} />
+                <img 
+                    src={userAvatar} 
+                    alt="Your avatar" 
+                    className="rounded-circle" 
+                    style={{ 
+                        width: '40px', 
+                        height: '40px', 
+                        marginRight: '10px', 
+                        marginTop: '5px',
+                        objectFit: 'cover',
+                        border: '1px solid #dee2e6'
+                    }}
+                    onError={(e) => {
+                        if (e.target.src !== DEFAULT_PROFILE_AVATAR) {
+                            e.target.src = DEFAULT_PROFILE_AVATAR;
+                        }
+                    }}
+                />
             )}
             <div className="flex-grow-1">
                 <Form.Group controlId={`commentContent-${parentCommentIdForReply || parentEntityId}`}>

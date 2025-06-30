@@ -1,6 +1,6 @@
 // src/features/comments/slices/commentSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchCommentsAPI, createCommentAPI, fetchCommentWithRepliesAPI } from '../services/commentApi'; // Ensure path is correct
+import { fetchCommentsAPI, createCommentAPI, fetchCommentWithRepliesAPI, updateCommentAPI, deleteCommentAPI } from '../services/commentApi'; // Ensure path is correct
 import { updatePostCommentCount } from '../../community/slices/communitySlice'; // *** ADDED IMPORT ***
 import { createSelector } from 'reselect'; // *** ADDED IMPORT ***
 
@@ -17,6 +17,10 @@ const initialState = {
     createCommentError: null,
     fetchRepliesStatus: 'idle',
     fetchRepliesError: null,
+    updateStatus: 'idle', // 'idle', 'loading', 'succeeded', 'failed'
+    updateError: null,
+    deleteStatus: 'idle', // 'idle', 'loading', 'succeeded', 'failed'
+    deleteError: null,
 };
 
 const findCommentRecursive = (commentsArray, commentId) => { /* ... same as your checkpoint ... */
@@ -65,6 +69,32 @@ export const fetchRepliesForComment = createAsyncThunk( /* ... same as your chec
     async (commentId, { rejectWithValue }) => { if (!commentId) return rejectWithValue('Comment ID is required.'); try { const commentWithReplies = await fetchCommentWithRepliesAPI(commentId, true); return commentWithReplies; } catch (error) { return rejectWithValue(error.message); } }
 );
 
+// Async thunk để cập nhật comment
+export const updateComment = createAsyncThunk(
+    'comments/updateComment',
+    async ({ commentId, updateData }, { rejectWithValue }) => {
+        try {
+            const response = await updateCommentAPI(commentId, updateData);
+            return response;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to update comment');
+        }
+    }
+);
+
+// Async thunk để xóa comment
+export const deleteComment = createAsyncThunk(
+    'comments/deleteComment',
+    async (commentId, { rejectWithValue }) => {
+        try {
+            await deleteCommentAPI(commentId);
+            return commentId;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to delete comment');
+        }
+    }
+);
+
 const commentSlice = createSlice({
     name: 'comments',
     initialState,
@@ -79,7 +109,7 @@ const commentSlice = createSlice({
                 state.pagination = { ...initialPagination }; // Reset to defined initial pagination
                 state.status = 'idle'; // CRITICAL: Set to 'idle' to trigger fetch
                 state.error = null;
-                console.log(`[CommentSlice] Parent CHANGED to ${parentEntityType}/${parentId}. Status set to 'idle'.`);
+                console.log(`[CommentSlice] Parent CHANGED to ${parentEntityType}/${parentId}. Status set to 'idle', page reset to 1.`);
             } else {
                 // If it's the same parent, but we want to force a refresh (e.g. pull to refresh)
                 // we could set status to 'idle' here too if it's not already loading.
@@ -102,6 +132,8 @@ const commentSlice = createSlice({
 
 
         clearCreateCommentStatus: (state) => { state.createCommentStatus = 'idle'; state.createCommentError = null; },
+        clearUpdateStatus: (state) => { state.updateStatus = 'idle'; state.updateError = null; },
+        clearDeleteStatus: (state) => { state.deleteStatus = 'idle'; state.deleteError = null; },
         toggleRepliesVisibility: (state, action) => { const commentId = action.payload; const { comment: foundComment } = findCommentRecursive(state.comments, commentId); if (foundComment) { foundComment.showReplies = !foundComment.showReplies; } },
         incrementReplyCountOptimistic: (state, action) => { const parentCommentId = action.payload; const { comment: parentComment } = findCommentRecursive(state.comments, parentCommentId); if (parentComment) { parentComment.replyCount = (parentComment.replyCount || 0) + 1; } },
     },
@@ -116,7 +148,12 @@ const commentSlice = createSlice({
             if (action.payload && state.currentParentEntityType === action.payload.parentEntityType && state.currentParentEntityId === action.payload.parentId) {
                 state.status = 'succeeded';
                 state.comments = action.payload.items.map(c => ({ ...c, showReplies: c.showReplies || false, repliesLoading: false, replies: c.replies || [] }));
-                state.pagination = { PageNumber: action.payload.pageNumber, PageSize: action.payload.pageSize, totalCount: action.payload.totalCount, totalPages: action.payload.totalPages };
+                state.pagination = { 
+                    PageNumber: action.payload.pageNumber, 
+                    PageSize: action.payload.pageSize, 
+                    totalCount: action.payload.totalCount, 
+                    totalPages: action.payload.totalPages 
+                };
             }
         });
 
@@ -136,6 +173,53 @@ const commentSlice = createSlice({
         builder.addCase(fetchRepliesForComment.pending, (s, a) => { s.fetchRepliesStatus = 'loading'; s.fetchRepliesError = null; const { comment } = findCommentRecursive(s.comments, a.meta.arg); if (comment) comment.repliesLoading = true; });
         builder.addCase(fetchRepliesForComment.fulfilled, (s, a) => { s.fetchRepliesStatus = 'succeeded'; const pCWR = a.payload; const { comment: fPC, parentArray: pA, index: idx } = findCommentRecursive(s.comments, pCWR.id); if (fPC) { const uC = { ...pCWR, replies: (pCWR.replies || []).map(r => ({ ...r, showReplies: false, repliesLoading: false, replies: r.replies || [] })), showReplies: true, repliesLoading: false, }; if (pA && idx !== -1) pA[idx] = uC; } });
         builder.addCase(fetchRepliesForComment.rejected, (s, a) => { s.fetchRepliesStatus = 'failed'; s.fetchRepliesError = a.payload; const { comment } = findCommentRecursive(s.comments, a.meta.arg); if (comment) comment.repliesLoading = false; });
+        
+        // Update comment
+        builder.addCase(updateComment.pending, (state) => {
+            state.updateStatus = 'loading';
+            state.updateError = null;
+        });
+        builder.addCase(updateComment.fulfilled, (state, action) => {
+            state.updateStatus = 'succeeded';
+            const updatedComment = action.payload;
+            const { comment, parentArray, index } = findCommentRecursive(state.comments, updatedComment.id);
+            if (comment && parentArray) {
+                parentArray[index] = { ...comment, ...updatedComment };
+            }
+        });
+        builder.addCase(updateComment.rejected, (state, action) => {
+            state.updateStatus = 'failed';
+            state.updateError = action.payload;
+        });
+        
+        // Delete comment
+        builder.addCase(deleteComment.pending, (state) => {
+            state.deleteStatus = 'loading';
+            state.deleteError = null;
+        });
+        builder.addCase(deleteComment.fulfilled, (state, action) => {
+            state.deleteStatus = 'succeeded';
+            const deletedCommentId = action.payload;
+            const { parentArray, index } = findCommentRecursive(state.comments, deletedCommentId);
+            if (parentArray && index >= 0) {
+                parentArray.splice(index, 1);
+                // Cập nhật totalCount khi xóa comment thành công
+                if (state.pagination.totalCount > 0) {
+                    state.pagination.totalCount -= 1;
+                    // Tính lại totalPages
+                    state.pagination.totalPages = Math.ceil(state.pagination.totalCount / state.pagination.PageSize);
+                    // Nếu trang hiện tại không còn comment và không phải trang 1, chuyển về trang trước
+                    if (state.comments.length === 0 && state.pagination.PageNumber > 1) {
+                        state.pagination.PageNumber = Math.max(1, state.pagination.PageNumber - 1);
+                        state.status = 'idle'; // Trigger fetch for previous page
+                    }
+                }
+            }
+        });
+        builder.addCase(deleteComment.rejected, (state, action) => {
+            state.deleteStatus = 'failed';
+            state.deleteError = action.payload;
+        });
     },
 });
 
@@ -143,6 +227,8 @@ export const { setCurrentParentEntityForComments,
     clearCurrentParentEntityForComments,
     setCommentsPage,
     clearCreateCommentStatus,
+    clearUpdateStatus,
+    clearDeleteStatus,
     toggleRepliesVisibility,
     incrementReplyCountOptimistic,
 } = commentSlice.actions;

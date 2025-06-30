@@ -8,6 +8,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Button from 'react-bootstrap/Button';
 import Collapse from 'react-bootstrap/Collapse';
+import Pagination from 'react-bootstrap/Pagination';
 import { selectIsAuthenticated } from '../../auth/slices/authSlice';
 import {
     fetchCommentsForParent,
@@ -51,6 +52,8 @@ const CommentList = ({ parentEntityType, parentId }) => {
             // Only dispatch if this component's target is different from what's already active in slice
             if (activeParentInSlice.type !== parentEntityType || activeParentInSlice.id !== parentId) {
                 dispatch(setCurrentParentEntityForComments({ parentEntityType, parentId }));
+                // Reset to page 1 khi vào post mới để không bị giữ trạng thái trang cũ
+                dispatch(setCommentsPage({ parentId, pageNumber: 1 }));
             }
         }
         // Cleanup when this CommentList instance unmounts, if it was the active one
@@ -84,6 +87,103 @@ const CommentList = ({ parentEntityType, parentId }) => {
             dispatch(setCommentsPage({ parentId, pageNumber: pagination.PageNumber + 1 }));
         }
     };
+    
+    // Hàm xử lý chuyển trang cho phân trang số
+    const handlePageChange = (pageNumber) => {
+        if (parentId && isThisListInstanceCurrentlyActiveInSlice && status !== 'loading') {
+            dispatch(setCommentsPage({ parentId, pageNumber }));
+        }
+    };
+    
+    // Render phân trang số tương tự như post
+    const renderPagination = () => {
+        if (!pagination.totalPages || pagination.totalPages <= 1) return null;
+        
+        let items = [];
+        const maxPagesToShow = 5;
+        let startPage = Math.max(1, pagination.PageNumber - Math.floor(maxPagesToShow / 2));
+        let endPage = Math.min(pagination.totalPages, startPage + maxPagesToShow - 1);
+        
+        // Điều chỉnh startPage nếu cần
+        if (endPage - startPage + 1 < maxPagesToShow) {
+            startPage = Math.max(1, endPage - maxPagesToShow + 1);
+        }
+        
+        // Nút Previous
+        if (pagination.PageNumber > 1) {
+            items.push(
+                <Pagination.Prev 
+                    key="prev" 
+                    onClick={() => handlePageChange(pagination.PageNumber - 1)}
+                    disabled={status === 'loading'}
+                />
+            );
+        }
+        
+        // Số trang đầu và ellipsis nếu cần
+        if (startPage > 1) {
+            items.push(
+                <Pagination.Item 
+                    key={1} 
+                    onClick={() => handlePageChange(1)}
+                    disabled={status === 'loading'}
+                >
+                    1
+                </Pagination.Item>
+            );
+            if (startPage > 2) {
+                items.push(<Pagination.Ellipsis key="start-ellipsis" disabled />);
+            }
+        }
+        
+        // Các số trang chính
+        for (let number = startPage; number <= endPage; number++) {
+            items.push(
+                <Pagination.Item 
+                    key={number} 
+                    active={number === pagination.PageNumber}
+                    onClick={() => handlePageChange(number)}
+                    disabled={status === 'loading'}
+                >
+                    {number}
+                </Pagination.Item>
+            );
+        }
+        
+        // Số trang cuối và ellipsis nếu cần
+        if (endPage < pagination.totalPages) {
+            if (endPage < pagination.totalPages - 1) {
+                items.push(<Pagination.Ellipsis key="end-ellipsis" disabled />);
+            }
+            items.push(
+                <Pagination.Item 
+                    key={pagination.totalPages} 
+                    onClick={() => handlePageChange(pagination.totalPages)}
+                    disabled={status === 'loading'}
+                >
+                    {pagination.totalPages}
+                </Pagination.Item>
+            );
+        }
+        
+        // Nút Next
+        if (pagination.PageNumber < pagination.totalPages) {
+            items.push(
+                <Pagination.Next 
+                    key="next" 
+                    onClick={() => handlePageChange(pagination.PageNumber + 1)}
+                    disabled={status === 'loading'}
+                />
+            );
+        }
+        
+        return (
+            <div className="d-flex justify-content-center align-items-center mt-3">
+                <Pagination size="sm">{items}</Pagination>
+            </div>
+        );
+    };
+    
     const handleTopLevelCommentAdded = () => setShowTopLevelAddCommentForm(false);
 
     // If this CommentList instance is not the one Redux is currently focused on,
@@ -92,7 +192,7 @@ const CommentList = ({ parentEntityType, parentId }) => {
     if (!isThisListInstanceCurrentlyActiveInSlice) {
         // This can happen briefly when switching between posts' comment sections.
         // Returning null or a minimal placeholder is fine.
-        return <div className="mt-2 py-3 text-center text-muted small">...</div>;
+        return <div className="mt-2 py-3 text-center text-muted small">Đang chuyển đổi...</div>;
     }
 
     // --- RENDER LOGIC for the active CommentList ---
@@ -105,7 +205,9 @@ const CommentList = ({ parentEntityType, parentId }) => {
 
     return (
         <div className="mt-2">
-            <h5 className="mb-3 visually-hidden">Bình luận ({pagination.totalCount || 0})</h5>
+            <h5 className="mb-3 visually-hidden">
+                Bình luận ({status === 'succeeded' ? pagination.totalCount : (status === 'loading' ? '...' : '?')})
+            </h5>
 
             {isAuthenticated && (
                 <div className="mb-3">
@@ -135,7 +237,6 @@ const CommentList = ({ parentEntityType, parentId }) => {
 
             {(isAuthenticated || comments.length > 0 || status === 'loading') && comments.length > 0 && <hr className="my-2" />}
 
-
             {status === 'succeeded' && comments.length === 0 && (
                 <p className="text-muted small text-center mt-2">Chưa có bình luận nào.</p>
             )}
@@ -145,12 +246,21 @@ const CommentList = ({ parentEntityType, parentId }) => {
             ))}
 
             {status === 'loading' && comments.length > 0 && (
-                <div className="text-center mt-2"><Spinner animation="border" size="sm" /> Đang tải thêm...</div>
+                <div className="text-center mt-2">
+                    <Spinner animation="border" size="sm" /> Đang tải trang {pagination.PageNumber}...
+                </div>
             )}
 
-            {status === 'succeeded' && comments.length > 0 && pagination.PageNumber < pagination.totalPages && (
-                <div className="text-center mt-3">
-                    <Button variant="outline-secondary" size="sm" onClick={handleLoadMore}>Xem thêm bình luận</Button>
+            {/* Hiển thị phân trang số thay vì nút "Xem thêm" */}
+            {status === 'succeeded' && comments.length > 0 && pagination.totalPages > 1 && renderPagination()}
+            
+            {/* Hiển thị thông tin trang hiện tại */}
+            {status === 'succeeded' && comments.length > 0 && pagination.totalPages > 0 && (
+                <div className="text-center mt-2">
+                    <small className="text-muted">
+                        Trang {pagination.PageNumber} / {pagination.totalPages} 
+                        ({pagination.totalCount} bình luận)
+                    </small>
                 </div>
             )}
         </div>

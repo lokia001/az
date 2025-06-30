@@ -37,6 +37,10 @@ import {
     selectSetReactionStatus, // To disable button while liking/unliking
 } from '../features/reactions/slices/reactionSlice'; // Adjust path if needed
 import { selectIsAuthenticated, selectCurrentUser } from '../features/auth/slices/authSlice';
+import { 
+    setActiveCommentPost, 
+    clearActiveCommentPost 
+} from '../features/community/slices/communitySlice';
 
 // Helper for post image URL (same as before)
 const getPostImageUrl = (urlPath) => {
@@ -119,8 +123,17 @@ function PostDetailPage() {
         return () => {
             console.log('[PostDetailPage] Unmounting, clearing current post detail.');
             dispatch(clearPostDetail()); // Clear post detail when leaving the page
+            dispatch(clearActiveCommentPost()); // Clear active comment post when leaving
         };
     }, [dispatch, postId]); // Simplified dependencies
+
+    // Effect 1.5: Set active comment post for this page
+    useEffect(() => {
+        if (post && post.id) {
+            console.log(`[PostDetailPage] Setting active comment post to ${post.id}`);
+            dispatch(setActiveCommentPost(post.id));
+        }
+    }, [dispatch, post]);
 
     // Effect 2: Fetch reaction summary for the loaded post
     useEffect(() => {

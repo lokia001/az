@@ -2,6 +2,9 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {
     createCommunityAPI,
+    updateCommunityAPI,
+    deleteCommunityAPI,
+    fetchCommunityDetailAPI,
     searchCommunitiesAPI,
     fetchMyJoinedCommunitiesAPI,
     fetchPostsForCommunityAPI,
@@ -30,6 +33,16 @@ const initialState = {
     communityPostsError: null,
     createPostStatus: 'idle',
     createPostError: null,
+    // THÊM: Track post nào đang mở comment để tránh conflict
+    activeCommentPostId: null, // Chỉ cho phép 1 post mở comment tại một thời điểm
+    // THÊM: Community management states
+    updateCommunityStatus: 'idle',
+    updateCommunityError: null,
+    deleteCommunityStatus: 'idle',
+    deleteCommunityError: null,
+    communityDetailStatus: 'idle',
+    communityDetailError: null,
+    communityDetail: null, // CommunityDto khi fetch detail
 };
 
 export const fetchMyJoinedCommunities = createAsyncThunk(/* ... as in your checkpoint ... */
@@ -78,6 +91,52 @@ export const createNewPost = createAsyncThunk(
     }
 );
 
+// THÊM: Thunk để update community
+export const updateCommunity = createAsyncThunk(
+    'community/updateCommunity',
+    async ({ communityId, updateData }, { dispatch, rejectWithValue }) => {
+        try {
+            const updatedCommunity = await updateCommunityAPI(communityId, updateData);
+            // Refresh joined communities list nếu cần
+            dispatch(fetchMyJoinedCommunities());
+            return updatedCommunity;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+// THÊM: Thunk để delete community
+export const deleteCommunity = createAsyncThunk(
+    'community/deleteCommunity',
+    async (communityId, { dispatch, rejectWithValue }) => {
+        try {
+            const success = await deleteCommunityAPI(communityId);
+            if (success) {
+                // Refresh joined communities list
+                dispatch(fetchMyJoinedCommunities());
+                return communityId;
+            } else {
+                throw new Error('Delete failed');
+            }
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+// THÊM: Thunk để fetch community detail
+export const fetchCommunityDetail = createAsyncThunk(
+    'community/fetchCommunityDetail',
+    async (communityId, { rejectWithValue }) => {
+        try {
+            return await fetchCommunityDetailAPI(communityId);
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
 const communitySlice = createSlice({
     name: 'community',
     initialState,
@@ -122,7 +181,25 @@ const communitySlice = createSlice({
             } else {
                 console.warn(`[CommunitySlice] updatePostCommentCount: Post with ID ${postId} not found in communityPosts.`);
             }
-        }
+        },
+        
+        // *** THÊM: Quản lý post nào đang mở comment ***
+        setActiveCommentPost: (state, action) => {
+            const postId = action.payload;
+            if (state.activeCommentPostId !== postId) {
+                console.log(`[CommunitySlice] Setting active comment post from ${state.activeCommentPostId} to ${postId}`);
+                state.activeCommentPostId = postId;
+            }
+        },
+        clearActiveCommentPost: (state) => {
+            console.log(`[CommunitySlice] Clearing active comment post ${state.activeCommentPostId}`);
+            state.activeCommentPostId = null;
+        },
+
+        // *** THÊM: Clear community management status ***
+        clearUpdateCommunityStatus: (state) => { state.updateCommunityStatus = 'idle'; state.updateCommunityError = null; },
+        clearDeleteCommunityStatus: (state) => { state.deleteCommunityStatus = 'idle'; state.deleteCommunityError = null; },
+        clearCommunityDetailStatus: (state) => { state.communityDetailStatus = 'idle'; state.communityDetailError = null; }
     },
     extraReducers: (builder) => {
         builder
@@ -162,6 +239,34 @@ const communitySlice = createSlice({
         builder.addCase(fetchMyJoinedCommunities.pending, (s) => { s.myJoinedCommunitiesStatus = 'loading'; s.myJoinedCommunitiesError = null; }).addCase(fetchMyJoinedCommunities.fulfilled, (s, a) => { s.myJoinedCommunitiesStatus = 'succeeded'; s.myJoinedCommunities = a.payload; }).addCase(fetchMyJoinedCommunities.rejected, (s, a) => { s.myJoinedCommunitiesStatus = 'failed'; s.myJoinedCommunitiesError = a.payload; });
         builder.addCase(searchCommunities.pending, (s) => { s.searchStatus = 'loading'; s.searchError = null; }).addCase(searchCommunities.fulfilled, (s, a) => { s.searchStatus = 'succeeded'; s.searchedCommunities = a.payload.items; s.searchPagination = { PageNumber: a.payload.pageNumber, PageSize: a.payload.pageSize, totalCount: a.payload.totalCount, totalPages: a.payload.totalPages }; }).addCase(searchCommunities.rejected, (s, a) => { s.searchStatus = 'failed'; s.searchError = a.payload; });
         builder.addCase(createCommunity.pending, (s) => { s.createCommunityStatus = 'loading'; s.createCommunityError = null; }).addCase(createCommunity.fulfilled, (s, a) => { s.createCommunityStatus = 'succeeded'; }).addCase(createCommunity.rejected, (s, a) => { s.createCommunityStatus = 'failed'; s.createCommunityError = a.payload; });
+
+        // *** THÊM extraReducers cho community management ***
+        builder
+            .addCase(fetchCommunityDetail.pending, (state) => { state.communityDetailStatus = 'loading'; state.communityDetailError = null; })
+            .addCase(fetchCommunityDetail.fulfilled, (state, action) => { state.communityDetailStatus = 'succeeded'; state.communityDetail = action.payload; })
+            .addCase(fetchCommunityDetail.rejected, (state, action) => { state.communityDetailStatus = 'failed'; state.communityDetailError = action.payload; });
+
+        builder
+            .addCase(updateCommunity.pending, (state) => { state.updateCommunityStatus = 'loading'; state.updateCommunityError = null; })
+            .addCase(updateCommunity.fulfilled, (state, action) => { 
+                state.updateCommunityStatus = 'succeeded'; 
+                // Cập nhật community detail nếu cùng ID
+                if (state.communityDetail && state.communityDetail.id === action.payload.id) {
+                    state.communityDetail = action.payload;
+                }
+            })
+            .addCase(updateCommunity.rejected, (state, action) => { state.updateCommunityStatus = 'failed'; state.updateCommunityError = action.payload; });
+
+        builder
+            .addCase(deleteCommunity.pending, (state) => { state.deleteCommunityStatus = 'loading'; state.deleteCommunityError = null; })
+            .addCase(deleteCommunity.fulfilled, (state, action) => { 
+                state.deleteCommunityStatus = 'succeeded'; 
+                // Clear community detail nếu bị xóa
+                if (state.communityDetail && state.communityDetail.id === action.payload) {
+                    state.communityDetail = null;
+                }
+            })
+            .addCase(deleteCommunity.rejected, (state, action) => { state.deleteCommunityStatus = 'failed'; state.deleteCommunityError = action.payload; });
     },
 });
 
@@ -169,7 +274,9 @@ export const {
     setSelectedCommunity, clearSelectedCommunity, setCommunityPostsPage, clearCommunityPostsError,
     clearCreatePostStatus,
     setCommunitySearchFilter, setCommunitySearchPage, resetCommunitySearchFilters, clearCreateCommunityStatus,
-    updatePostCommentCount // *** EXPORTED NEW ACTION ***
+    updatePostCommentCount, // *** EXPORTED NEW ACTION ***
+    setActiveCommentPost, clearActiveCommentPost, // *** THÊM exports cho comment post management ***
+    clearUpdateCommunityStatus, clearDeleteCommunityStatus, clearCommunityDetailStatus // *** THÊM exports cho community management ***
 } = communitySlice.actions;
 
 // Selectors
@@ -189,6 +296,17 @@ export const selectMyJoinedCommunitiesStatus = (state) => state.community.myJoin
 export const selectMyJoinedCommunitiesError = (state) => state.community.myJoinedCommunitiesError;
 export const selectSearchStatus = (state) => state.community.searchStatus;
 export const selectSearchError = (state) => state.community.searchError;
+// *** THÊM selector cho active comment post ***
+export const selectActiveCommentPostId = (state) => state.community.activeCommentPostId;
+
+// *** THÊM selectors cho community management ***
+export const selectCommunityDetail = (state) => state.community.communityDetail;
+export const selectCommunityDetailStatus = (state) => state.community.communityDetailStatus;
+export const selectCommunityDetailError = (state) => state.community.communityDetailError;
+export const selectUpdateCommunityStatus = (state) => state.community.updateCommunityStatus;
+export const selectUpdateCommunityError = (state) => state.community.updateCommunityError;
+export const selectDeleteCommunityStatus = (state) => state.community.deleteCommunityStatus;
+export const selectDeleteCommunityError = (state) => state.community.deleteCommunityError;
 
 
 export default communitySlice.reducer;

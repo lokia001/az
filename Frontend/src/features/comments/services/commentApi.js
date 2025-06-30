@@ -95,3 +95,63 @@ export const fetchCommentWithRepliesAPI = async (commentId, includeReplies = tru
         throw new Error(extractErrorMessage(error, `Failed to fetch comment ${commentId}.`));
     }
 };
+
+/**
+ * API: Update Comment
+ * @param {string} commentId - GUID of the comment to update
+ * @param {object} updateData - Object with { content }
+ * @returns {Promise<object>} Updated CommentDto
+ */
+export const updateCommentAPI = async (commentId, updateData) => {
+    if (!commentId) {
+        throw new Error("Comment ID is required to update comment.");
+    }
+    const { content } = updateData;
+    if (!content || !content.trim()) {
+        throw new Error("Content is required to update comment.");
+    }
+    const payload = { content: content.trim() };
+    const endpoint = `/api/comments/${commentId}`;
+    console.log(`[CommentApiService] Calling PUT ${endpoint} with payload:`, payload);
+    try {
+        const response = await apiClient.put(endpoint, payload);
+        return response.data; // Expected: Updated CommentDto
+    } catch (error) {
+        const defaultMsg = `Failed to update comment ID ${commentId}.`;
+        let finalErrorMessage = error.message && error.message !== defaultMsg ? error.message : defaultMsg;
+        if (error.status === 404) {
+            finalErrorMessage = `Bình luận với ID '${commentId}' không tìm thấy để cập nhật.`;
+        } else if (error.status === 403) {
+            finalErrorMessage = `Bạn không có quyền chỉnh sửa bình luận này.`;
+        }
+        console.error(`[CommentApiService] Error updating comment. Message:`, finalErrorMessage, 'Original error:', error);
+        throw new Error(finalErrorMessage);
+    }
+};
+
+/**
+ * API: Delete Comment
+ * @param {string} commentId - GUID of the comment to delete
+ * @returns {Promise<boolean>} Success status
+ */
+export const deleteCommentAPI = async (commentId) => {
+    if (!commentId) {
+        throw new Error("Comment ID is required to delete comment.");
+    }
+    const endpoint = `/api/comments/${commentId}`;
+    console.log(`[CommentApiService] Calling DELETE ${endpoint}`);
+    try {
+        await apiClient.delete(endpoint);
+        return true; // Success
+    } catch (error) {
+        const defaultMsg = `Failed to delete comment ID ${commentId}.`;
+        let finalErrorMessage = error.message && error.message !== defaultMsg ? error.message : defaultMsg;
+        if (error.status === 404) {
+            finalErrorMessage = `Bình luận với ID '${commentId}' không tìm thấy để xóa.`;
+        } else if (error.status === 403) {
+            finalErrorMessage = `Bạn không có quyền xóa bình luận này.`;
+        }
+        console.error(`[CommentApiService] Error deleting comment. Message:`, finalErrorMessage, 'Original error:', error);
+        throw new Error(finalErrorMessage);
+    }
+};

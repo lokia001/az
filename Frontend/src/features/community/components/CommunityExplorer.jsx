@@ -12,6 +12,7 @@ import Spinner from 'react-bootstrap/Spinner';
 import Alert from 'react-bootstrap/Alert';
 import Pagination from 'react-bootstrap/Pagination';
 import Image from 'react-bootstrap/Image';
+import Dropdown from 'react-bootstrap/Dropdown';
 import {
   searchCommunities,
   setCommunitySearchFilter,
@@ -19,8 +20,14 @@ import {
   resetCommunitySearchFilters,
   selectSearchedCommunities,
   selectSearchStatus,
-  selectSearchError
+  selectSearchError,
+  deleteCommunity,
+  selectDeleteCommunityStatus,
+  selectDeleteCommunityError,
+  clearDeleteCommunityStatus,
 } from '../slices/communitySlice';
+import { selectIsAuthenticated, selectCurrentUser } from '../../auth/slices/authSlice';
+import EditCommunityModal from './EditCommunityModal';
 
 const CommunityExplorer = () => {
   const dispatch = useDispatch();
@@ -29,8 +36,16 @@ const CommunityExplorer = () => {
   const searchStatus = useSelector(selectSearchStatus);
   const searchError = useSelector(selectSearchError);
   
-  const [searchKeyword, setSearchKeyword] = useState('');
+  // *** THÊM selectors cho auth và community management ***
+  const isAuthenticated = useSelector(selectIsAuthenticated);
+  const currentUser = useSelector(selectCurrentUser);
+  const deleteStatus = useSelector(selectDeleteCommunityStatus);
+  const deleteError = useSelector(selectDeleteCommunityError);
   
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [editingCommunity, setEditingCommunity] = useState(null); // *** THÊM state cho edit modal ***
+  const [showEditModal, setShowEditModal] = useState(false); // *** THÊM ***
+
   // Access the pagination info from Redux store
   const pagination = useSelector(state => state.community.searchPagination);
 
@@ -55,6 +70,54 @@ const CommunityExplorer = () => {
   const handleViewCommunity = (communityId) => {
     navigate(`/communities/${communityId}`);
   };
+
+  // *** THÊM: Function kiểm tra quyền quản lý community ***
+  const canManageCommunity = (community) => {
+    if (!isAuthenticated || !currentUser || !community) {
+      return false;
+    }
+    return (currentUser.id || currentUser.userId) === community.createdByUserId;
+  };
+
+  // *** THÊM: Handler cho edit community ***
+  const handleEditCommunity = (community) => {
+    setEditingCommunity(community);
+    setShowEditModal(true);
+  };
+
+  // *** THÊM: Handler cho delete community ***
+  const handleDeleteCommunity = (community) => {
+    const confirmMessage = `Bạn có chắc chắn muốn xóa cộng đồng "${community.name}" không?\n\nHành động này không thể hoàn tác!`;
+    if (window.confirm(confirmMessage)) {
+      dispatch(deleteCommunity(community.id));
+    }
+  };
+
+  // *** THÊM: Handle thành công delete ***
+  useEffect(() => {
+    if (deleteStatus === 'succeeded') {
+      // Refresh community list
+      dispatch(searchCommunities());
+      dispatch(clearDeleteCommunityStatus());
+    }
+  }, [deleteStatus, dispatch]);
+
+  // *** THÊM: Handle thành công update ***
+  useEffect(() => {
+    // Listen for successful update to refresh list
+    // EditCommunityModal sẽ tự đóng sau khi thành công
+    // Ta chỉ cần refresh list nếu đang ở trang explorer
+    const handleUpdateSuccess = () => {
+      if (showEditModal) {
+        dispatch(searchCommunities());
+        setShowEditModal(false);
+        setEditingCommunity(null);
+      }
+    };
+    
+    // Ta sẽ listen qua updateStatus trong EditCommunityModal
+    // Hoặc đơn giản hơn, chỉ refresh khi modal đóng
+  }, [dispatch, showEditModal]);
 
   // Function to get community image URL
   const getCommunityImageUrl = (community) => {
@@ -131,96 +194,144 @@ const CommunityExplorer = () => {
 
   return (
     <div className="community-explorer">
-      <h2>Khám phá Cộng đồng</h2>
-      <p className="text-muted">Tìm và tham gia các cộng đồng phù hợp với sở thích của bạn.</p>
-      
-      <Form onSubmit={handleSearch} className="mb-4">
-        <Row>
-          <Col md={6} className="mb-2">
-            <InputGroup>
-              <Form.Control
-                type="text"
-                placeholder="Tìm cộng đồng theo tên..."
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-              />
-              <Button type="submit" variant="primary">
-                Tìm kiếm
-              </Button>
-            </InputGroup>
-          </Col>
-        </Row>
-      </Form>
+      <div className="container-fluid">
+          {/* *** THÊM: Alert cho delete error *** */}
+          {deleteStatus === 'failed' && deleteError && (
+            <Alert variant="danger" className="mb-3" onClose={() => dispatch(clearDeleteCommunityStatus())} dismissible>
+              Lỗi xóa cộng đồng: {deleteError}
+            </Alert>
+          )}
 
-      {searchStatus === 'loading' && (
-        <div className="text-center p-5">
-          <Spinner animation="border" role="status">
-            <span className="visually-hidden">Đang tải...</span>
-          </Spinner>
-        </div>
-      )}
-
-      {searchStatus === 'failed' && (
-        <Alert variant="danger">
-          Không thể tải danh sách cộng đồng: {searchError}
-        </Alert>
-      )}
-
-      {searchStatus === 'succeeded' && (
-        <>
-          <Row className="mb-3">
+          <Row className="mb-4">
             <Col>
-              <p>Hiển thị {searchedCommunities.length} kết quả từ {pagination.totalCount} cộng đồng</p>
+              <h2 className="mb-3">Khám phá Cộng đồng</h2>
+              <Form onSubmit={handleSearch}>
+                <Row>
+                  <Col md={6} className="mb-2">
+                    <InputGroup>
+                      <Form.Control
+                        type="text"
+                        placeholder="Tìm cộng đồng theo tên..."
+                        value={searchKeyword}
+                        onChange={(e) => setSearchKeyword(e.target.value)}
+                      />
+                      <Button type="submit" variant="primary">
+                        Tìm kiếm
+                      </Button>
+                    </InputGroup>
+                  </Col>
+                </Row>
+              </Form>
+
+              {searchStatus === 'loading' && (
+                <div className="text-center p-5">
+                  <Spinner animation="border" role="status">
+                    <span className="visually-hidden">Đang tải...</span>
+                  </Spinner>
+                </div>
+              )}
+
+              {searchStatus === 'failed' && (
+                <Alert variant="danger">
+                  Không thể tải danh sách cộng đồng: {searchError}
+                </Alert>
+              )}
+
+              {searchStatus === 'succeeded' && (
+                <>
+                  <Row className="mb-3">
+                    <Col>
+                      <p>Hiển thị {searchedCommunities.length} kết quả từ {pagination.totalCount} cộng đồng</p>
+                    </Col>
+                  </Row>
+                  
+                  <Row xs={1} md={2} lg={3} className="g-4">
+                    {searchedCommunities.length > 0 ? (
+                      searchedCommunities.map((community) => (
+                        <Col key={community.id}>
+                          <Card className="h-100 shadow-sm">
+                            <div style={{ height: '150px', overflow: 'hidden' }}>
+                              <Image 
+                                src={getCommunityImageUrl(community)} 
+                                alt={community.name} 
+                                className="w-100 h-100"
+                                style={{ objectFit: 'cover' }} 
+                              />
+                            </div>
+                            <Card.Body>
+                              <div className="d-flex justify-content-between align-items-start">
+                                <Card.Title className="mb-0">{community.name}</Card.Title>
+                                {/* *** THÊM: Dropdown quản lý cho chủ community *** */}
+                                {canManageCommunity(community) && (
+                                  <Dropdown>
+                                    <Dropdown.Toggle variant="outline-secondary" size="sm">
+                                      ⚙️
+                                    </Dropdown.Toggle>
+                                    <Dropdown.Menu>
+                                      <Dropdown.Item onClick={() => handleEditCommunity(community)}>
+                                        ✏️ Chỉnh sửa
+                                      </Dropdown.Item>
+                                      <Dropdown.Divider />
+                                      <Dropdown.Item 
+                                        onClick={() => handleDeleteCommunity(community)}
+                                        className="text-danger"
+                                        disabled={deleteStatus === 'loading'}
+                                      >
+                                        🗑️ Xóa
+                                      </Dropdown.Item>
+                                    </Dropdown.Menu>
+                                  </Dropdown>
+                                )}
+                              </div>
+                              <Card.Text className="text-muted small">
+                                {community.memberCount || 0} thành viên
+                                {!community.isPublic && <span className="badge bg-secondary ms-2">Riêng tư</span>}
+                              </Card.Text>
+                              <Card.Text>
+                                {community.description?.length > 100 
+                                  ? `${community.description.substring(0, 100)}...` 
+                                  : community.description}
+                              </Card.Text>
+                              <Button 
+                                variant="outline-primary" 
+                                onClick={() => handleViewCommunity(community.id)}
+                                className="w-100"
+                              >
+                                Xem chi tiết
+                              </Button>
+                            </Card.Body>
+                          </Card>
+                        </Col>
+                      ))
+                    ) : (
+                      <Col xs={12}>
+                        <Alert variant="info">
+                          Không tìm thấy cộng đồng nào phù hợp với tìm kiếm của bạn.
+                        </Alert>
+                      </Col>
+                    )}
+                  </Row>
+                  
+                  <div className="d-flex justify-content-center mt-4">
+                    {renderPagination()}
+                  </div>
+                </>
+              )}
+
+              {/* *** THÊM modal chỉnh sửa cộng đồng *** */}
+              {editingCommunity && (
+                <EditCommunityModal
+                  show={showEditModal}
+                  onHide={() => {
+                    setShowEditModal(false);
+                    setEditingCommunity(null);
+                  }}
+                  community={editingCommunity}
+                />
+              )}
             </Col>
           </Row>
-          
-          <Row xs={1} md={2} lg={3} className="g-4">
-            {searchedCommunities.length > 0 ? (
-              searchedCommunities.map((community) => (
-                <Col key={community.id}>
-                  <Card className="h-100 shadow-sm">
-                    <div style={{ height: '150px', overflow: 'hidden' }}>
-                      <Image 
-                        src={getCommunityImageUrl(community)} 
-                        alt={community.name} 
-                        className="w-100 h-100"
-                        style={{ objectFit: 'cover' }} 
-                      />
-                    </div>
-                    <Card.Body>
-                      <Card.Title>{community.name}</Card.Title>
-                      <Card.Text className="text-muted small">
-                        {community.memberCount || 0} thành viên
-                      </Card.Text>
-                      <Card.Text>
-                        {community.description?.length > 100 
-                          ? `${community.description.substring(0, 100)}...` 
-                          : community.description}
-                      </Card.Text>
-                      <Button 
-                        variant="outline-primary" 
-                        onClick={() => handleViewCommunity(community.id)}
-                      >
-                        Xem chi tiết
-                      </Button>
-                    </Card.Body>
-                  </Card>
-                </Col>
-              ))
-            ) : (
-              <Col xs={12}>
-                <Alert variant="info">
-                  Không tìm thấy cộng đồng nào phù hợp với tìm kiếm của bạn.
-                </Alert>
-              </Col>
-            )}
-          </Row>
-          
-          <div className="d-flex justify-content-center mt-4">
-            {renderPagination()}
-          </div>
-        </>
-      )}
+        </div>
     </div>
   );
 };

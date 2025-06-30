@@ -27,6 +27,11 @@ import { selectIsAuthenticated, selectCurrentUser } from '../../auth/slices/auth
 import { getCachedUserInfo } from '../../../utils/userCache';
 import { formatVietnameseTime } from '../../../utils/timeUtils';
 import { deletePost } from '../../posts/slices/postDetailSlice';
+import { 
+    setActiveCommentPost, 
+    clearActiveCommentPost, 
+    selectActiveCommentPostId 
+} from '../slices/communitySlice';
 
 // Define available reaction types (as per your API spec)
 const REACTION_TYPES = {
@@ -40,7 +45,11 @@ const REACTION_TYPES = {
 
 const PostCard = ({ post }) => {
     const dispatch = useDispatch();
-    const [showComments, setShowComments] = useState(false);
+    
+    // *** THAY ĐỔI: Sử dụng global state thay vì local state ***
+    const activeCommentPostId = useSelector(selectActiveCommentPostId);
+    const showComments = activeCommentPostId === post.id; // true nếu post này đang active
+    
     const [authorInfo, setAuthorInfo] = useState({
         displayName: 'Đang tải...',
         avatarUrl: DEFAULT_PROFILE_AVATAR
@@ -60,11 +69,25 @@ const PostCard = ({ post }) => {
 
     const currentUserReaction = reactionSummary?.currentUserReactionType; // e.g., "Like", "Love", null
 
+   const currentCommentingParent = useSelector(selectCurrentParentEntityInfo);
+    const postIsActiveCommentParent = currentCommentingParent.type === "Post" && currentCommentingParent.id === post.id;
+   
+
     useEffect(() => {
         if (post.id && reactionStatus === 'idle') {
             dispatch(fetchReactionSummary({ targetEntityType: "Post", targetEntityId: post.id }));
         }
     }, [dispatch, post.id, reactionStatus]);
+
+    // *** THÊM: Effect để handle khi active comment post thay đổi ***
+    useEffect(() => {
+        // Nếu comment post active thay đổi và không phải là post này
+        // thì clear comment state nếu post này đang là active comment parent
+        if (activeCommentPostId !== post.id && postIsActiveCommentParent) {
+            console.log(`[PostCard ${post.id}] Active comment post changed to ${activeCommentPostId}, clearing comment state`);
+            dispatch(clearCurrentParentEntityForComments());
+        }
+    }, [activeCommentPostId, post.id, postIsActiveCommentParent, dispatch]);
 
     // Load author info
     useEffect(() => {
@@ -102,26 +125,59 @@ const PostCard = ({ post }) => {
     }, [post.authorUserId, post.author, post.authorUser]);
 
     // --- Comment Count State (same as before) ---
-    const currentCommentingParent = useSelector(selectCurrentParentEntityInfo);
-    const postIsActiveCommentParent = currentCommentingParent.type === "Post" && currentCommentingParent.id === post.id;
+    // const currentCommentingParent = useSelector(selectCurrentParentEntityInfo);
+    // const postIsActiveCommentParent = currentCommentingParent.type === "Post" && currentCommentingParent.id === post.id;
+   
+   
     const commentsDataForThisPost = useSelector(state => {
         if (postIsActiveCommentParent) {
             return { pagination: selectPostCommentsPagination(state), status: selectPostCommentsStatus(state) };
         }
         return null;
     }); // Same logic
-    let commentButtonText = post.initialCommentsCount || 0;
-    if (postIsActiveCommentParent) { /* ... same logic for commentButtonText ... */
-        if (commentsDataForThisPost?.status === 'loading') commentButtonText = <Spinner as="span" animation="border" size="sm" />;
-        else if (commentsDataForThisPost?.status === 'succeeded') commentButtonText = commentsDataForThisPost.pagination.totalCount;
-        else if (commentsDataForThisPost?.status === 'failed') commentButtonText = "Lỗi";
-        else if (commentsDataForThisPost?.status === 'idle' && showComments) commentButtonText = <Spinner as="span" animation="border" size="sm" />;
+    // Logic hiển thị số comment: chính xác khi đã load, "?" khi chưa biết
+    let commentButtonText;
+    const initialCount = post.initialCommentsCount;
+    
+    if (postIsActiveCommentParent) {
+        // Nếu đang active và đã có data từ Redux
+        if (commentsDataForThisPost?.status === 'loading') {
+            commentButtonText = <Spinner as="span" animation="border" size="sm" />;
+        } else if (commentsDataForThisPost?.status === 'succeeded') {
+            // Hiển thị số chính xác từ pagination
+            commentButtonText = commentsDataForThisPost.pagination.totalCount;
+        } else if (commentsDataForThisPost?.status === 'failed') {
+            commentButtonText = "Lỗi";
+        } else if (commentsDataForThisPost?.status === 'idle' && showComments) {
+            commentButtonText = <Spinner as="span" animation="border" size="sm" />;
+        } else {
+            // Fallback
+            commentButtonText = typeof initialCount === 'number' ? initialCount : "?";
+        }
+    } else {
+        // Chưa active: hiển thị initial count hoặc "?" nếu không biết
+        if (typeof initialCount === 'number' && initialCount >= 0) {
+            commentButtonText = initialCount;
+        } else {
+            // Nếu không có thông tin initial, hiển thị "?" để báo hiệu cần click để biết
+            commentButtonText = "?";
+        }
     }
 
-    const handleToggleComments = () => { /* ... same as before ... */
-        const newShowState = !showComments; setShowComments(newShowState);
-        if (newShowState) { dispatch(setCurrentParentEntityForComments({ parentEntityType: "Post", parentId: post.id })); }
-        else { if (postIsActiveCommentParent) { dispatch(clearCurrentParentEntityForComments()); } }
+    const handleToggleComments = () => {
+        if (showComments) {
+            // Đang mở -> đóng comment của post này
+            dispatch(clearActiveCommentPost());
+            if (postIsActiveCommentParent) {
+                dispatch(clearCurrentParentEntityForComments());
+            }
+        } else {
+            // Đang đóng -> mở comment của post này
+            // Trước tiên set post này là active (sẽ tự động đóng post khác nếu có)
+            dispatch(setActiveCommentPost(post.id));
+            // Sau đó set comment parent entity
+            dispatch(setCurrentParentEntityForComments({ parentEntityType: "Post", parentId: post.id }));
+        }
     };
 
     // *** MODIFIED: Generic Handle Reaction Click ***

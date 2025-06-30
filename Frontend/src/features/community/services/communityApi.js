@@ -30,6 +30,52 @@ export const createCommunityAPI = async (communityData) => {
     }
 };
 
+// API 2: Update Community (chủ community hoặc admin/mod)
+export const updateCommunityAPI = async (communityId, updateData) => {
+    // updateData: { name, description, coverImageUrl, isPublic }
+    if (!communityId) {
+        throw new Error("Community ID is required to update community.");
+    }
+    const endpoint = `/api/communities/${communityId}`;
+    console.log(`[CommunityApiService] Calling PUT ${endpoint} with data:`, updateData);
+    try {
+        const response = await apiClient.put(endpoint, updateData);
+        return response.data; // Expected: CommunityDto
+    } catch (error) {
+        throw new Error(extractErrorMessage(error, 'Failed to update community.'));
+    }
+};
+
+// API 3: Delete Community (chủ community hoặc admin)
+export const deleteCommunityAPI = async (communityId) => {
+    if (!communityId) {
+        throw new Error("Community ID is required to delete community.");
+    }
+    const endpoint = `/api/communities/${communityId}`;
+    console.log(`[CommunityApiService] Calling DELETE ${endpoint}`);
+    try {
+        const response = await apiClient.delete(endpoint);
+        return response.status === 204; // NoContent = success
+    } catch (error) {
+        throw new Error(extractErrorMessage(error, 'Failed to delete community.'));
+    }
+};
+
+// API 5: Get Community Details
+export const fetchCommunityDetailAPI = async (communityId) => {
+    if (!communityId) {
+        throw new Error("Community ID is required to fetch community details.");
+    }
+    const endpoint = `/api/communities/${communityId}`;
+    console.log(`[CommunityApiService] Calling GET ${endpoint}`);
+    try {
+        const response = await apiClient.get(endpoint);
+        return response.data; // Expected: CommunityDto
+    } catch (error) {
+        throw new Error(extractErrorMessage(error, 'Failed to fetch community details.'));
+    }
+};
+
 // API 4: Search/List Communities
 export const searchCommunitiesAPI = async (params = {}) => {
     // params: { NameKeyword, IsPublic, PageNumber, PageSize }
