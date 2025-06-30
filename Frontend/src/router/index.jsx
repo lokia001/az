@@ -6,7 +6,7 @@ import { useDispatch } from 'react-redux';
 import { useSelector } from 'react-redux'; // Import useSelector
 import { selectIsAuthenticated, selectCurrentUser, logoutUser, selectAuthStatus } from '../features/auth/slices/authSlice';
 import {
-    HomePage, NotFoundPage, AboutUs, Community
+    HomePage, NotFoundPage, AboutUs, Community, OwnerDashboard, AdminDashboard
 } from '../pages';
 import MyBookingsPage from '../pages/MyBookings/MyBookingsPage';
 
@@ -57,6 +57,8 @@ import SpaceDetails from '../features/manageSpace/components/SpaceDetails.jsx';
 import OwnerSpaceDetailPage from '../features/manageSpace/pages/OwnerSpaceDetailPage.jsx';
 import OwnerBookingManagement from '../features/ownerBookingManagement/OwnerBookingManagement.jsx';
 import OwnerCustomerManagement from '../features/ownerCustomerManagement/pages/OwnerCustomerManagement.jsx';
+import ProtectedRoute from './ProtectedRoute.jsx';
+import RoleBasedHomepage from '../components/RoleBasedHomepage.jsx';
 
 
 // AppNavbar component đã được loại bỏ để tránh hiện nhiều navbar
@@ -75,11 +77,20 @@ const AppRouter = () => {
                     {/* end mock */}
 
                     {/* ok home */}
-                    <Route index element={<HomePage />} /> {/* TestComponent sẽ render vào Outlet của MainLayout khi path là "/" */}
+                    <Route index element={<RoleBasedHomepage />} /> {/* RoleBasedHomepage sẽ redirect theo role hoặc hiển thị HomePage */}
                     {/* Các routes con khác của MainLayout */}
 
                     {/* guest */}
                     <Route path="about-us" element={<AboutUs />} />
+                    <Route path="explore" element={<SpaceSearchPage />} />
+
+                    {/* Owner Routes */}
+                    <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+                    <Route path="/owner/services-amenities" element={<NotFoundPage message="Owner Services & Amenities - Coming Soon" />} />
+                    
+                    {/* Admin Routes */}
+                    <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                    <Route path="/admin/accounts" element={<AdminUserListPage />} />
 
                     {/* ---mangage space*/}
                     {/* <Route path="manage-space" element={<SpaceList />} />
@@ -130,6 +141,11 @@ const AppRouter = () => {
                         element={<CommunityFeedPage />} // Render the new page component
                     />
                     <Route path="/posts/:postId" element={<PostDetailPage />} />
+                    <Route path="/profile" element={
+                        <ProtectedRoute>
+                            <ProfilePage />
+                        </ProtectedRoute>
+                    } />
                     {/* <Route path="/communities/search" element={<CommunitySearchPage />} /> */}
                     {/*  end ok*/}
                     {/* <Route path="/space-management" element={<SpaceManagementPage />} />

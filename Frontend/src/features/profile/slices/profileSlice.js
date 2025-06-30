@@ -26,6 +26,18 @@ const initialState = {
 // Import the default avatar and profile helpers
 import { DEFAULT_PROFILE_AVATAR, getRandomDefaultAvatar, ensureProfileAvatar } from '../services/profileApi';
 
+// Simple shallow equality check function
+const shallowEqual = (obj1, obj2) => {
+    if (!obj1 || !obj2) return obj1 === obj2;
+    const keys1 = Object.keys(obj1);
+    const keys2 = Object.keys(obj2);
+    if (keys1.length !== keys2.length) return false;
+    for (let key of keys1) {
+        if (obj1[key] !== obj2[key]) return false;
+    }
+    return true;
+};
+
 // Async thunk actions
 export const fetchProfile = createAsyncThunk(
     'profile/fetch',
@@ -149,8 +161,8 @@ const profileSlice = createSlice({
                 // Only update the profileData if it changed to avoid triggering unnecessary re-renders
                 const profileData = ensureProfileAvatar(action.payload);
 
-                // Deep equality check before updating state
-                if (!state.profileData || JSON.stringify(state.profileData) !== JSON.stringify(profileData)) {
+                // Use shallow equality check instead of JSON.stringify for better performance
+                if (!state.profileData || !shallowEqual(state.profileData, profileData)) {
                     state.profileData = profileData;
                 }
             })
@@ -174,8 +186,8 @@ const profileSlice = createSlice({
                         ...action.payload
                     });
 
-                    // Avoid unnecessary re-renders by checking if data actually changed
-                    if (JSON.stringify(updatedProfile) !== JSON.stringify(state.profileData)) {
+                    // Use shallow equality check instead of JSON.stringify for better performance
+                    if (!shallowEqual(updatedProfile, state.profileData)) {
                         state.profileData = updatedProfile;
                     }
                 }
@@ -203,10 +215,10 @@ const profileSlice = createSlice({
             })
             .addCase(uploadProfilePicture.fulfilled, (state, action) => {
                 state.uploadPictureStatus = 'succeeded';
-                if (action.payload.profilePictureUrl) {
+                if (action.payload.avatarUrl) {
                     state.profileData = {
                         ...state.profileData,
-                        profilePictureUrl: action.payload.profilePictureUrl
+                        avatarUrl: action.payload.avatarUrl
                     };
                 }
             })

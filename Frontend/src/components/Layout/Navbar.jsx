@@ -13,7 +13,6 @@ import { useTranslation } from 'react-i18next';
 import styles from './Navbar.module.css';
 
 // Icons
-const BellIcon = () => <span>🔔</span>;
 const SearchIcon = () => <span>🔍</span>;
 const MenuIcon = () => <span>☰</span>;
 const CloseIcon = () => <span>✕</span>;
@@ -35,8 +34,6 @@ function Navbar() {
     const [isAccountDropdownOpen, setIsAccountDropdownOpen] = useState(false);
     const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-    const [isNotificationDropdownOpen, setIsNotificationDropdownOpen] = useState(false);
-    const [hasNewNotifications, setHasNewNotifications] = useState(false);
 
     // Search state
     const [searchQuery, setSearchQuery] = useState('');
@@ -47,7 +44,6 @@ function Navbar() {
     // Refs for dropdowns
     const accountDropdownRef = useRef(null);
     const languageDropdownRef = useRef(null);
-    const notificationDropdownRef = useRef(null);
     const scopeDropdownRef = useRef(null);
 
     // Close dropdowns when clicking outside
@@ -58,9 +54,6 @@ function Navbar() {
             }
             if (languageDropdownRef.current && !languageDropdownRef.current.contains(event.target)) {
                 setIsLanguageDropdownOpen(false);
-            }
-            if (notificationDropdownRef.current && !notificationDropdownRef.current.contains(event.target)) {
-                setIsNotificationDropdownOpen(false);
             }
             if (scopeDropdownRef.current && !scopeDropdownRef.current.contains(event.target)) {
                 setIsScopeDropdownOpen(false);
@@ -86,11 +79,12 @@ function Navbar() {
             console.log('User logged out successfully');
             
             // Use replace instead of navigate to prevent back button from returning to protected pages
-            navigate('/login', { replace: true });
+            // Always redirect to homepage (introduction page) after logout
+            navigate('/', { replace: true });
         } catch (error) {
             console.error('Error during logout:', error);
-            // Still navigate to login even if there was an error
-            navigate('/login', { replace: true });
+            // Still navigate to homepage even if there was an error
+            navigate('/', { replace: true });
         }
     };
 
@@ -103,7 +97,6 @@ function Navbar() {
     const toggleAccountDropdown = () => setIsAccountDropdownOpen(!isAccountDropdownOpen);
     const toggleLanguageDropdown = () => setIsLanguageDropdownOpen(!isLanguageDropdownOpen);
     const toggleMobileMenu = () => setIsMobileMenuOpen(!isMobileMenuOpen);
-    const toggleNotificationDropdown = () => setIsNotificationDropdownOpen(!isNotificationDropdownOpen);
     const toggleScopeDropdown = () => setIsScopeDropdownOpen(!isScopeDropdownOpen);
 
     const handleScopeChange = (newScope) => {
@@ -123,55 +116,48 @@ function Navbar() {
         setIsMobileSearchVisible(false);
     };
 
-    // Get first owned space for Owner users
-    const firstOwnedSpace = currentUser?.ownedSpaces && Array.isArray(currentUser.ownedSpaces) && currentUser.ownedSpaces.length > 0
-        ? currentUser.ownedSpaces[0]
-        : null;
-    const firstOwnedSpaceId = firstOwnedSpace?.id;
-
     // Get navigation links based on user role
     const getNavLinks = () => {
         let links = [];
 
         if (!isAuthenticated) {
+            // Guest - Explore, Community, About us
             links = [
-                { path: '/', label: 'Trang chủ' },
-                { path: '/searchPage', label: 'Tìm kiếm' },
-                { path: '/community', label: 'Cộng đồng' },
-                { path: '/about-us', label: 'Về chúng tôi' },
+                { path: '/explore', label: 'Explore' },
+                { path: '/community', label: 'Community' },
+                { path: '/about-us', label: 'About us' }
             ];
         } else {
             const userRole = currentUser?.role?.toLowerCase();
 
             switch (userRole) {
                 case 'owner':
+                    // Owner - Dash, Space, S&A, Book, Customer, Community
                     links = [
-                        { path: '/owner/dashboard', label: 'Dashboard' },
+                        { path: '/owner/dashboard', label: 'Dash' },
                         { path: '/owner/manage-spaces', label: 'Space' },
-                        { path: '/owner/bookings', label: 'Booking' },
+                        { path: '/owner/services-amenities', label: 'S&A' },
+                        { path: '/owner/bookings', label: 'Book' },
                         { path: '/owner/customers', label: 'Customer' },
-                        { path: '/community', label: 'Community' },
-                        { path: '/profile', label: 'Profile' },
+                        { path: '/community', label: 'Community' }
                     ];
                     break;
                 case 'sysadmin':
                 case 'admin':
+                    // SysAdmin - Dash, S&A, Account, Community
                     links = [
-                        { path: '/admin/dashboard', label: 'Dashboard' },
-                        { path: '/admin/users', label: 'Users' },
-                        { path: '/admin/system-amenities', label: 'System Amenities' },
-                        { path: '/admin/system-space-services', label: 'System Space Services' },
-                        { path: '/admin/community', label: 'Community' },
-                        { path: '/admin/reports', label: 'Reports' },
-                        { path: '/admin/settings', label: 'Settings' },
+                        { path: '/admin/dashboard', label: 'Dash' },
+                        { path: '/admin/services-amenities', label: 'S&A' },
+                        { path: '/admin/accounts', label: 'Account' },
+                        { path: '/community', label: 'Community' }
                     ];
                     break;
                 default: // User
+                    // User - Explore, Community, About us
                     links = [
-                        { path: '/', label: 'Trang chủ' },
-                        { path: '/searchPage', label: 'Tìm kiếm' },
-                        { path: '/community', label: 'Cộng đồng' },
-                        { path: '/my-bookings', label: 'Booking của tôi' },
+                        { path: '/explore', label: 'Explore' },
+                        { path: '/community', label: 'Community' },
+                        { path: '/about-us', label: 'About us' }
                     ];
                     break;
             }
@@ -187,26 +173,22 @@ function Navbar() {
         const userRole = currentUser?.role?.toLowerCase();
         let items = [];
 
+        // Tất cả các role đều có Profile và Logout, chỉ khác nhau ở text hiển thị
         switch (userRole) {
             case 'owner':
                 items = [
-                    { path: '/profile', label: 'Hồ sơ công ty' },
-                    { path: '/billing', label: 'Thanh toán' },
-                    { path: '/settings', label: 'Cài đặt' },
+                    { path: '/profile', label: 'Profile' }
                 ];
                 break;
             case 'sysadmin':
             case 'admin':
                 items = [
-                    { path: '/admin/profile', label: 'Hồ sơ Admin' },
-                    { path: '/admin/system-logs', label: 'System Logs' },
-                    { path: '/admin/security', label: 'Security' },
+                    { path: '/profile', label: 'Profile' }
                 ];
                 break;
             default: // User
                 items = [
-                    { path: '/profile', label: 'Hồ sơ của tôi' },
-                    { path: '/account-settings', label: 'Cài đặt tài khoản' },
+                    { path: '/profile', label: 'Profile' }
                 ];
                 break;
         }
@@ -216,8 +198,9 @@ function Navbar() {
 
     // Render search bar
     const renderSearchBar = (isMobileContext = false) => {
-        // Don't render search bar for Owner role or unauthenticated users
-        if (!isAuthenticated || currentUser?.role?.toLowerCase() !== 'user') return null;
+        // Only render search bar for User and Guest roles
+        const userRole = currentUser?.role?.toLowerCase();
+        if (isAuthenticated && userRole !== 'user') return null;
 
         return (
             <form
@@ -226,24 +209,24 @@ function Navbar() {
             >
                 <div className={styles.scopeSwitcherWrapper} ref={scopeDropdownRef}>
                     <button type="button" className={styles.scopeSwitcherButton} onClick={toggleScopeDropdown}>
-                        {searchScope === 'Không gian' } 
-                        {/* <DownArrowIcon /> */}
+                        {searchScope === 'spaces' ? 'Spaces' : 'Community'}
+                        <DownArrowIcon />
                     </button>
                     {isScopeDropdownOpen && (
                         <div className={styles.scopeDropdown}>
-                            <button type="button" onClick={() => handleScopeChange('spaces')}>Không gian</button>
-                            <button type="button" onClick={() => handleScopeChange('community')}>Cộng đồng</button>
+                            <button type="button" onClick={() => handleScopeChange('spaces')}>Spaces</button>
+                            <button type="button" onClick={() => handleScopeChange('community')}>Community</button>
                         </div>
                     )}
                 </div>
                 <input
                     type="text"
                     className={styles.searchInput}
-                    placeholder={searchScope === 'spaces' ? 'Tìm kiếm không gian...' : 'Tìm kiếm cộng đồng...'}
+                    placeholder={searchScope === 'spaces' ? 'Search spaces...' : 'Search community...'}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                 />
-                <button type="submit" className={styles.searchSubmitButton} aria-label="Tìm kiếm">
+                <button type="submit" className={styles.searchSubmitButton} aria-label="Search">
                     <SearchIcon />
                 </button>
             </form>
@@ -252,9 +235,11 @@ function Navbar() {
 
     const navLinks = getNavLinks();
     const accountItems = getAccountDropdownItems();
-    const isUserRole = isAuthenticated && currentUser?.role?.toLowerCase() === 'user';
-    const isOwnerRole = isAuthenticated && currentUser?.role?.toLowerCase() === 'owner';
-    const isAdminRole = isAuthenticated && (currentUser?.role?.toLowerCase() === 'sysadmin' || currentUser?.role?.toLowerCase() === 'admin');
+    const userRole = currentUser?.role?.toLowerCase();
+    const isGuest = !isAuthenticated;
+    const isUser = isAuthenticated && userRole === 'user';
+    const isOwner = isAuthenticated && userRole === 'owner';
+    const isAdmin = isAuthenticated && (userRole === 'sysadmin' || userRole === 'admin');
 
     return (
         <>
@@ -269,10 +254,10 @@ function Navbar() {
                         <span>Working Space</span>
                     </NavLink>
 
-                    {/* Desktop Middle: Search Bar (User role) or Nav Links */}
+                    {/* Desktop Middle: Search Bar (User/Guest) or Nav Links (Owner/Admin) */}
                     <div className={styles.navMiddleDesktop}>
-                        {isUserRole && renderSearchBar()}
-                        {(isOwnerRole || isAdminRole) && (
+                        {(isGuest || isUser) && renderSearchBar()}
+                        {(isOwner || isAdmin) && (
                             <div className={styles.navLinksContainerDesktop}>
                                 {navLinks.map(link => (
                                     <NavLink
@@ -289,10 +274,10 @@ function Navbar() {
 
                     {/* Right Actions */}
                     <div className={styles.navRight}>
-                        {/* Desktop Nav Links for User role (when search bar is in middle) */}
-                        {isUserRole && (
+                        {/* Desktop Nav Links for User/Guest role (when search bar is in middle) */}
+                        {(isGuest || isUser) && (
                             <div className={styles.navLinksContainerDesktop}>
-                                {navLinks.slice(2).map(link => ( // Skip home and search
+                                {navLinks.map(link => (
                                     <NavLink
                                         key={link.path}
                                         to={link.path}
@@ -307,7 +292,7 @@ function Navbar() {
                         {/* Language Switcher */}
                         <div className={styles.languageSwitcher} ref={languageDropdownRef}>
                             <button onClick={toggleLanguageDropdown} className={styles.iconButton} aria-label={t('language')}>
-                                🌐 {i18n.language.toUpperCase()}
+                                🌐 En
                             </button>
                             {isLanguageDropdownOpen && (
                                 <div className={styles.dropdownMenu} style={{ minWidth: '80px' }}>
@@ -319,23 +304,9 @@ function Navbar() {
 
                         {isAuthenticated && (
                             <>
-                                {/* Notifications */}
-                                <div className={styles.notificationIconWrapper} ref={notificationDropdownRef}>
-                                    <button onClick={toggleNotificationDropdown} className={`${styles.iconButton} ${styles.notificationButton}`} aria-label="Thông báo">
-                                        <BellIcon />
-                                        {hasNewNotifications && <span className={styles.notificationBadge}></span>}
-                                    </button>
-                                    {isNotificationDropdownOpen && (
-                                        <div className={styles.dropdownMenu} style={{ minWidth: '250px', right: 0, left: 'auto' }}>
-                                            <div className={styles.dropdownHeader}>Thông báo</div>
-                                            <div className={styles.dropdownItem}>Không có thông báo mới</div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* User Account Menu */}
+                                {/* User Account Menu - Avatar Dropdown */}
                                 <div className={styles.userAccountMenu} ref={accountDropdownRef}>
-                                    <button onClick={toggleAccountDropdown} className={styles.avatarButton} aria-label="Menu tài khoản">
+                                    <button onClick={toggleAccountDropdown} className={styles.avatarButton} aria-label="Account menu">
                                         {currentUser?.avatarUrl ? (
                                             <img src={currentUser.avatarUrl} alt={currentUser.username || 'User Avatar'} className={styles.avatar} />
                                         ) : (
@@ -345,7 +316,7 @@ function Navbar() {
                                     {isAccountDropdownOpen && (
                                         <div className={styles.dropdownMenu} style={{ minWidth: '180px', right: 0, left: 'auto' }}>
                                             <div className={styles.dropdownHeader}>
-                                                {currentUser?.fullName || currentUser?.username || 'Tài khoản'}
+                                                {currentUser?.fullName || currentUser?.username || 'Account'}
                                             </div>
                                             {accountItems.map(item => (
                                                 <NavLink key={item.path} to={item.path} className={styles.dropdownItem} onClick={() => setIsAccountDropdownOpen(false)}>
@@ -353,7 +324,7 @@ function Navbar() {
                                                 </NavLink>
                                             ))}
                                             <button onClick={handleLogout} className={`${styles.dropdownItem} ${styles.logoutButton}`}>
-                                                Đăng xuất
+                                                Logout
                                             </button>
                                         </div>
                                     )}
@@ -363,17 +334,17 @@ function Navbar() {
 
                         {!isAuthenticated && (
                             <div className={styles.authButtonsDesktop}>
-                                <NavLink to="/login" className={`${styles.navButton} ${styles.loginButton}`}>Đăng nhập</NavLink>
-                                <NavLink to="/register" className={`${styles.navButton} ${styles.signupButton}`}>Đăng ký</NavLink>
+                                <NavLink to="/login" className={`${styles.navButton} ${styles.loginButton}`}>Login</NavLink>
+                                <NavLink to="/register" className={`${styles.navButton} ${styles.signupButton}`}>Register</NavLink>
                             </div>
                         )}
 
                         {/* Mobile Icons */}
-                        <button onClick={toggleMobileMenu} className={styles.hamburgerButton} aria-label="Mở menu">
+                        <button onClick={toggleMobileMenu} className={styles.hamburgerButton} aria-label="Open menu">
                             <MenuIcon />
                         </button>
-                        {isUserRole && (
-                            <button onClick={() => setIsMobileSearchVisible(true)} className={styles.mobileSearchTrigger} aria-label="Tìm kiếm">
+                        {(isGuest || isUser) && (
+                            <button onClick={() => setIsMobileSearchVisible(true)} className={styles.mobileSearchTrigger} aria-label="Search">
                                 <SearchIcon />
                             </button>
                         )}

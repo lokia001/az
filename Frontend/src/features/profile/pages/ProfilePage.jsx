@@ -21,6 +21,8 @@ import {
     resetPasswordStatus,
     resetUploadPictureStatus
 } from '../slices/profileSlice';
+import ProfileTabs from '../components/ProfileTabs';
+import '../styles/profile.css';
 
 function ProfilePage() {
     const dispatch = useDispatch();
@@ -105,7 +107,7 @@ function ProfilePage() {
             <Row>
                 <Col>
                     <h2 className="mb-4 text-center">Quản lý tài khoản</h2>
-                    {/* <ProfileTabs
+                    <ProfileTabs
                         profile={profileData}
                         updateProfile={handleUpdateProfile}
                         changePassword={handleChangePassword}
@@ -118,7 +120,7 @@ function ProfilePage() {
                         passwordSuccess={passwordSuccess}
                         isUploadingPicture={uploadPictureStatus === 'loading'}
                         uploadPictureError={uploadPictureError}
-                    /> */}
+                    />
                 </Col>
             </Row>
         </Container>

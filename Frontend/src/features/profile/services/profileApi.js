@@ -2,7 +2,7 @@
 import api from '../../../services/api';
 
 // Default profile avatar constants and helpers
-export const DEFAULT_PROFILE_AVATAR = '/images/default-avatar.png';
+export const DEFAULT_PROFILE_AVATAR = 'https://ui-avatars.com/api/?name=User&size=120&background=6c757d&color=ffffff&format=png';
 
 /**
  * Get random default avatar from predefined list
@@ -27,10 +27,11 @@ export const getRandomDefaultAvatar = () => {
  * @returns {Object} Profile with ensured avatar
  */
 export const ensureProfileAvatar = (profile) => {
-    if (!profile.avatar || profile.avatar === '' || profile.avatar === null) {
+    if (!profile.avatarUrl || profile.avatarUrl === '' || profile.avatarUrl === null) {
+        // Use a stable default avatar to prevent rerender
         return {
             ...profile,
-            avatar: getRandomDefaultAvatar()
+            avatarUrl: DEFAULT_PROFILE_AVATAR
         };
     }
     return profile;
@@ -42,8 +43,40 @@ export const ensureProfileAvatar = (profile) => {
  */
 export const fetchProfileAPI = async () => {
     try {
-        const response = await api.get('/user/profile');
-        return response.data;
+        const response = await api.get('/users/me');
+        const userData = response.data;
+        
+        // Debug log để kiểm tra data
+        console.log('Fetched user data:', userData);
+        
+        // Nếu user có role Owner, lấy thêm thông tin OwnerProfile
+        if (userData.role === 'Owner') {
+            try {
+                const ownerResponse = await api.get('/api/owner-profiles/me');
+                console.log('Fetched owner profile:', ownerResponse.data);
+                
+                // Merge thông tin Owner với User
+                const mergedData = {
+                    ...userData,
+                    ownerProfile: ownerResponse.data,
+                    // Sử dụng LogoUrl từ OwnerProfile làm avatar cho Owner nếu có
+                    avatarUrl: ownerResponse.data?.logoUrl || userData.avatarUrl
+                };
+                
+                console.log('Merged profile data:', mergedData);
+                return mergedData;
+            } catch (ownerError) {
+                console.warn('Failed to fetch owner profile:', ownerError);
+                // Nếu chưa có OwnerProfile, trả về user data thông thường
+                // với ownerProfile là null để frontend hiển thị form tạo mới
+                return {
+                    ...userData,
+                    ownerProfile: null
+                };
+            }
+        }
+        
+        return userData;
     } catch (error) {
         throw error.response?.data || error.message;
     }
@@ -56,8 +89,47 @@ export const fetchProfileAPI = async () => {
  */
 export const updateProfileAPI = async (profileData) => {
     try {
-        const response = await api.put('/user/profile', profileData);
-        return response.data;
+        // Nếu có ownerProfile trong profileData, cập nhật riêng
+        if (profileData.ownerProfile) {
+            const ownerData = profileData.ownerProfile;
+            const userUpdateData = { ...profileData };
+            delete userUpdateData.ownerProfile;
+            
+            // Cập nhật user profile
+            if (Object.keys(userUpdateData).length > 0) {
+                await api.put('/users/me/profile', userUpdateData);
+            }
+            
+            // Cập nhật hoặc tạo mới owner profile
+            try {
+                const ownerResponse = await api.put('/api/owner-profiles/me', ownerData);
+                
+                // Trả về combined data
+                return {
+                    ...userUpdateData,
+                    ownerProfile: ownerResponse.data,
+                    avatarUrl: ownerResponse.data?.logoUrl || userUpdateData.avatarUrl
+                };
+            } catch (ownerError) {
+                // Nếu PUT thất bại (404 - chưa có OwnerProfile), thử POST để tạo mới
+                if (ownerError.response?.status === 404) {
+                    console.log('OwnerProfile not found, creating new one...');
+                    const ownerResponse = await api.post('/api/owner-profiles/me', ownerData);
+                    
+                    return {
+                        ...userUpdateData,
+                        ownerProfile: ownerResponse.data,
+                        avatarUrl: ownerResponse.data?.logoUrl || userUpdateData.avatarUrl
+                    };
+                } else {
+                    throw ownerError;
+                }
+            }
+        } else {
+            // Cập nhật thông thường cho user
+            const response = await api.put('/users/me/profile', profileData);
+            return response.data;
+        }
     } catch (error) {
         throw error.response?.data || error.message;
     }

@@ -1,7 +1,7 @@
 // src/features/profile/components/ProfileView.jsx
 import React, { useMemo, useCallback } from 'react';
 import { Card, Row, Col, Badge, Image } from 'react-bootstrap';
-import { FaUser, FaEnvelope, FaPhone, FaMapMarker, FaBirthdayCake, FaCalendar, FaGlobe } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaPhone, FaMapMarker, FaBirthdayCake, FaCalendar } from 'react-icons/fa';
 import { DEFAULT_PROFILE_AVATAR } from '../services/profileApi';
 
 const ProfileView = ({ profile }) => {
@@ -75,7 +75,7 @@ const ProfileView = ({ profile }) => {
             <Card.Header className="bg-primary text-white">
                 <h5 className="mb-0">
                     <FaUser className="me-2" />
-                    Thông tin {isOwner ? 'doanh nghiệp' : 'cá nhân'}
+                    Thông tin cá nhân
                 </h5>
             </Card.Header>
             <Card.Body>
@@ -167,7 +167,7 @@ const ProfileView = ({ profile }) => {
                                     <Row className="mb-3">
                                         <Col sm={12}>
                                             <div className="d-flex align-items-center mb-2">
-                                                <FaGlobe className="text-muted me-2" />
+                                                <FaUser className="text-muted me-2" />
                                                 <div>
                                                     <small className="text-muted d-block">Website</small>
                                                     <strong>
@@ -206,7 +206,7 @@ const ProfileView = ({ profile }) => {
                                         <div className="d-flex align-items-center mb-2">
                                             <FaCalendar className="text-muted me-2" />
                                             <div>
-                                                <small className="text-muted d-block">Ngày tạo hồ sơ</small>
+                                                <small className="text-muted d-block">Ngày tạo</small>
                                                 <strong>{formatDate(ownerProfile.createdAt)}</strong>
                                             </div>
                                         </div>
@@ -247,8 +247,7 @@ const ProfileView = ({ profile }) => {
                                             </div>
                                         </div>
                                     </Col>
-                                    <Col sm={6}>
-                                        <div className="d-flex align-items-center mb-2">
+                                                        <div className="d-flex align-items-center mb-2">
                                             <FaPhone className="text-muted me-2" />
                                             <div>
                                                 <small className="text-muted d-block">Số điện thoại</small>
@@ -283,20 +282,20 @@ const ProfileView = ({ profile }) => {
                                         </Col>
                                     </Row>
                                 )}
+
+                                <Row>
+                                    <Col sm={12}>
+                                        <div className="d-flex align-items-center">
+                                            <FaCalendar className="text-muted me-2" />
+                                            <div>
+                                                <small className="text-muted d-block">Ngày tham gia</small>
+                                                <strong>{formatDate(profile.createdAt)}</strong>
+                                            </div>
+                                        </div>
+                                    </Col>
+                                </Row>
                             </>
                         )}
-
-                        <Row>
-                            <Col sm={12}>
-                                <div className="d-flex align-items-center">
-                                    <FaCalendar className="text-muted me-2" />
-                                    <div>
-                                        <small className="text-muted d-block">Ngày tham gia</small>
-                                        <strong>{formatDate(profile.createdAt)}</strong>
-                                    </div>
-                                </div>
-                            </Col>
-                        </Row>
                     </Col>
                 </Row>
             </Card.Body>
