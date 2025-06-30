@@ -65,3 +65,63 @@ export const createPostAPI = async (postData) => {
         throw new Error(extractErrorMessage(error, 'Failed to create post.'));
     }
 };
+
+/**
+ * API: Update Post
+ * @param {string} postId - GUID of the post to update
+ * @param {object} updateData - Object with { title, content }
+ * @returns {Promise<object>} Updated PostDto
+ */
+export const updatePostAPI = async (postId, updateData) => {
+    if (!postId) {
+        throw new Error("Post ID is required to update post.");
+    }
+    const { title, content } = updateData;
+    if (!title || !content) {
+        throw new Error("Title and content are required to update post.");
+    }
+    const payload = { title, content };
+    const endpoint = `/api/posts/${postId}`;
+    console.log(`[PostApiService] Calling PUT ${endpoint} with payload:`, payload);
+    try {
+        const response = await apiClient.put(endpoint, payload);
+        return response.data; // Expected: Updated PostDto
+    } catch (error) {
+        const defaultMsg = `Failed to update post ID ${postId}.`;
+        let finalErrorMessage = error.message && error.message !== defaultMsg ? error.message : defaultMsg;
+        if (error.status === 404) {
+            finalErrorMessage = `Bài đăng với ID '${postId}' không tìm thấy để cập nhật.`;
+        } else if (error.status === 403) {
+            finalErrorMessage = `Bạn không có quyền chỉnh sửa bài đăng này.`;
+        }
+        console.error(`[PostApiService] Error updating post. Message:`, finalErrorMessage, 'Original error:', error);
+        throw new Error(finalErrorMessage);
+    }
+};
+
+/**
+ * API: Delete Post
+ * @param {string} postId - GUID of the post to delete
+ * @returns {Promise<boolean>} Success status
+ */
+export const deletePostAPI = async (postId) => {
+    if (!postId) {
+        throw new Error("Post ID is required to delete post.");
+    }
+    const endpoint = `/api/posts/${postId}`;
+    console.log(`[PostApiService] Calling DELETE ${endpoint}`);
+    try {
+        await apiClient.delete(endpoint);
+        return true; // Success
+    } catch (error) {
+        const defaultMsg = `Failed to delete post ID ${postId}.`;
+        let finalErrorMessage = error.message && error.message !== defaultMsg ? error.message : defaultMsg;
+        if (error.status === 404) {
+            finalErrorMessage = `Bài đăng với ID '${postId}' không tìm thấy để xóa.`;
+        } else if (error.status === 403) {
+            finalErrorMessage = `Bạn không có quyền xóa bài đăng này.`;
+        }
+        console.error(`[PostApiService] Error deleting post. Message:`, finalErrorMessage, 'Original error:', error);
+        throw new Error(finalErrorMessage);
+    }
+};

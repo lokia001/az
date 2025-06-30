@@ -44,7 +44,7 @@ import SpaceDetailPage from '../pages/SpaceDetailPage';
 import AdminUserListPage from '../features/adminUserManagement/pages/AdminUserListPage';
 import CommunityPlatformPage from '../pages/CommunityPlatformPage';
 import CommunityFeedPage from '../pages/CommunityFeedPage';
-import PostDetailPage from '../pages/PostDetailPage.jsx ';
+import PostDetailPage from '../pages/PostDetailPage';
 // import CommunitySearchPage from '../pages/CommunitySearchPage';
 import SystemAmenitiesPage from '../features/systemItems/pages/SystemAmenitiesPage';
 import SystemSpaceServicesPage from '../features/systemItems/pages/SystemSpaceServicesPage';

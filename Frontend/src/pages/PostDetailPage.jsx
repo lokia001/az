@@ -36,7 +36,7 @@ import {
     selectReactionSummary,
     selectSetReactionStatus, // To disable button while liking/unliking
 } from '../features/reactions/slices/reactionSlice'; // Adjust path if needed
-import { selectIsAuthenticated } from '../features/auth/slices/authSlice';
+import { selectIsAuthenticated, selectCurrentUser } from '../features/auth/slices/authSlice';
 
 // Helper for post image URL (same as before)
 const getPostImageUrl = (urlPath) => {
@@ -75,12 +75,16 @@ function PostDetailPage() {
         content: ''
     });
 
-    const post = useSelector((state) => state.postDetail.post); // The detailed PostDto
-    const status = useSelector((state) => state.postDetail.loading ? 'loading' : state.postDetail.error ? 'failed' : 'succeeded');
+    const post = useSelector((state) => state.postDetail.post);
+    const loading = useSelector((state) => state.postDetail.loading);
     const error = useSelector((state) => state.postDetail.error);
     const updateStatus = useSelector((state) => state.postDetail.updateStatus);
     const deleteStatus = useSelector((state) => state.postDetail.deleteStatus);
     const isAuthenticated = useSelector(selectIsAuthenticated);
+    const currentUser = useSelector(selectCurrentUser);
+
+    // Derived status to avoid creating new objects
+    const status = loading ? 'loading' : error ? 'failed' : 'succeeded';
 
     // --- REACTION STATE for the current post ---
     // We use post.id once 'post' is loaded.
@@ -98,13 +102,17 @@ function PostDetailPage() {
     useEffect(() => {
         if (postId) {
             console.log(`[PostDetailPage] Fetching details for post ID: ${postId}`);
-            console.log(`[PostDetailPage] Current status: ${status}, post exists: ${!!post}`);
-            // Clear previous post detail only if fetching a different post
-            if (post && post.id !== postId && status !== 'idle' && status !== 'loading') {
+            console.log(`[PostDetailPage] Current loading: ${loading}, post exists: ${!!post}, post.id: ${post?.id}`);
+            
+            // Clear previous post if we're loading a different one
+            if (post && post.id !== postId) {
+                console.log(`[PostDetailPage] Clearing previous post (${post.id}) before fetching new one (${postId})`);
                 dispatch(clearPostDetail());
             }
-            // Dispatch fetch if status is idle or if postId changed
-            if (status === 'idle' || (post && post.id !== postId)) {
+            
+            // Always fetch if we don't have the right post 
+            if (!post || post.id !== postId) {
+                console.log(`[PostDetailPage] Dispatching fetchPostDetail for ${postId}`);
                 dispatch(fetchPostDetail(postId));
             }
         }
@@ -112,7 +120,7 @@ function PostDetailPage() {
             console.log('[PostDetailPage] Unmounting, clearing current post detail.');
             dispatch(clearPostDetail()); // Clear post detail when leaving the page
         };
-    }, [dispatch, postId]); // Removed 'status' and 'post' to simplify and rely on postId change
+    }, [dispatch, postId]); // Simplified dependencies
 
     // Effect 2: Fetch reaction summary for the loaded post
     useEffect(() => {
@@ -210,11 +218,22 @@ function PostDetailPage() {
 
     // Check if current user can edit/delete post
     const canEditPost = () => {
-        if (!isAuthenticated || !post) return false;
-        // User can edit if they are the author
-        // TODO: Also check if user is admin/moderator of community
-        const currentUserId = localStorage.getItem('userId'); // or get from auth state
-        return post.authorUserId === currentUserId;
+        if (!isAuthenticated || !post || !currentUser) {
+            console.log('[PostDetailPage] canEditPost - missing requirements:', { 
+                isAuthenticated, 
+                hasPost: !!post, 
+                hasCurrentUser: !!currentUser 
+            });
+            return false;
+        }
+        console.log('[PostDetailPage] canEditPost check:', { 
+            currentUser: currentUser,
+            post: post,
+            currentUserId: currentUser.id || currentUser.userId, 
+            postAuthorUserId: post.authorUserId,
+            match: (currentUser.id || currentUser.userId) === post.authorUserId 
+        });
+        return (currentUser.id || currentUser.userId) === post.authorUserId;
     };
 
     const handleEditClick = () => {
@@ -268,6 +287,7 @@ function PostDetailPage() {
     // Debug logging
     console.log('[PostDetailPage] Render debug:', { 
         status, 
+        loading,
         hasPost: !!post, 
         postId: post?.id, 
         paramPostId: postId,

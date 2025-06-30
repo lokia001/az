@@ -38,7 +38,7 @@ export const fetchUsersAPI = async (params = {}) => {
             queryParams.PageSize = params.PageSize;
         }
 
-        const response = await apiClient.get('/users', { params: queryParams });
+        const response = await apiClient.get('/api/users', { params: queryParams });
 
         console.log('[UserAPI] Users fetched successfully:', response.data);
 
@@ -85,7 +85,7 @@ export const createUserAPI = async (userData) => {
     try {
         console.log('[UserAPI] Creating user with data:', userData);
 
-        const response = await apiClient.post('/users', userData);
+        const response = await apiClient.post('/api/users', userData);
 
         console.log('[UserAPI] User created successfully:', response.data);
         return response.data;
@@ -124,7 +124,7 @@ export const updateUserAPI = async (userId, userData) => {
             throw new Error('User ID is required for update operation');
         }
 
-        const response = await apiClient.put(`/users/${userId}`, userData);
+        const response = await apiClient.put(`/api/users/${userId}`, userData);
 
         console.log('[UserAPI] User updated successfully:', response.data);
         return response.data;
@@ -162,7 +162,7 @@ export const deleteUserAPI = async (userId) => {
             throw new Error('User ID is required for delete operation');
         }
 
-        await apiClient.delete(`/users/${userId}`);
+        await apiClient.delete(`/api/users/${userId}`);
 
         console.log('[UserAPI] User deleted successfully');
         return true;
@@ -200,7 +200,7 @@ export const getUserDetailsAPI = async (userId) => {
             throw new Error('User ID is required');
         }
 
-        const response = await apiClient.get(`/users/${userId}`);
+        const response = await apiClient.get(`/api/users/${userId}`);
 
         console.log('[UserAPI] User details fetched successfully:', response.data);
         return response.data;
@@ -239,7 +239,7 @@ export const updateUserStatusAPI = async (userId, isActive) => {
             throw new Error('User ID is required');
         }
 
-        const response = await apiClient.patch(`/users/${userId}/status`, {
+        const response = await apiClient.patch(`/api/users/${userId}/status`, {
             isActive: isActive
         });
 

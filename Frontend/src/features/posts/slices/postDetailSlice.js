@@ -1,66 +1,120 @@
-// src/features/posts/slices/postDetailSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { fetchPostDetailAPI } from '../services/postApi'; // Assuming postApi.js is in the same directory
+import { fetchPostDetailAPI, updatePostAPI, deletePostAPI } from '../services/postApi';
 
-const initialState = {
-    currentPost: null, // Will hold the full PostDto object
-    status: 'idle',    // 'idle' | 'loading' | 'succeeded' | 'failed'
-    error: null,
-};
-
-export const fetchPostDetails = createAsyncThunk(
-    'postDetail/fetchDetails',
-    async (postId, { rejectWithValue }) => {
-        console.log('[PostDetailSlice] fetchPostDetails thunk for postId:', postId);
-        if (!postId) {
-            return rejectWithValue('Post ID is missing for fetching details.');
-        }
-        try {
-            const postData = await fetchPostDetailAPI(postId); // Returns PostDto
-            console.log('[PostDetailSlice] fetchPostDetails thunk success, data:', postData);
-            return postData;
-        } catch (error) {
-            console.error('[PostDetailSlice] fetchPostDetails thunk FAILED. Error:', error.message);
-            return rejectWithValue(error.message || 'Failed to load post details.');
-        }
+// Async thunk để lấy chi tiết post
+export const fetchPostDetail = createAsyncThunk(
+  'postDetail/fetchPostDetail',
+  async (postId, { rejectWithValue }) => {
+    try {
+      const response = await fetchPostDetailAPI(postId);
+      console.log('[PostDetailSlice] fetchPostDetail response:', response);
+      return response;
+    } catch (error) {
+      console.error('[PostDetailSlice] fetchPostDetail error:', error);
+      return rejectWithValue(error.message || 'Failed to fetch post detail');
     }
+  }
 );
 
+// Async thunk để cập nhật post
+export const updatePost = createAsyncThunk(
+  'postDetail/updatePost',
+  async ({ postId, updateData }, { rejectWithValue }) => {
+    try {
+      const response = await updatePostAPI(postId, updateData);
+      return response;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to update post');
+    }
+  }
+);
+
+// Async thunk để xóa post
+export const deletePost = createAsyncThunk(
+  'postDetail/deletePost',
+  async (postId, { rejectWithValue }) => {
+    try {
+      await deletePostAPI(postId);
+      return postId;
+    } catch (error) {
+      return rejectWithValue(error.message || 'Failed to delete post');
+    }
+  }
+);
+
+const initialState = {
+  post: null,
+  loading: false,
+  error: null,
+  updateStatus: 'idle', // 'idle', 'loading', 'succeeded', 'failed'
+  updateError: null,
+  deleteStatus: 'idle', // 'idle', 'loading', 'succeeded', 'failed'
+  deleteError: null,
+};
+
 const postDetailSlice = createSlice({
-    name: 'postDetail',
-    initialState,
-    reducers: {
-        clearCurrentPostDetail: (state) => {
-            state.currentPost = null;
-            state.status = 'idle';
-            state.error = null;
-            console.log('[PostDetailSlice] Cleared current post detail.');
-        },
+  name: 'postDetail',
+  initialState,
+  reducers: {
+    clearPostDetail: (state) => {
+      state.post = null;
+      state.error = null;
     },
-    extraReducers: (builder) => {
-        builder
-            .addCase(fetchPostDetails.pending, (state) => {
-                state.status = 'loading';
-                state.currentPost = null; // Clear previous post while loading new one
-                state.error = null;
-            })
-            .addCase(fetchPostDetails.fulfilled, (state, action) => {
-                state.status = 'succeeded';
-                state.currentPost = action.payload; // The fetched PostDto
-                state.error = null;
-            })
-            .addCase(fetchPostDetails.rejected, (state, action) => {
-                state.status = 'failed';
-                state.error = action.payload; // Error message string
-                state.currentPost = null;
-            });
+    clearUpdateStatus: (state) => {
+      state.updateStatus = 'idle';
+      state.updateError = null;
     },
+    clearDeleteStatus: (state) => {
+      state.deleteStatus = 'idle';
+      state.deleteError = null;
+    },
+  },
+  extraReducers: (builder) => {
+    builder
+      // Fetch post detail
+      .addCase(fetchPostDetail.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchPostDetail.fulfilled, (state, action) => {
+        state.loading = false;
+        state.post = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchPostDetail.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
+      // Update post
+      .addCase(updatePost.pending, (state) => {
+        state.updateStatus = 'loading';
+        state.updateError = null;
+      })
+      .addCase(updatePost.fulfilled, (state, action) => {
+        state.updateStatus = 'succeeded';
+        state.post = action.payload;
+        state.updateError = null;
+      })
+      .addCase(updatePost.rejected, (state, action) => {
+        state.updateStatus = 'failed';
+        state.updateError = action.payload;
+      })
+      // Delete post
+      .addCase(deletePost.pending, (state) => {
+        state.deleteStatus = 'loading';
+        state.deleteError = null;
+      })
+      .addCase(deletePost.fulfilled, (state) => {
+        state.deleteStatus = 'succeeded';
+        state.deleteError = null;
+      })
+      .addCase(deletePost.rejected, (state, action) => {
+        state.deleteStatus = 'failed';
+        state.deleteError = action.payload;
+      });
+  },
 });
 
-export const { clearCurrentPostDetail } = postDetailSlice.actions;
-
-export const selectCurrentPost = (state) => state.postDetail.currentPost;
-export const selectPostDetailStatus = (state) => state.postDetail.status;
-export const selectPostDetailError = (state) => state.postDetail.error;
+export const { clearPostDetail, clearUpdateStatus, clearDeleteStatus } = postDetailSlice.actions;
 
 export default postDetailSlice.reducer;
