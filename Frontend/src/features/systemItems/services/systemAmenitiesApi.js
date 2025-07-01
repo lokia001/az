@@ -53,7 +53,7 @@ export const updateSystemAmenityAPI = async (amenityId, amenityData) => {
             throw new Error('System amenity ID is required for update operation');
         }
 
-        const response = await apiClient.put(`/api/system-amenities/${amenityId}`, amenityData);
+        const response = await apiClient.put(`/api/admin/system/amenities/${amenityId}`, amenityData);
 
         console.log('[SystemAmenitiesAPI] System amenity updated successfully:', response.data);
         return response.data;
@@ -91,7 +91,7 @@ export const deleteSystemAmenityAPI = async (amenityId) => {
             throw new Error('System amenity ID is required for delete operation');
         }
 
-        await apiClient.delete(`/api/system-amenities/${amenityId}`);
+        await apiClient.delete(`/api/admin/system/amenities/${amenityId}`);
 
         console.log('[SystemAmenitiesAPI] System amenity deleted successfully');
         return true;
@@ -129,7 +129,7 @@ export const getSystemAmenityDetailsAPI = async (amenityId) => {
             throw new Error('System amenity ID is required');
         }
 
-        const response = await apiClient.get(`/api/system-amenities/${amenityId}`);
+        const response = await apiClient.get(`/api/admin/system/amenities/${amenityId}`);
 
         console.log('[SystemAmenitiesAPI] System amenity details fetched successfully:', response.data);
         return response.data;

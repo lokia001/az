@@ -49,6 +49,7 @@ import PostDetailPage from '../pages/PostDetailPage';
 // import CommunitySearchPage from '../pages/CommunitySearchPage';
 import SystemAmenitiesPage from '../features/systemItems/pages/SystemAmenitiesPage';
 import SystemSpaceServicesPage from '../features/systemItems/pages/SystemSpaceServicesPage';
+import AdminServicesAmenitiesPage from '../pages/AdminServicesAmenitiesPage';
 import ProfilePage from '../features/profile/pages/ProfilePage';
 
 import OwnerSpacesPage from '../features/manageSpace/components/OwnerSpacesPage.jsx';
@@ -92,6 +93,7 @@ const AppRouter = () => {
                     {/* Admin Routes */}
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />
                     <Route path="/admin/accounts" element={<AdminUserListPage />} />
+                    <Route path="/admin/services-amenities" element={<AdminServicesAmenitiesPage />} />
 
                     {/* ---mangage space*/}
                     {/* <Route path="manage-space" element={<SpaceList />} />

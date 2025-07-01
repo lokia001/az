@@ -14,6 +14,8 @@ const SystemAmenitiesPage = () => {
 
     const [showModal, setShowModal] = useState(false);
     const [selectedAmenity, setSelectedAmenity] = useState(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(6); // 6 items per page (2 rows of 3 cards)
 
     useEffect(() => {
         // Fetch data when component mounts
@@ -41,6 +43,16 @@ const SystemAmenitiesPage = () => {
         setSelectedAmenity(null);
     };
 
+    // Pagination logic
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentAmenities = amenities?.slice(indexOfFirstItem, indexOfLastItem) || [];
+    const totalPages = Math.ceil((amenities?.length || 0) / itemsPerPage);
+
+    const handlePageChange = (pageNumber) => {
+        setCurrentPage(pageNumber);
+    };
+
     if (status === 'loading' && !amenities?.length) {
         return (
             <Container className="py-4">
@@ -64,56 +76,95 @@ const SystemAmenitiesPage = () => {
 
             {error && <Alert variant="danger">{error}</Alert>}
 
-            <Row xs={1} sm={2} lg={3} className="g-4">
-                {amenities?.length > 0 ? (
-                    amenities.map(amenity => (
-                        <Col key={amenity.id}>
-                            <Card className="h-100 shadow-sm">
-                                <Card.Body>
-                                    <Card.Title className="d-flex justify-content-between align-items-start">
-                                        <span>{amenity.name}</span>
-                                        <Badge bg={amenity.isActive ? "success" : "secondary"}>
+            <div className="row g-3">
+                {currentAmenities?.length > 0 ? (
+                    currentAmenities.map(amenity => (
+                        <div key={amenity.id} className="col-12 col-md-6 col-lg-4">
+                            <div className="card h-100 shadow-sm border">
+                                <div className="card-body">
+                                    <div className="d-flex justify-content-between align-items-start mb-3">
+                                        <h5 className="card-title mb-0">{amenity.name}</h5>
+                                        <span className={`badge ${amenity.isActive ? "bg-success" : "bg-secondary"}`}>
                                             {/* {amenity.isActive ? "Hoạt động" : "Không hoạt động"} */}
-                                        </Badge>
-                                    </Card.Title>
-                                    <Card.Text>{amenity.description}</Card.Text>
+                                        </span>
+                                    </div>
+                                    <p className="card-text text-muted">{amenity.description}</p>
                                     {amenity.icon && (
                                         <div className="mt-3">
-                                            <Badge bg="info" className="me-2">
+                                            <span className="badge bg-info me-2">
                                                 Icon: {amenity.icon}
-                                            </Badge>
+                                            </span>
                                         </div>
                                     )}
-                                </Card.Body>
-                                <Card.Footer className="bg-transparent border-top-0">
+                                </div>
+                                <div className="card-footer bg-transparent border-top-0">
                                     <div className="d-flex justify-content-end gap-2">
-                                        <Button
-                                            variant="outline-primary"
-                                            size="sm"
+                                        <button
+                                            className="btn btn-outline-primary btn-sm"
                                             onClick={() => handleEdit(amenity)}
                                         >
                                             <FaEdit className="me-1" /> Sửa
-                                        </Button>
-                                        <Button
-                                            variant="outline-danger"
-                                            size="sm"
+                                        </button>
+                                        <button
+                                            className="btn btn-outline-danger btn-sm"
                                             onClick={() => handleDelete(amenity.id)}
                                         >
                                             <FaTrash className="me-1" /> Xóa
-                                        </Button>
+                                        </button>
                                     </div>
-                                </Card.Footer>
-                            </Card>
-                        </Col>
+                                </div>
+                            </div>
+                        </div>
                     ))
                 ) : (
-                    <Col xs={12}>
-                        <Alert variant="info">
+                    <div className="col-12">
+                        <div className="alert alert-info">
                             Chưa có tiện ích nào trong hệ thống. Hãy thêm tiện ích mới!
-                        </Alert>
-                    </Col>
+                        </div>
+                    </div>
                 )}
-            </Row>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+                <nav aria-label="Amenities pagination" className="mt-4">
+                    <ul className="pagination justify-content-center">
+                        <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
+                            <button 
+                                className="page-link" 
+                                onClick={() => handlePageChange(currentPage - 1)}
+                                disabled={currentPage === 1}
+                            >
+                                Trước
+                            </button>
+                        </li>
+                        
+                        {[...Array(totalPages)].map((_, index) => {
+                            const pageNumber = index + 1;
+                            return (
+                                <li key={pageNumber} className={`page-item ${currentPage === pageNumber ? 'active' : ''}`}>
+                                    <button 
+                                        className="page-link" 
+                                        onClick={() => handlePageChange(pageNumber)}
+                                    >
+                                        {pageNumber}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                        
+                        <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
+                            <button 
+                                className="page-link" 
+                                onClick={() => handlePageChange(currentPage + 1)}
+                                disabled={currentPage === totalPages}
+                            >
+                                Sau
+                            </button>
+                        </li>
+                    </ul>
+                </nav>
+            )}
 
             <SystemAmenityModal
                 show={showModal}

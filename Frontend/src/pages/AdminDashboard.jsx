@@ -6,7 +6,7 @@ import api from '../services/api';
 import SystemLogs from '../components/SystemLogs';
 
 const AdminDashboard = () => {
-    const [showLogs, setShowLogs] = useState(false);
+    const [showLogs, setShowLogs] = useState(true);
     const [userCount, setUserCount] = useState(null);
     // Fetch total user count
     useEffect(() => {
@@ -50,23 +50,16 @@ const AdminDashboard = () => {
                             <Card.Title>Tổng tài khoản</Card.Title>
                             <Card.Text className="h3 text-primary">{userCount !== null ? userCount : '...'}</Card.Text>
                         </Card.Body>
-                        <Card.Footer className="bg-white border-0 text-center">
-                            <Button variant="outline-danger" onClick={toggleLogs}>
-                                {showLogs ? 'Ẩn System Logs' : 'Xem System Logs'}
-                            </Button>
-                        </Card.Footer>
                     </Card>
                 </Col>
             </Row>
 
             {/* System Logs Section */}
-            {showLogs && (
-                <Row className="mt-4">
-                    <Col lg={12}>
-                        <SystemLogs />
-                    </Col>
-                </Row>
-            )}
+            <Row className="mt-4">
+                <Col lg={12}>
+                    <SystemLogs />
+                </Col>
+            </Row>
         </Container>
     );
 };
