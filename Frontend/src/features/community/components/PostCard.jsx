@@ -77,7 +77,7 @@ const PostCard = ({ post }) => {
         if (post.id && reactionStatus === 'idle') {
             dispatch(fetchReactionSummary({ targetEntityType: "Post", targetEntityId: post.id }));
         }
-    }, [dispatch, post.id, reactionStatus]);
+    }, [dispatch, post.id, reactionStatus, isAuthenticated]); // Add isAuthenticated dependency
 
     // *** THÊM: Effect để handle khi active comment post thay đổi ***
     useEffect(() => {

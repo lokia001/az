@@ -68,7 +68,7 @@ const CommentItem = ({ comment, parentEntityType, parentEntityId }) => {
         if (comment.id && reactionStatus === 'idle') {
             dispatch(fetchReactionSummary({ targetEntityType: "Comment", targetEntityId: comment.id }));
         }
-    }, [dispatch, comment.id, reactionStatus]);
+    }, [dispatch, comment.id, reactionStatus, isAuthenticated]); // Add isAuthenticated dependency
 
     // Load author info effect (same logic as PostCard)
     useEffect(() => {

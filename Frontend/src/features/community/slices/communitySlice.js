@@ -10,6 +10,7 @@ import {
     fetchPostsForCommunityAPI,
     createPostAPI,
 } from '../services/communityApi'; // Ensure this path is correct
+import { logoutUser } from '../../auth/slices/authSlice'; // Import logout action
 
 const initialSearchFilters = { NameKeyword: '', IsPublic: '' };
 const initialCommunityPostsPagination = { PageNumber: 1, PageSize: 10, totalCount: 0, totalPages: 0 };
@@ -266,7 +267,9 @@ const communitySlice = createSlice({
                     state.communityDetail = null;
                 }
             })
-            .addCase(deleteCommunity.rejected, (state, action) => { state.deleteCommunityStatus = 'failed'; state.deleteCommunityError = action.payload; });
+            .addCase(deleteCommunity.rejected, (state, action) => { state.deleteCommunityStatus = 'failed'; state.deleteCommunityError = action.payload; })
+            // Clear community state when user logs out
+            .addCase(logoutUser, clearCommunityStateOnLogout);
     },
 });
 
@@ -308,5 +311,28 @@ export const selectUpdateCommunityError = (state) => state.community.updateCommu
 export const selectDeleteCommunityStatus = (state) => state.community.deleteCommunityStatus;
 export const selectDeleteCommunityError = (state) => state.community.deleteCommunityError;
 
+// Clear community state when user logs out
+const clearCommunityStateOnLogout = (state) => {
+    Object.assign(state, {
+        myJoinedCommunities: [],
+        myJoinedCommunitiesStatus: 'idle',
+        myJoinedCommunitiesError: null,
+        searchedCommunities: [],
+        searchFilters: { ...initialSearchFilters },
+        searchPagination: { PageNumber: 1, PageSize: 10, totalCount: 0, totalPages: 0 },
+        searchStatus: 'idle',
+        searchError: null,
+        selectedCommunityId: null,
+        selectedCommunityName: null,
+        communityPosts: [],
+        communityPostsStatus: 'idle',
+        communityPostsError: null,
+        communityPostsPagination: { ...initialCommunityPostsPagination },
+        communityDetail: null,
+        communityDetailStatus: 'idle',
+        communityDetailError: null,
+        activeCommentPostId: null,
+    });
+};
 
 export default communitySlice.reducer;

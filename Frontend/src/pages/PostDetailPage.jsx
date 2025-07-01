@@ -142,7 +142,7 @@ function PostDetailPage() {
             console.log(`[PostDetailPage] Fetching reaction summary for post ${post.id}`);
             dispatch(fetchReactionSummary({ targetEntityType: "Post", targetEntityId: post.id }));
         }
-    }, [dispatch, post, reactionStatusForPost]); // Depend on post (for post.id) and reactionStatusForPost
+    }, [dispatch, post, reactionStatusForPost, isAuthenticated]); // Add isAuthenticated dependency
 
     // Effect 3: Load author info (same logic as PostCard)
     useEffect(() => {

@@ -3,6 +3,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchCommentsAPI, createCommentAPI, fetchCommentWithRepliesAPI, updateCommentAPI, deleteCommentAPI } from '../services/commentApi'; // Ensure path is correct
 import { updatePostCommentCount } from '../../community/slices/communitySlice'; // *** ADDED IMPORT ***
 import { createSelector } from 'reselect'; // *** ADDED IMPORT ***
+import { logoutUser } from '../../auth/slices/authSlice'; // Import logout action
 
 const initialPagination = { PageNumber: 1, PageSize: 5, totalCount: 0, totalPages: 0 };
 
@@ -219,6 +220,25 @@ const commentSlice = createSlice({
         builder.addCase(deleteComment.rejected, (state, action) => {
             state.deleteStatus = 'failed';
             state.deleteError = action.payload;
+        })
+        // Clear comments state when user logs out
+        .addCase(logoutUser, (state) => {
+            Object.assign(state, {
+                comments: [],
+                pagination: { ...initialPagination },
+                status: 'idle',
+                error: null,
+                currentParentEntityType: null,
+                currentParentEntityId: null,
+                createCommentStatus: 'idle',
+                createCommentError: null,
+                fetchRepliesStatus: 'idle',
+                fetchRepliesError: null,
+                updateStatus: 'idle',
+                updateError: null,
+                deleteStatus: 'idle',
+                deleteError: null,
+            });
         });
     },
 });

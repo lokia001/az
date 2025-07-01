@@ -1,6 +1,7 @@
 // src/features/reactions/slices/reactionSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { setReactionAPI, removeReactionAPI, fetchReactionSummaryAPI } from '../services/reactionApi';
+import { logoutUser } from '../../auth/slices/authSlice'; // Import logout action
 
 // State will store reaction summaries keyed by "entityType-entityId"
 // e.g., "Post-guid123": { counts: {"Like": 10}, currentUserReactionType: "Like", status: 'succeeded' }
@@ -72,6 +73,12 @@ const reactionSlice = createSlice({
             if (state.reactionSummaries[key]) {
                 delete state.reactionSummaries[key];
             }
+        },
+        // Clear all reactions when user logs out
+        clearAllReactions: (state) => {
+            state.reactionSummaries = {};
+            state.setReactionStatus = 'idle';
+            state.setReactionError = null;
         }
     },
     extraReducers: (builder) => {
@@ -117,11 +124,20 @@ const reactionSlice = createSlice({
             .addCase(setReaction.rejected, handleReactionUpdateRejected)
             .addCase(removeReaction.pending, handleReactionUpdatePending)
             .addCase(removeReaction.fulfilled, handleReactionUpdateFulfilled)
-            .addCase(removeReaction.rejected, handleReactionUpdateRejected);
+            .addCase(removeReaction.rejected, handleReactionUpdateRejected)
+            // Reset reactions state when user logs out to force fresh fetch on next login
+            .addCase(logoutUser, (state) => {
+                // Don't clear the data, just reset status to 'idle' to force refetch
+                Object.keys(state.reactionSummaries).forEach(key => {
+                    state.reactionSummaries[key].status = 'idle';
+                });
+                state.setReactionStatus = 'idle';
+                state.setReactionError = null;
+            });
     },
 });
 
-export const { clearSetReactionStatus, clearReactionSummary } = reactionSlice.actions;
+export const { clearSetReactionStatus, clearReactionSummary, clearAllReactions } = reactionSlice.actions;
 
 // Selectors
 export const selectReactionSummary = (targetEntityType, targetEntityId) => (state) => {

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { fetchPostDetailAPI, updatePostAPI, deletePostAPI } from '../services/postApi';
+import { logoutUser } from '../../auth/slices/authSlice'; // Import logout action
 
 // Async thunk để lấy chi tiết post
 export const fetchPostDetail = createAsyncThunk(
@@ -111,6 +112,16 @@ const postDetailSlice = createSlice({
       .addCase(deletePost.rejected, (state, action) => {
         state.deleteStatus = 'failed';
         state.deleteError = action.payload;
+      })
+      // Clear post detail state when user logs out
+      .addCase(logoutUser, (state) => {
+        state.post = null;
+        state.loading = false;
+        state.error = null;
+        state.updateStatus = 'idle';
+        state.updateError = null;
+        state.deleteStatus = 'idle';
+        state.deleteError = null;
       });
   },
 });
