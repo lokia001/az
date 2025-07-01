@@ -83,7 +83,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Mappings
     .ForMember(dest => dest.SpaceImages, opt => opt.MapFrom(src =>
         src.SpaceImages != null
             ? src.SpaceImages.Select(img => new SpaceImageDto( // Map thủ công từng DTO con
-                  img.Id, img.SpaceId, img.ImageUrl, img.Caption, img.IsCoverImage, img.DisplayOrder, img.CreatedAt
+                  img.Id, img.SpaceId, img.ImageUrl, img.CloudinaryPublicId, img.Caption, img.IsCoverImage, img.DisplayOrder, img.CreatedAt
               )).ToList()
             : Enumerable.Empty<SpaceImageDto>() // Trả về list rỗng nếu nguồn null
     ))
@@ -150,7 +150,8 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Mappings
                 ));
 
             // --- SpaceImage Mappings ---
-            CreateMap<SpaceImage, SpaceImageDto>();
+            CreateMap<SpaceImage, SpaceImageDto>()
+                .ForMember(dest => dest.CloudinaryPublicId, opt => opt.MapFrom(src => src.CloudinaryPublicId));
             // CreateMap<UploadSpaceImageRequest, SpaceImage>(); // Không map trực tiếp từ IFormFile
             // Việc tạo SpaceImage từ UploadSpaceImageRequest sẽ được xử lý trong service
             // vì nó liên quan đến việc lưu file và lấy URL.

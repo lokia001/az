@@ -353,6 +353,11 @@ jobs:
           
           # Storage & Email đã được cấu hình
           
+          # Cloudinary Configuration (Image Storage)
+          echo "Environment=\"Cloudinary__CloudName=${{ secrets.CLOUDINARY_CLOUD_NAME }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          echo "Environment=\"Cloudinary__ApiKey=${{ secrets.CLOUDINARY_API_KEY }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          echo "Environment=\"Cloudinary__ApiSecret=${{ secrets.CLOUDINARY_API_SECRET }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
+          
           # DialogFlow Configuration
           echo "Environment=\"DialogFlow__ProjectId=${{ secrets.DIALOGFLOW_PROJECT_ID }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null
           echo "Environment=\"DialogFlow__JsonPath=${{ secrets.DIALOGFLOW_JSON_PATH }}\"" | sudo tee -a $OVERRIDE_FILE > /dev/null

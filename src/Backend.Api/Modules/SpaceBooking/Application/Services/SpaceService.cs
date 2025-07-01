@@ -11,6 +11,7 @@ using Backend.Api.Modules.SpaceBooking.Application.Contracts.Services;
 using Backend.Api.Modules.SpaceBooking.Domain.Entities;
 using Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories;
 using Backend.Api.SharedKernel.Dtos;
+using Backend.Api.Services; // << THÊM ĐỂ SỬ DỤNG CLOUDINARY SERVICE
 
 // using Backend.Api.Modules.UserRelated.Application.Contracts.Services; // CHỈ THÊM NẾU CẦN CHO LOGIC NGHIỆP VỤ, KHÔNG PHẢI ĐỂ LÀM GIÀU DTO
 // using Backend.Api.Modules.UserRelated.Domain.Enums;
@@ -21,6 +22,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
     public class SpaceService : ISpaceService
     {
         private readonly IFileStorageService _fileStorageService; // << THÊM VÀO
+        private readonly ICloudinaryService _cloudinaryService; // << THÊM CLOUDINARY
         private readonly ISpaceRepository _spaceRepository;
         // private readonly IUserService _userService; // Xem xét lại sự cần thiết
         private readonly ISystemAmenityRepository _systemAmenityRepository;
@@ -38,11 +40,10 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             ISystemAmenityRepository systemAmenityRepository,
             ISystemSpaceServiceRepository systemSpaceServiceRepository,
             IMapper mapper,
-            AppDbContext dbContext
-            , IFileStorageService fileStorageService
-
-            ,
-ILogger<SpaceService> logger
+            AppDbContext dbContext,
+            IFileStorageService fileStorageService,
+            ICloudinaryService cloudinaryService, // << THÊM CLOUDINARY
+            ILogger<SpaceService> logger
             )
         {
             _spaceRepository = spaceRepository;
@@ -52,6 +53,7 @@ ILogger<SpaceService> logger
             _mapper = mapper;
             _dbContext = dbContext;
             _fileStorageService = fileStorageService; // << GÁN GIÁ TRỊ
+            _cloudinaryService = cloudinaryService; // << GÁN GIÁ TRỊ CLOUDINARY
             _logger = logger;
         }
 
@@ -536,13 +538,18 @@ ILogger<SpaceService> logger
                 throw new UnauthorizedAccessException("User is not authorized to add images to this space.");
             }
 
-            // Lưu file ảnh
-            var relativeImagePath = await _fileStorageService.SaveFileAsync(request.ImageFile, $"spaces/{spaceId}/images");
+            // Upload ảnh lên Cloudinary
+            var uploadResult = await _cloudinaryService.UploadImageAsync(request.ImageFile, $"spaces/{spaceId}");
+            if (uploadResult == null)
+            {
+                throw new ArgumentException("Failed to upload image to Cloudinary.");
+            }
 
             var spaceImage = new SpaceImage
             {
                 SpaceId = spaceId,
-                ImageUrl = relativeImagePath, // Lưu đường dẫn tương đối
+                ImageUrl = uploadResult.SecureUrl, // Sử dụng HTTPS URL từ Cloudinary
+                CloudinaryPublicId = uploadResult.PublicId, // Lưu public_id để xóa sau này
                 Caption = request.Caption,
                 IsCoverImage = request.IsCoverImage,
                 DisplayOrder = request.DisplayOrder,
@@ -589,8 +596,16 @@ ILogger<SpaceService> logger
                 return false; // Hoặc throw KeyNotFoundException
             }
 
-            // Xóa file vật lý trước khi xóa record trong DB
-            await _fileStorageService.DeleteFileAsync(image.ImageUrl);
+            // Xóa ảnh khỏi Cloudinary nếu có CloudinaryPublicId
+            if (!string.IsNullOrEmpty(image.CloudinaryPublicId))
+            {
+                var deleteSuccess = await _cloudinaryService.DeleteImageAsync(image.CloudinaryPublicId);
+                if (!deleteSuccess)
+                {
+                    _logger.LogWarning("Failed to delete image from Cloudinary. PublicId: {PublicId}", image.CloudinaryPublicId);
+                    // Vẫn tiếp tục xóa record trong DB
+                }
+            }
 
             _dbContext.Set<SpaceImage>().Remove(image);
             space.UpdatedAt = DateTime.UtcNow;

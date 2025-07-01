@@ -36,7 +36,7 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
         customAmenityNames: initialData.customAmenityNames || [],
         selectedSystemServices: initialData.selectedSystemServices || initialData.systemServices || [],
         customServiceRequests: initialData.customServiceRequests || [],
-        imageUrls: initialData.imageUrls || []
+        images: initialData.spaceImages || [] // Lưu toàn bộ SpaceImageDto objects, không chỉ URLs
     });
     
     const [formErrors, setFormErrors] = useState({});
@@ -112,18 +112,28 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
     const handleImageUpload = async (files) => {
         if (!files || files.length === 0) return;
 
+        // Chỉ cho phép upload ảnh khi đang edit space (có spaceId)
+        if (!initialData.id) {
+            setFormErrors(prev => ({
+                ...prev,
+                images: 'Vui lòng lưu space trước khi upload ảnh.'
+            }));
+            return;
+        }
+
         setUploadingImages(true);
         const uploadPromises = Array.from(files).map(async (file) => {
             const formData = new FormData();
-            formData.append('image', file);
+            formData.append('ImageFile', file); // Backend expects 'ImageFile'
 
             try {
-                const response = await apiClient.post('/api/images/upload', formData, {
+                // Sử dụng API space images
+                const response = await apiClient.post(`/api/owner/spaces/${initialData.id}/images`, formData, {
                     headers: {
                         'Content-Type': 'multipart/form-data',
                     },
                 });
-                return response.data.url || response.data.imageUrl;
+                return response.data; // Trả về toàn bộ data (bao gồm id, url, etc.)
             } catch (error) {
                 console.error('Error uploading image:', error);
                 throw error;
@@ -131,12 +141,13 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
         });
 
         try {
-            const uploadedUrls = await Promise.all(uploadPromises);
+            const uploadedImages = await Promise.all(uploadPromises);
             setFormData(prev => ({
                 ...prev,
-                imageUrls: [...prev.imageUrls, ...uploadedUrls]
+                images: [...prev.images, ...uploadedImages] // Lưu toàn bộ SpaceImageDto objects
             }));
         } catch (error) {
+            console.error('Upload error:', error);
             setFormErrors(prev => ({
                 ...prev,
                 images: 'Có lỗi khi tải ảnh lên. Vui lòng thử lại.'
@@ -146,10 +157,25 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
         }
     };
 
-    const handleRemoveImage = (indexToRemove) => {
+    const handleRemoveImage = async (imageToRemove) => {
+        // Nếu ảnh đã có ID (đã upload lên server), gọi API xóa
+        if (imageToRemove.id && initialData.id) {
+            try {
+                await apiClient.delete(`/api/owner/spaces/${initialData.id}/images/${imageToRemove.id}`);
+            } catch (error) {
+                console.error('Error deleting image from server:', error);
+                setFormErrors(prev => ({
+                    ...prev,
+                    images: 'Có lỗi khi xóa ảnh. Vui lòng thử lại.'
+                }));
+                return;
+            }
+        }
+
+        // Xóa ảnh khỏi state local
         setFormData(prev => ({
             ...prev,
-            imageUrls: prev.imageUrls.filter((_, index) => index !== indexToRemove)
+            images: prev.images.filter(img => img !== imageToRemove)
         }));
     };
     
@@ -606,31 +632,34 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         multiple
                         accept="image/*"
                         onChange={(e) => handleImageUpload(e.target.files)}
-                        disabled={uploadingImages}
+                        disabled={uploadingImages || !initialData.id}
                     />
                     <small className="text-muted">
-                        Chọn nhiều hình ảnh để hiển thị không gian của bạn. Định dạng: JPG, PNG, WEBP
+                        {!initialData.id 
+                            ? "Vui lòng lưu space trước khi upload ảnh"
+                            : "Chọn nhiều hình ảnh để hiển thị không gian của bạn. Định dạng: JPG, PNG, WEBP"
+                        }
                     </small>
                     {formErrors.images && <div className="text-danger mt-1">{formErrors.images}</div>}
                     {uploadingImages && <div className="text-info mt-1">Đang tải ảnh lên...</div>}
                 </div>
 
                 {/* Image Preview */}
-                {formData.imageUrls && formData.imageUrls.length > 0 && (
+                {formData.images && formData.images.length > 0 && (
                     <div className="row g-3">
-                        {formData.imageUrls.map((imageUrl, index) => (
-                            <div key={index} className="col-md-4 col-sm-6">
+                        {formData.images.map((image, index) => (
+                            <div key={image.id || index} className="col-md-4 col-sm-6">
                                 <div className="position-relative">
                                     <img 
-                                        src={imageUrl} 
-                                        alt={`Space image ${index + 1}`}
+                                        src={image.imageUrl || image.url} 
+                                        alt={image.caption || `Space image ${index + 1}`}
                                         className="img-fluid rounded"
                                         style={{ width: '100%', height: '200px', objectFit: 'cover' }}
                                     />
                                     <button
                                         type="button"
                                         className="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
-                                        onClick={() => handleRemoveImage(index)}
+                                        onClick={() => handleRemoveImage(image)}
                                         style={{ zIndex: 10 }}
                                     >
                                         <i className="fas fa-times"></i>

@@ -17,6 +17,10 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         [Url] // Thêm validation cho URL
         [MaxLength(2048)] // Giới hạn độ dài URL
         public string ImageUrl { get; set; } = string.Empty;
+        
+        [MaxLength(255)] // Cloudinary public_id for deletion
+        public string? CloudinaryPublicId { get; set; }
+        
         public bool IsDeleted { get; set; } = false;
         [MaxLength(255)]
         public string? Caption { get; set; } // Chú thích cho ảnh (tùy chọn)

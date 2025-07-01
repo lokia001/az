@@ -193,6 +193,10 @@ Console.WriteLine($"Running in: {configuration}");
 // Add HttpClientFactory
 builder.Services.AddHttpClient(); //Thêm cái này
 builder.Services.AddHttpClient<IIBBService, IBBService>();
+
+// Add Cloudinary service
+builder.Services.AddScoped<ICloudinaryService, CloudinaryService>();
+
 // Add Cors
 builder.Services.AddCors(options =>
 {

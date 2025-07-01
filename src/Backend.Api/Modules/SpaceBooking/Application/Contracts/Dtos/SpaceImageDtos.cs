@@ -9,6 +9,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         Guid Id,
         Guid SpaceId,
         string ImageUrl,
+        string? CloudinaryPublicId, // Add Cloudinary public_id for deletion
         string? Caption,
         bool IsCoverImage,
         int DisplayOrder,
