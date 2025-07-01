@@ -256,6 +256,37 @@ const OwnerSpacesPage = () => {
         navigate(`/owner/spaces/${spaceId}/bookings`);
     };
 
+    // Helper to get the display image (cover image or first image)
+    const getSpaceImageUrl = (space) => {
+        if (space.spaceImages && space.spaceImages.length > 0) {
+            // First try to find cover image
+            const coverImage = space.spaceImages.find(img => img.isCoverImage);
+            // If no cover image, use the first image
+            const imageToUse = coverImage || space.spaceImages[0];
+            
+            if (imageToUse && imageToUse.imageUrl) {
+                const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+                let imgUrl = imageToUse.imageUrl;
+                
+                // If it's already a full URL (like Cloudinary), return as is
+                if (imgUrl.startsWith('http')) {
+                    return imgUrl;
+                }
+                
+                // Remove any accidental /api prefix
+                if (imgUrl.startsWith('/api/uploads/')) {
+                    imgUrl = imgUrl.replace('/api', '');
+                }
+                // Always prepend baseUrl if not absolute
+                const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+                const cleanImgUrl = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
+                return `${cleanBaseUrl}${cleanImgUrl}`;
+            }
+        }
+        // Fallback to legacy imageUrls or placeholder
+        return space.imageUrls?.[0] || '/placeholder-space.jpg';
+    };
+
     // Function to format date in a readable way
     const formatDate = (date) => {
         if (!date) return 'N/A';
@@ -281,7 +312,7 @@ const OwnerSpacesPage = () => {
         <Card className="h-100 shadow-sm">
             <Card.Img 
                 variant="top" 
-                src={space.imageUrls?.[0] || '/placeholder-space.jpg'} 
+                src={getSpaceImageUrl(space)} 
                 style={{ height: '200px', objectFit: 'cover' }}
             />
             <Card.Body>

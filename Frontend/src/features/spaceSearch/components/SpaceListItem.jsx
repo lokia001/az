@@ -11,24 +11,39 @@ import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../auth/slices/authSlice';
 import Modal from 'react-bootstrap/Modal';
 
-// Helper to get a placeholder image if no image is available
+// Helper to get the display image (cover image or first image)
 const getImageUrl = (space) => {
-    if (space.spaceImages && space.spaceImages.length > 0 && space.spaceImages[0].imageUrl) {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        let imgUrl = space.spaceImages[0].imageUrl;
-        if (imgUrl.startsWith('http')) {
-            return imgUrl;
+    if (space.spaceImages && space.spaceImages.length > 0) {
+        // First try to find cover image
+        const coverImage = space.spaceImages.find(img => img.isCoverImage);
+        // If no cover image, use the first image
+        const imageToUse = coverImage || space.spaceImages[0];
+        
+        if (imageToUse && imageToUse.imageUrl) {
+            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+            let imgUrl = imageToUse.imageUrl;
+            
+            // If it's already a full URL (like Cloudinary), return as is
+            if (imgUrl.startsWith('http')) {
+                return imgUrl;
+            }
+            
+            // Remove any accidental /api prefix
+            if (imgUrl.startsWith('/api/uploads/')) {
+                imgUrl = imgUrl.replace('/api', '');
+            }
+            // Always prepend baseUrl if not absolute
+            const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
+            const cleanImgUrl = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
+            const finalUrl = `${cleanBaseUrl}${cleanImgUrl}`;
+            console.log('SpaceListItem getImageUrl:', { 
+                spaceId: space.id, 
+                coverImageId: coverImage?.id, 
+                isCover: !!coverImage, 
+                finalUrl 
+            });
+            return finalUrl;
         }
-        // Remove any accidental /api prefix
-        if (imgUrl.startsWith('/api/uploads/')) {
-            imgUrl = imgUrl.replace('/api', '');
-        }
-        // Always prepend baseUrl if not absolute
-        const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-        const cleanImgUrl = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
-        const finalUrl = `${cleanBaseUrl}${cleanImgUrl}`;
-        console.log('SpaceListItem getImageUrl:', { baseUrl, imgUrl, finalUrl });
-        return finalUrl;
     }
     return `https://via.placeholder.com/150x100?text=${encodeURIComponent(space.name || 'Space')}`;
 };
