@@ -42,12 +42,15 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Configurations
             builder.Property(x => x.UpdatedByUserId)
                 .IsRequired(false);
 
-            // Configure one-to-one relationship with Space
+            // Configure one-to-one relationship with Space (within same module)
             builder.HasOne(x => x.Space)
                 .WithOne(s => s.IcalSettings)
                 .HasForeignKey<SpaceIcalSetting>(x => x.SpaceId)
                 .IsRequired()
                 .OnDelete(DeleteBehavior.Cascade);
+
+            // Explicitly ignore potential navigation properties to User entities (cross-module)
+            // This ensures no automatic FK relationships are created based on naming conventions
         }
     }
 }

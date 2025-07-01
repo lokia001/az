@@ -252,6 +252,9 @@ builder.Services.AddUserServiceModule(configuration);
 builder.Services.AddSpaceServiceModule(configuration);
 builder.Services.AddPaymentServiceModule(configuration);
 
+// Add System Logging Service
+builder.Services.AddScoped<ISystemLogService, SystemLogService>();
+
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 Console.WriteLine($"====> Connection String: {connectionString}");
@@ -332,6 +335,10 @@ app.UseStaticFiles(new StaticFileOptions
 
 // ✅ Đặt ngay sau HTTPS và trước Auth
 app.UseCors("_myAllowSpecificOrigins");
+
+// Add logging middleware
+app.UseMiddleware<Backend.Api.Middleware.LoggingMiddleware>();
+
 app.UseAuthentication();
 app.UseAuthorization();
 // Enable Cors
