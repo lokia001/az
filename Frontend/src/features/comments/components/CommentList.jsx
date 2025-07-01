@@ -42,19 +42,28 @@ const CommentList = ({ parentEntityType, parentId, communityId }) => {
     const isAuthenticated = useSelector(selectIsAuthenticated);
     
     // *** THÊM: Kiểm tra membership nếu đây là comment trong community ***
+    // Normalize communityId - convert undefined/null to null for consistent checking
+    const normalizedCommunityId = communityId || null;
+    
     // Memoize selector để tránh recreate và infinite calls
-    const membershipSelector = useMemo(() => selectIsCurrentUserMemberOfCommunity(communityId), [communityId]);
+    const membershipSelector = useMemo(() => {
+        if (!normalizedCommunityId) {
+            return () => true; // No community restriction
+        }
+        return selectIsCurrentUserMemberOfCommunity(normalizedCommunityId);
+    }, [normalizedCommunityId]);
+    
     const isCurrentUserMember = useSelector(membershipSelector);
     const myJoinedCommunitiesStatus = useSelector(selectMyJoinedCommunitiesStatus);
     
     // *** STRICT: Logic membership check nghiêm ngặt hơn ***
     const canComment = isAuthenticated && (
-        (!communityId || communityId === 'null' || communityId === 'undefined') ? true : // Không có communityId -> cho phép
+        !normalizedCommunityId ? true : // Không có communityId -> cho phép
         (myJoinedCommunitiesStatus === 'succeeded' && isCurrentUserMember) // Có communityId -> phải fetch succeeded VÀ là member
     );
     
-    // *** DEBUG: Log để kiểm tra logic ***
-    console.log(`[CommentList] MEMBERSHIP CHECK: communityId="${communityId}", isAuthenticated=${isAuthenticated}, isCurrentUserMember=${isCurrentUserMember}, myJoinedCommunitiesStatus=${myJoinedCommunitiesStatus}, canComment=${canComment}`);
+    // *** DEBUG: Log để kiểm tra logic (tạm tắt để giảm noise) ***
+    // console.log(`[CommentList] MEMBERSHIP CHECK: communityId="${communityId}", normalizedCommunityId="${normalizedCommunityId}", isAuthenticated=${isAuthenticated}, isCurrentUserMember=${isCurrentUserMember}, myJoinedCommunitiesStatus=${myJoinedCommunitiesStatus}, canComment=${canComment}`);
     
     const [showTopLevelAddCommentForm, setShowTopLevelAddCommentForm] = useState(false);
 
@@ -245,7 +254,7 @@ const CommentList = ({ parentEntityType, parentId, communityId }) => {
                                 onCommentAdded={handleTopLevelCommentAdded}
                                 onCancelReply={() => setShowTopLevelAddCommentForm(false)} // Use onCancelReply to hide form
                                 isReplyForm={false} // Explicitly false for top-level
-                                communityId={communityId} // *** THÊM ***
+                                communityId={normalizedCommunityId} // *** SỬA: Dùng normalizedCommunityId ***
                             />
                         </div>
                     </Collapse>
@@ -259,7 +268,7 @@ const CommentList = ({ parentEntityType, parentId, communityId }) => {
                         <>Đang kiểm tra quyền bình luận...</>
                     ) : myJoinedCommunitiesStatus === 'failed' ? (
                         <>Lỗi kiểm tra quyền bình luận. Vui lòng thử lại.</>
-                    ) : communityId && !isCurrentUserMember ? (
+                    ) : normalizedCommunityId && !isCurrentUserMember ? (
                         <>Bạn cần tham gia cộng đồng để bình luận.</>
                     ) : (
                         <>Không thể bình luận lúc này.</>
@@ -279,7 +288,7 @@ const CommentList = ({ parentEntityType, parentId, communityId }) => {
                     comment={comment} 
                     parentEntityType={parentEntityType} 
                     parentEntityId={parentId} 
-                    communityId={communityId} 
+                    communityId={normalizedCommunityId} 
                     canComment={canComment}
                 />
             ))}

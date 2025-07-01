@@ -1,5 +1,5 @@
 // src/features/comments/components/CommentItem.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import Card from 'react-bootstrap/Card';
 import Button from 'react-bootstrap/Button';
@@ -56,7 +56,9 @@ const CommentItem = ({ comment, parentEntityType, parentEntityId, communityId, c
     const deleteError = useSelector((state) => state.comments.deleteError);
 
     // --- Reaction State for THIS comment ---
-    const reactionData = useSelector(selectReactionSummary("Comment", comment.id));
+    // Memoize the selector to avoid recreating it on every render
+    const reactionSelector = useMemo(() => selectReactionSummary("Comment", comment.id), [comment.id]);
+    const reactionData = useSelector(reactionSelector);
     const { data: reactionSummary, status: reactionStatus } = reactionData;
     const setReactionOpStatus = useSelector(selectSetReactionStatus);
 

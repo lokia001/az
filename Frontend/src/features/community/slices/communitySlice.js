@@ -1,5 +1,5 @@
 // src/features/community/slices/communitySlice.js
-import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, createSelector } from '@reduxjs/toolkit';
 import {
     createCommunityAPI,
     updateCommunityAPI,
@@ -417,28 +417,50 @@ export const selectIsCurrentUserMemberOfSelectedCommunity = (state) => {
 };
 
 // *** THÊM: Selector để check membership cho một community cụ thể ***
-export const selectIsCurrentUserMemberOfCommunity = (communityId) => (state) => {
+// Cache for memoized selectors per communityId
+const membershipSelectorCache = new Map();
+
+export const selectIsCurrentUserMemberOfCommunity = (communityId) => {
     if (!communityId) {
-        console.log(`[selectIsCurrentUserMemberOfCommunity] No communityId provided, returning false`);
-        return false;
+        // Return a static selector that always returns false for no community
+        return () => false;
     }
     
-    // Kiểm tra trong currentCommunityMembership trước (nếu đang trong context của community đó)
-    if (state.community.selectedCommunityId === communityId) {
-        const result = state.community.currentCommunityMembership !== null;
-        console.log(`[selectIsCurrentUserMemberOfCommunity] Using currentCommunityMembership: communityId=${communityId}, selectedCommunityId=${state.community.selectedCommunityId}, currentMembership=${!!state.community.currentCommunityMembership}, result=${result}`);
-        return result;
+    // Check if we already have a memoized selector for this communityId
+    if (!membershipSelectorCache.has(communityId)) {
+        // Create a new memoized selector for this specific communityId
+        const selector = createSelector(
+            [
+                (state) => state.community.selectedCommunityId,
+                (state) => state.community.currentCommunityMembership,
+                (state) => state.community.myJoinedCommunities
+            ],
+            (selectedCommunityId, currentMembership, joinedCommunities) => {
+                // Check in currentCommunityMembership first
+                if (selectedCommunityId === communityId) {
+                    const result = currentMembership !== null;
+                    console.log(`[selectIsCurrentUserMemberOfCommunity] Using currentCommunityMembership: communityId=${communityId}, selectedCommunityId=${selectedCommunityId}, currentMembership=${!!currentMembership}, result=${result}`);
+                    return result;
+                }
+                
+                // Fallback: check in myJoinedCommunities
+                const result = joinedCommunities.some(membership => membership.communityId === communityId);
+                console.log(`[selectIsCurrentUserMemberOfCommunity] Using myJoinedCommunities: communityId=${communityId}, joinedCommunitiesCount=${joinedCommunities.length}, joinedCommunityIds=[${joinedCommunities.map(m => m.communityId).join(', ')}], result=${result}`);
+                return result;
+            }
+        );
+        
+        membershipSelectorCache.set(communityId, selector);
     }
     
-    // Fallback: kiểm tra trong myJoinedCommunities
-    const joinedCommunities = state.community.myJoinedCommunities;
-    const result = joinedCommunities.some(membership => membership.communityId === communityId);
-    console.log(`[selectIsCurrentUserMemberOfCommunity] Using myJoinedCommunities: communityId=${communityId}, joinedCommunitiesCount=${joinedCommunities.length}, joinedCommunityIds=[${joinedCommunities.map(m => m.communityId).join(', ')}], result=${result}`);
-    return result;
+    return membershipSelectorCache.get(communityId);
 };
 
 // Clear community state when user logs out
 const clearCommunityStateOnLogout = (state) => {
+    // Clear selector cache to prevent memory leaks
+    membershipSelectorCache.clear();
+    
     Object.assign(state, {
         myJoinedCommunities: [],
         myJoinedCommunitiesStatus: 'idle',

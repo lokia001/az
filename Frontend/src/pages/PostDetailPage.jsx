@@ -357,8 +357,8 @@ function PostDetailPage() {
         <Container className="py-4">
             <Row className="justify-content-center">
                 <Col md={10} lg={8}>
-                    <Button variant="outline-secondary" size="sm" onClick={() => navigate(post.CommunityId ? `/communities/${post.CommunityId}` : -1)} className="mb-3">
-                        ← Quay lại {post.CommunityName || 'Cộng đồng'}
+                    <Button variant="outline-secondary" size="sm" onClick={() => navigate(post.communityId ? `/communities/${post.communityId}` : -1)} className="mb-3">
+                        ← Quay lại {post.communityName || post.CommunityName || 'Cộng đồng'}
                     </Button>
 
                     <Card className="shadow-sm">
@@ -534,12 +534,12 @@ function PostDetailPage() {
                     </Card>
 
                     <div className="mt-4">
-                        {/* *** DEBUG: Log post.CommunityId để kiểm tra *** */}
-                        {console.log(`[PostDetailPage] RENDER: post.CommunityId="${post.CommunityId}", typeof=${typeof post.CommunityId}`)}
+                        {/* *** DEBUG: Tạm tắt để giảm noise *** */}
+                        {/* {console.log(`[PostDetailPage] RENDER: post.CommunityId="${post.CommunityId}", typeof=${typeof post.CommunityId}, post object:`, post)} */}
                         <CommentList 
                             parentEntityType="Post" 
                             parentId={post.id} 
-                            communityId={post.CommunityId} 
+                            communityId={post.communityId ?? post.CommunityId ?? null} 
                         />
                     </div>
 
