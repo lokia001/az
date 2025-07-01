@@ -180,6 +180,8 @@ export const updateSpace = async (spaceId, space) => {
         if (space.openTime) console.log("OpenTime format:", space.openTime);
         if (space.closeTime) console.log("CloseTime format:", space.closeTime);
         
+        // Send the space data directly (not wrapped in request object)
+        // Backend controller uses [FromBody] which should bind directly to the model
         const response = await api.put(`/owner/spaces/${spaceId}`, space);
         console.log("updateSpace response:", response.data);
         return response.data;

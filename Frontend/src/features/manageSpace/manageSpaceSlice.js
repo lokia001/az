@@ -102,10 +102,10 @@ export const createSpaceAsync = createAsyncThunk(
 
 export const updateSpaceAsync = createAsyncThunk(
     'manageSpace/updateSpace',
-    async (space) => {
+    async ({ id, updatedSpace }) => {
         try {
-            console.log("Updating space with data:", space);
-            const response = await api.updateSpace(space.id, space);
+            console.log("Updating space with ID:", id, "and data:", updatedSpace);
+            const response = await api.updateSpace(id, updatedSpace);
             console.log("Space updated successfully:", response);
             return response;
         } catch (error) {

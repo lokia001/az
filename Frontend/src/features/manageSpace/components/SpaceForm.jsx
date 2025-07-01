@@ -4,6 +4,7 @@ import { Alert, Row, Col } from 'react-bootstrap';
 import { createSpaceAsync, updateSpaceAsync } from '../manageSpaceSlice';
 import { fetchSystemAmenities } from '../../systemItems/slices/systemAmenitiesSlice';
 import { fetchSystemSpaceServices } from '../../systemItems/slices/systemSpaceServicesSlice';
+import apiClient from '../../../services/apiClient';
 
 function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
     const dispatch = useDispatch();
@@ -35,10 +36,12 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
         customAmenityNames: initialData.customAmenityNames || [],
         selectedSystemServices: initialData.selectedSystemServices || initialData.systemServices || [],
         customServiceRequests: initialData.customServiceRequests || [],
+        imageUrls: initialData.imageUrls || []
     });
     
     const [formErrors, setFormErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [uploadingImages, setUploadingImages] = useState(false);
     
     useEffect(() => {
         dispatch(fetchSystemAmenities());
@@ -105,6 +108,50 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
             };
         });
     };
+
+    const handleImageUpload = async (files) => {
+        if (!files || files.length === 0) return;
+
+        setUploadingImages(true);
+        const uploadPromises = Array.from(files).map(async (file) => {
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await apiClient.post('/api/images/upload', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data',
+                    },
+                });
+                return response.data.url || response.data.imageUrl;
+            } catch (error) {
+                console.error('Error uploading image:', error);
+                throw error;
+            }
+        });
+
+        try {
+            const uploadedUrls = await Promise.all(uploadPromises);
+            setFormData(prev => ({
+                ...prev,
+                imageUrls: [...prev.imageUrls, ...uploadedUrls]
+            }));
+        } catch (error) {
+            setFormErrors(prev => ({
+                ...prev,
+                images: 'Có lỗi khi tải ảnh lên. Vui lòng thử lại.'
+            }));
+        } finally {
+            setUploadingImages(false);
+        }
+    };
+
+    const handleRemoveImage = (indexToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            imageUrls: prev.imageUrls.filter((_, index) => index !== indexToRemove)
+        }));
+    };
     
     const validateForm = () => {
         const errors = {};
@@ -146,49 +193,60 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
             const formatTimeSpan = (timeString) => {
                 if (!timeString) return null;
                 // Convert HTML time input (HH:MM) to TimeSpan format (HH:MM:SS)
-                return `${timeString}:00`;
+                // Ensure it's exactly HH:MM:SS format, not HH:MM:SS:SS
+                const timeParts = timeString.split(':');
+                if (timeParts.length === 2) {
+                    return `${timeParts[0]}:${timeParts[1]}:00`;
+                } else if (timeParts.length === 3) {
+                    return timeString; // Already in HH:MM:SS format
+                }
+                return `${timeString}:00`; // Fallback
             };
 
-            // Prepare the data in the format expected by the backend
+            // Prepare the data in the format expected by the backend (PascalCase)
             const spaceData = {
-                name: formData.name,
-                description: formData.description || null,
-                address: formData.address,
-                latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-                longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-                type: formData.type,
-                capacity: parseInt(formData.capacity || 0, 10),
-                pricePerHour: parseFloat(formData.pricePerHour || 0),
-                pricePerDay: formData.pricePerDay ? parseFloat(formData.pricePerDay) : null,
-                openTime: formatTimeSpan(formData.openTime),
-                closeTime: formatTimeSpan(formData.closeTime),
-                accessInstructions: formData.accessInstructions || null,
-                houseRules: formData.houseRules || null,
-                selectedSystemAmenityIds: formData.selectedSystemAmenityIds || formData.systemAmenities || [],
-                customAmenityNames: formData.customAmenityNames || [],
-                selectedSystemServices: (formData.selectedSystemServices || []).map(id => {
+                Name: formData.name,
+                Description: formData.description || null,
+                Address: formData.address,
+                Latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+                Longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+                Type: formData.type,
+                Capacity: parseInt(formData.capacity || 0, 10),
+                PricePerHour: parseFloat(formData.pricePerHour || 0),
+                PricePerDay: formData.pricePerDay ? parseFloat(formData.pricePerDay) : null,
+                OpenTime: formatTimeSpan(formData.openTime),
+                CloseTime: formatTimeSpan(formData.closeTime),
+                AccessInstructions: formData.accessInstructions || null,
+                HouseRules: formData.houseRules || null,
+                SelectedSystemAmenityIds: formData.selectedSystemAmenityIds || formData.systemAmenities || [],
+                CustomAmenityNames: formData.customAmenityNames || [],
+                SelectedSystemServices: (formData.selectedSystemServices || []).map(id => {
                     if (typeof id === 'string') {
                         return {
-                            systemFeatureId: id,
-                            priceOverride: null,
-                            notes: null
+                            SystemFeatureId: id,
+                            PriceOverride: null,
+                            Notes: null
                         };
                     }
                     return id;
                 }),
-                customServiceRequests: formData.customServiceRequests || [],
-                minBookingDurationMinutes: parseInt(formData.minBookingDurationMinutes || 30),
-                maxBookingDurationMinutes: parseInt(formData.maxBookingDurationMinutes || 1440),
-                cancellationNoticeHours: parseInt(formData.cancellationNoticeHours || 24),
-                cleaningDurationMinutes: parseInt(formData.cleaningDurationMinutes || 0),
-                bufferMinutes: parseInt(formData.bufferMinutes || 0),
+                CustomServiceRequests: formData.customServiceRequests || [],
+                MinBookingDurationMinutes: parseInt(formData.minBookingDurationMinutes || 30),
+                MaxBookingDurationMinutes: parseInt(formData.maxBookingDurationMinutes || 1440),
+                CancellationNoticeHours: parseInt(formData.cancellationNoticeHours || 24),
+                CleaningDurationMinutes: parseInt(formData.cleaningDurationMinutes || 0),
+                BufferMinutes: parseInt(formData.bufferMinutes || 0)
             };
             
             console.log("Submitting space data:", spaceData);
             
             let result;
             if (initialData.id) {
-                result = await dispatch(updateSpaceAsync({ ...spaceData, id: initialData.id })).unwrap();
+                // For update, wrap the data in the format expected by backend
+                result = await dispatch(updateSpaceAsync({ 
+                    id: initialData.id, 
+                    updatedSpace: spaceData 
+                })).unwrap();
             } else {
                 result = await dispatch(createSpaceAsync(spaceData)).unwrap();
             }
@@ -534,9 +592,56 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         />
                         <small className="text-muted">Thời gian đệm giữa các lần đặt chỗ</small>
                     </div>
-                </Col>
-            </Row>
+                </Col>            </Row>
+            
+            {/* Image Upload Section */}
+            <div className="mb-4">
+                <h5 className="mt-4 mb-3">Hình ảnh không gian</h5>
+                
+                <div className="mb-3">
+                    <label className="form-label">Tải lên hình ảnh</label>
+                    <input 
+                        type="file"
+                        className="form-control"
+                        multiple
+                        accept="image/*"
+                        onChange={(e) => handleImageUpload(e.target.files)}
+                        disabled={uploadingImages}
+                    />
+                    <small className="text-muted">
+                        Chọn nhiều hình ảnh để hiển thị không gian của bạn. Định dạng: JPG, PNG, WEBP
+                    </small>
+                    {formErrors.images && <div className="text-danger mt-1">{formErrors.images}</div>}
+                    {uploadingImages && <div className="text-info mt-1">Đang tải ảnh lên...</div>}
+                </div>
 
+                {/* Image Preview */}
+                {formData.imageUrls && formData.imageUrls.length > 0 && (
+                    <div className="row g-3">
+                        {formData.imageUrls.map((imageUrl, index) => (
+                            <div key={index} className="col-md-4 col-sm-6">
+                                <div className="position-relative">
+                                    <img 
+                                        src={imageUrl} 
+                                        alt={`Space image ${index + 1}`}
+                                        className="img-fluid rounded"
+                                        style={{ width: '100%', height: '200px', objectFit: 'cover' }}
+                                    />
+                                    <button
+                                        type="button"
+                                        className="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
+                                        onClick={() => handleRemoveImage(index)}
+                                        style={{ zIndex: 10 }}
+                                    >
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+            
             <h5 className="mt-4 mb-3">Tiện ích và Dịch vụ</h5>
             <div className="mb-3">
                 <label className="form-label">Tiện ích</label>
