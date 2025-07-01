@@ -9,6 +9,9 @@ import {
     fetchMyJoinedCommunitiesAPI,
     fetchPostsForCommunityAPI,
     createPostAPI,
+    joinCommunityAPI,
+    leaveCommunityAPI,
+    checkCommunityMembershipAPI,
 } from '../services/communityApi'; // Ensure this path is correct
 import { logoutUser } from '../../auth/slices/authSlice'; // Import logout action
 
@@ -44,6 +47,14 @@ const initialState = {
     communityDetailStatus: 'idle',
     communityDetailError: null,
     communityDetail: null, // CommunityDto khi fetch detail
+    // THÊM: Community membership states
+    joinCommunityStatus: 'idle',
+    joinCommunityError: null,
+    leaveCommunityStatus: 'idle',
+    leaveCommunityError: null,
+    membershipCheckStatus: 'idle',
+    membershipCheckError: null,
+    currentCommunityMembership: null, // CommunityMemberDto for current community
 };
 
 export const fetchMyJoinedCommunities = createAsyncThunk(/* ... as in your checkpoint ... */
@@ -138,6 +149,52 @@ export const fetchCommunityDetail = createAsyncThunk(
     }
 );
 
+// THÊM: Thunk để join community
+export const joinCommunity = createAsyncThunk(
+    'community/joinCommunity',
+    async (communityId, { dispatch, rejectWithValue }) => {
+        try {
+            const membershipResult = await joinCommunityAPI(communityId);
+            // Refresh joined communities list
+            dispatch(fetchMyJoinedCommunities());
+            return membershipResult;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+// THÊM: Thunk để leave community
+export const leaveCommunity = createAsyncThunk(
+    'community/leaveCommunity',
+    async (communityId, { dispatch, rejectWithValue }) => {
+        try {
+            const success = await leaveCommunityAPI(communityId);
+            if (success) {
+                // Refresh joined communities list
+                dispatch(fetchMyJoinedCommunities());
+                return communityId;
+            } else {
+                throw new Error('Leave community failed');
+            }
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+// THÊM: Thunk để check membership
+export const checkMembership = createAsyncThunk(
+    'community/checkMembership',
+    async (communityId, { rejectWithValue }) => {
+        try {
+            return await checkCommunityMembershipAPI(communityId);
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
 const communitySlice = createSlice({
     name: 'community',
     initialState,
@@ -200,7 +257,13 @@ const communitySlice = createSlice({
         // *** THÊM: Clear community management status ***
         clearUpdateCommunityStatus: (state) => { state.updateCommunityStatus = 'idle'; state.updateCommunityError = null; },
         clearDeleteCommunityStatus: (state) => { state.deleteCommunityStatus = 'idle'; state.deleteCommunityError = null; },
-        clearCommunityDetailStatus: (state) => { state.communityDetailStatus = 'idle'; state.communityDetailError = null; }
+        clearCommunityDetailStatus: (state) => { state.communityDetailStatus = 'idle'; state.communityDetailError = null; },
+
+        // *** THÊM: Clear membership status actions ***
+        clearJoinCommunityStatus: (state) => { state.joinCommunityStatus = 'idle'; state.joinCommunityError = null; },
+        clearLeaveCommunityStatus: (state) => { state.leaveCommunityStatus = 'idle'; state.leaveCommunityError = null; },
+        clearMembershipCheckStatus: (state) => { state.membershipCheckStatus = 'idle'; state.membershipCheckError = null; },
+        clearCurrentMembership: (state) => { state.currentCommunityMembership = null; }
     },
     extraReducers: (builder) => {
         builder
@@ -267,7 +330,36 @@ const communitySlice = createSlice({
                     state.communityDetail = null;
                 }
             })
-            .addCase(deleteCommunity.rejected, (state, action) => { state.deleteCommunityStatus = 'failed'; state.deleteCommunityError = action.payload; })
+            .addCase(deleteCommunity.rejected, (state, action) => { state.deleteCommunityStatus = 'failed'; state.deleteCommunityError = action.payload; });
+
+        // *** THÊM extraReducers cho community membership ***
+        builder
+            .addCase(joinCommunity.pending, (state) => { state.joinCommunityStatus = 'loading'; state.joinCommunityError = null; })
+            .addCase(joinCommunity.fulfilled, (state, action) => { 
+                state.joinCommunityStatus = 'succeeded'; 
+                state.currentCommunityMembership = action.payload;
+                // Reset membership check status to force re-check
+                state.membershipCheckStatus = 'idle';
+            })
+            .addCase(joinCommunity.rejected, (state, action) => { state.joinCommunityStatus = 'failed'; state.joinCommunityError = action.payload; });
+
+        builder
+            .addCase(leaveCommunity.pending, (state) => { state.leaveCommunityStatus = 'loading'; state.leaveCommunityError = null; })
+            .addCase(leaveCommunity.fulfilled, (state, action) => { 
+                state.leaveCommunityStatus = 'succeeded'; 
+                state.currentCommunityMembership = null;
+                // Reset membership check status to force re-check
+                state.membershipCheckStatus = 'idle';
+            })
+            .addCase(leaveCommunity.rejected, (state, action) => { state.leaveCommunityStatus = 'failed'; state.leaveCommunityError = action.payload; });
+
+        builder
+            .addCase(checkMembership.pending, (state) => { state.membershipCheckStatus = 'loading'; state.membershipCheckError = null; })
+            .addCase(checkMembership.fulfilled, (state, action) => { 
+                state.membershipCheckStatus = 'succeeded'; 
+                state.currentCommunityMembership = action.payload; // null if not member
+            })
+            .addCase(checkMembership.rejected, (state, action) => { state.membershipCheckStatus = 'failed'; state.membershipCheckError = action.payload; })
             // Clear community state when user logs out
             .addCase(logoutUser, clearCommunityStateOnLogout);
     },
@@ -279,7 +371,8 @@ export const {
     setCommunitySearchFilter, setCommunitySearchPage, resetCommunitySearchFilters, clearCreateCommunityStatus,
     updatePostCommentCount, // *** EXPORTED NEW ACTION ***
     setActiveCommentPost, clearActiveCommentPost, // *** THÊM exports cho comment post management ***
-    clearUpdateCommunityStatus, clearDeleteCommunityStatus, clearCommunityDetailStatus // *** THÊM exports cho community management ***
+    clearUpdateCommunityStatus, clearDeleteCommunityStatus, clearCommunityDetailStatus, // *** THÊM exports cho community management ***
+    clearJoinCommunityStatus, clearLeaveCommunityStatus, clearMembershipCheckStatus, clearCurrentMembership // *** THÊM exports cho community membership management ***
 } = communitySlice.actions;
 
 // Selectors
@@ -311,6 +404,18 @@ export const selectUpdateCommunityError = (state) => state.community.updateCommu
 export const selectDeleteCommunityStatus = (state) => state.community.deleteCommunityStatus;
 export const selectDeleteCommunityError = (state) => state.community.deleteCommunityError;
 
+// *** THÊM selectors cho community membership ***
+export const selectJoinCommunityStatus = (state) => state.community.joinCommunityStatus;
+export const selectJoinCommunityError = (state) => state.community.joinCommunityError;
+export const selectLeaveCommunityStatus = (state) => state.community.leaveCommunityStatus;
+export const selectLeaveCommunityError = (state) => state.community.leaveCommunityError;
+export const selectMembershipCheckStatus = (state) => state.community.membershipCheckStatus;
+export const selectMembershipCheckError = (state) => state.community.membershipCheckError;
+export const selectCurrentCommunityMembership = (state) => state.community.currentCommunityMembership;
+export const selectIsCurrentUserMemberOfSelectedCommunity = (state) => {
+    return state.community.currentCommunityMembership !== null;
+};
+
 // Clear community state when user logs out
 const clearCommunityStateOnLogout = (state) => {
     Object.assign(state, {
@@ -332,6 +437,14 @@ const clearCommunityStateOnLogout = (state) => {
         communityDetailStatus: 'idle',
         communityDetailError: null,
         activeCommentPostId: null,
+        // Clear membership state
+        joinCommunityStatus: 'idle',
+        joinCommunityError: null,
+        leaveCommunityStatus: 'idle',
+        leaveCommunityError: null,
+        membershipCheckStatus: 'idle',
+        membershipCheckError: null,
+        currentCommunityMembership: null,
     });
 };
 

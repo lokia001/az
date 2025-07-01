@@ -221,6 +221,69 @@ export const createPostAPI = async (postData) => {
         throw new Error(extractErrorMessage(error, 'Failed to create post.'));
     }
 };
+
+/**
+ * API: Join Community
+ * @param {string} communityId - ID of the community to join.
+ * @returns {Promise<object>} CommunityMemberDto (membership details)
+ */
+export const joinCommunityAPI = async (communityId) => {
+    if (!communityId) {
+        throw new Error("Community ID is required to join community.");
+    }
+    const endpoint = `/api/communities/${communityId}/members/join`;
+    console.log(`[CommunityApiService] Calling POST ${endpoint}`);
+    try {
+        const response = await apiClient.post(endpoint);
+        return response.data; // Expected: CommunityMemberDto
+    } catch (error) {
+        throw new Error(extractErrorMessage(error, 'Failed to join community.'));
+    }
+};
+
+/**
+ * API: Leave Community
+ * @param {string} communityId - ID of the community to leave.
+ * @returns {Promise<boolean>} Success status
+ */
+export const leaveCommunityAPI = async (communityId) => {
+    if (!communityId) {
+        throw new Error("Community ID is required to leave community.");
+    }
+    const endpoint = `/api/communities/${communityId}/members/leave`;
+    console.log(`[CommunityApiService] Calling DELETE ${endpoint}`);
+    try {
+        const response = await apiClient.delete(endpoint);
+        // Backend returns 200 OK with success message, not 204 NoContent
+        return response.status === 200 || response.status === 204; 
+    } catch (error) {
+        throw new Error(extractErrorMessage(error, 'Failed to leave community.'));
+    }
+};
+
+/**
+ * API: Check Community Membership
+ * @param {string} communityId - ID of the community to check.
+ * @returns {Promise<object|null>} CommunityMemberDto if member, null if not
+ */
+export const checkCommunityMembershipAPI = async (communityId) => {
+    if (!communityId) {
+        throw new Error("Community ID is required to check membership.");
+    }
+    const endpoint = `/api/communities/${communityId}/members/me`;
+    console.log(`[CommunityApiService] Calling GET ${endpoint}`);
+    try {
+        const response = await apiClient.get(endpoint);
+        return response.data; // Expected: CommunityMemberDto or null
+    } catch (error) {
+        // If 404, user is not a member - return null instead of throwing
+        if (error.response?.status === 404) {
+            return null;
+        }
+        throw new Error(extractErrorMessage(error, 'Failed to check community membership.'));
+    }
+};
+
 // Other Post APIs (using /api/posts/ prefix - placeholders for now)
 // export const createPostAPI = async (postData) => {
 //   const endpoint = '/api/posts';

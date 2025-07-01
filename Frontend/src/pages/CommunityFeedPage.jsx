@@ -6,6 +6,7 @@ import Sidebar from '../features/community/components/Sidebar';
 import MainFeed from '../features/community/components/MainFeed';
 import CreatePostModal from '../features/community/components/CreatePostModal'; // If create post is here
 import EditCommunityModal from '../features/community/components/EditCommunityModal'; // *** THÊM ***
+import CommunityMembershipButton from '../features/community/components/CommunityMembershipButton'; // *** THÊM ***
 import {
     setSelectedCommunity,
     fetchCommunityPosts,
@@ -197,6 +198,14 @@ const CommunityFeedPage = () => {
                         </div>
                         
                         <div className="d-flex align-items-center gap-2">
+                            {/* *** THÊM: Community membership button *** */}
+                            {communityIdFromUrl && (
+                                <CommunityMembershipButton 
+                                    communityId={communityIdFromUrl} 
+                                    communityDetail={communityDetail} 
+                                />
+                            )}
+                            
                             {communityIdFromUrl && (
                                 <Button variant="success" onClick={() => setShowCreatePostModal(true)}>
                                     + Tạo Bài Đăng
