@@ -32,9 +32,27 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
         cleaningDurationMinutes: initialData.cleaningDurationMinutes || 0,
         bufferMinutes: initialData.bufferMinutes || 0,
         status: initialData.status || 'Available',
-        selectedSystemAmenityIds: initialData.selectedSystemAmenityIds || initialData.systemAmenities || [],
+        selectedSystemAmenityIds: (() => {
+            // Extract GUIDs from objects if needed
+            const amenities = initialData.selectedSystemAmenityIds || initialData.systemAmenities || [];
+            return amenities.map(amenity => {
+                if (typeof amenity === 'string') return amenity;
+                if (amenity && amenity.systemFeatureId) return amenity.systemFeatureId;
+                if (amenity && amenity.SystemFeatureId) return amenity.SystemFeatureId;
+                return amenity;
+            }).filter(id => id && typeof id === 'string');
+        })(),
         customAmenityNames: initialData.customAmenityNames || [],
-        selectedSystemServices: initialData.selectedSystemServices || initialData.systemServices || [],
+        selectedSystemServices: (() => {
+            // Extract GUIDs from objects if needed
+            const services = initialData.selectedSystemServices || initialData.systemServices || [];
+            return services.map(service => {
+                if (typeof service === 'string') return service;
+                if (service && service.systemFeatureId) return service.systemFeatureId;
+                if (service && service.SystemFeatureId) return service.SystemFeatureId;
+                return service;
+            }).filter(id => id && typeof id === 'string');
+        })(),
         customServiceRequests: initialData.customServiceRequests || [],
         images: initialData.spaceImages || [] // Lưu toàn bộ SpaceImageDto objects, không chỉ URLs
     });
@@ -244,18 +262,40 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                 CloseTime: formatTimeSpan(formData.closeTime),
                 AccessInstructions: formData.accessInstructions || null,
                 HouseRules: formData.houseRules || null,
-                SelectedSystemAmenityIds: formData.selectedSystemAmenityIds || formData.systemAmenities || [],
+                SelectedSystemAmenityIds: (() => {
+                    // Ensure we only send GUIDs, not objects
+                    const amenities = formData.selectedSystemAmenityIds || formData.systemAmenities || [];
+                    return amenities.map(amenity => {
+                        if (typeof amenity === 'string') return amenity;
+                        if (amenity && amenity.systemFeatureId) return amenity.systemFeatureId;
+                        if (amenity && amenity.SystemFeatureId) return amenity.SystemFeatureId;
+                        return amenity;
+                    }).filter(id => id && typeof id === 'string');
+                })(),
                 CustomAmenityNames: formData.customAmenityNames || [],
-                SelectedSystemServices: (formData.selectedSystemServices || []).map(id => {
-                    if (typeof id === 'string') {
-                        return {
-                            SystemFeatureId: id,
-                            PriceOverride: null,
-                            Notes: null
-                        };
-                    }
-                    return id;
-                }),
+                SelectedSystemServices: (() => {
+                    const services = formData.selectedSystemServices || [];
+                    return services.map(service => {
+                        if (typeof service === 'string') {
+                            return {
+                                SystemFeatureId: service,
+                                PriceOverride: null,
+                                Notes: null,
+                                IsIncludedInBasePrice: false
+                            };
+                        }
+                        // If it's already an object, ensure it has the correct structure
+                        if (service && (service.systemFeatureId || service.SystemFeatureId)) {
+                            return {
+                                SystemFeatureId: service.systemFeatureId || service.SystemFeatureId,
+                                PriceOverride: service.priceOverride || service.PriceOverride || null,
+                                Notes: service.notes || service.Notes || null,
+                                IsIncludedInBasePrice: service.isIncludedInBasePrice || service.IsIncludedInBasePrice || false
+                            };
+                        }
+                        return service;
+                    }).filter(service => service && (service.SystemFeatureId || service.systemFeatureId));
+                })(),
                 CustomServiceRequests: formData.customServiceRequests || [],
                 MinBookingDurationMinutes: parseInt(formData.minBookingDurationMinutes || 30),
                 MaxBookingDurationMinutes: parseInt(formData.maxBookingDurationMinutes || 1440),
