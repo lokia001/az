@@ -29,7 +29,7 @@ const REACTION_TYPES = {
     // HAHA: "Haha", WOW: "Wow", SAD: "Sad", ANGRY: "Angry" // Add others later
 };
 
-const CommentItem = ({ comment, parentEntityType, parentEntityId }) => {
+const CommentItem = ({ comment, parentEntityType, parentEntityId, communityId, canComment }) => {
     const dispatch = useDispatch();
     const isAuthenticated = useSelector(selectIsAuthenticated);
     const currentUser = useSelector(selectCurrentUser);
@@ -276,7 +276,7 @@ const CommentItem = ({ comment, parentEntityType, parentEntityId }) => {
                     )}
 
                     {/* Reply button */}
-                    {isAuthenticated && (
+                    {canComment && (
                         <Button 
                             variant="link" 
                             size="sm" 
@@ -352,7 +352,7 @@ const CommentItem = ({ comment, parentEntityType, parentEntityId }) => {
                         </Alert>
                     )}
                 </div>
-                {showReplyForm && isAuthenticated && (<div className="reply-form-container mt-2"><AddCommentForm parentEntityType={parentEntityType} parentEntityId={parentEntityId} parentCommentIdForReply={comment.id} onCommentAdded={handleReplyAdded} onCancelReply={() => setShowReplyForm(false)} isReplyForm={true} /></div>
+                {showReplyForm && canComment && (<div className="reply-form-container mt-2"><AddCommentForm parentEntityType={parentEntityType} parentEntityId={parentEntityId} parentCommentIdForReply={comment.id} onCommentAdded={handleReplyAdded} onCancelReply={() => setShowReplyForm(false)} isReplyForm={true} communityId={communityId} /></div>
                 )}
                 <Collapse in={comment.showReplies}>
                     <div className="mt-2">
@@ -363,6 +363,8 @@ const CommentItem = ({ comment, parentEntityType, parentEntityId }) => {
                                 comment={reply}
                                 parentEntityType={parentEntityType} // Pass down original parent info
                                 parentEntityId={parentEntityId} // Pass down original parent info
+                                communityId={communityId} // *** THÊM ***
+                                canComment={canComment} // *** THÊM ***
                             />
                         ))}
                         

@@ -9,7 +9,7 @@ import { addNewComment, selectCreateCommentStatus, selectCreateCommentError, cle
 import { selectCurrentUser } from '../../auth/slices/authSlice'; // To get current user's avatar
 import { DEFAULT_PROFILE_AVATAR } from '../../profile/services/profileApi';
 
-const AddCommentForm = ({ parentEntityType, parentEntityId, parentCommentIdForReply = null, onCommentAdded, onCancelReply }) => {
+const AddCommentForm = ({ parentEntityType, parentEntityId, parentCommentIdForReply = null, onCommentAdded, onCancelReply, communityId }) => {
 
 
     const dispatch = useDispatch();

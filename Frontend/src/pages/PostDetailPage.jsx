@@ -23,6 +23,13 @@ import {
     clearDeleteStatus,
 } from '../features/posts/slices/postDetailSlice';
 
+// *** THÊM import cho community membership ***
+import { 
+    fetchMyJoinedCommunities,
+    selectMyJoinedCommunities,
+    selectMyJoinedCommunitiesStatus 
+} from '../features/community/slices/communitySlice';
+
 import CommentList from '../features/comments/components/CommentList';
 import { getCachedUserInfo } from '../utils/userCache';
 import { formatVietnameseTime } from '../utils/timeUtils';
@@ -86,6 +93,10 @@ function PostDetailPage() {
     const deleteStatus = useSelector((state) => state.postDetail.deleteStatus);
     const isAuthenticated = useSelector(selectIsAuthenticated);
     const currentUser = useSelector(selectCurrentUser);
+    
+    // *** THÊM: Community membership state ***
+    const myJoinedCommunities = useSelector(selectMyJoinedCommunities);
+    const myJoinedCommunitiesStatus = useSelector(selectMyJoinedCommunitiesStatus);
 
     // Derived status to avoid creating new objects
     const status = loading ? 'loading' : error ? 'failed' : 'succeeded';
@@ -134,6 +145,20 @@ function PostDetailPage() {
             dispatch(setActiveCommentPost(post.id));
         }
     }, [dispatch, post]);
+
+    // *** THÊM: Effect để fetch myJoinedCommunities cho membership check ***
+    useEffect(() => {
+        // Chỉ fetch nếu chưa bao giờ fetch (status = 'idle') và đã authenticated
+        if (isAuthenticated && myJoinedCommunitiesStatus === 'idle') {
+            console.log('[PostDetailPage] Fetching myJoinedCommunities for membership check');
+            dispatch(fetchMyJoinedCommunities());
+        }
+    }, [dispatch, isAuthenticated, myJoinedCommunitiesStatus]);
+    
+    // *** DEBUG: Log authentication và community state (chỉ khi có thay đổi quan trọng) ***
+    useEffect(() => {
+        console.log(`[PostDetailPage] DEBUG: isAuthenticated=${isAuthenticated}, post.CommunityId=${post?.CommunityId}, myJoinedCommunitiesStatus=${myJoinedCommunitiesStatus}, joinedCommunitiesCount=${myJoinedCommunities.length}`);
+    }, [isAuthenticated, post?.CommunityId, myJoinedCommunitiesStatus]); // Remove myJoinedCommunities.length to avoid frequent updates
 
     // Effect 2: Fetch reaction summary for the loaded post
     useEffect(() => {
@@ -509,7 +534,13 @@ function PostDetailPage() {
                     </Card>
 
                     <div className="mt-4">
-                        <CommentList parentEntityType="Post" parentId={post.id} />
+                        {/* *** DEBUG: Log post.CommunityId để kiểm tra *** */}
+                        {console.log(`[PostDetailPage] RENDER: post.CommunityId="${post.CommunityId}", typeof=${typeof post.CommunityId}`)}
+                        <CommentList 
+                            parentEntityType="Post" 
+                            parentId={post.id} 
+                            communityId={post.CommunityId} 
+                        />
                     </div>
 
                 </Col>

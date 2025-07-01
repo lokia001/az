@@ -28,6 +28,8 @@ import {
     selectDeleteCommunityStatus,
     selectDeleteCommunityError,
     clearDeleteCommunityStatus,
+    // *** THÊM imports cho membership check ***
+    selectIsCurrentUserMemberOfSelectedCommunity,
 } from '../features/community/slices/communitySlice';
 import { selectIsAuthenticated, selectCurrentUser } from '../features/auth/slices/authSlice'; // *** THÊM ***
 import Spinner from 'react-bootstrap/Spinner';
@@ -58,6 +60,8 @@ const CommunityFeedPage = () => {
     const communityDetailError = useSelector(selectCommunityDetailError);
     const deleteStatus = useSelector(selectDeleteCommunityStatus);
     const deleteError = useSelector(selectDeleteCommunityError);
+    // *** THÊM membership status ***
+    const isCurrentUserMember = useSelector(selectIsCurrentUserMemberOfSelectedCommunity);
 
     const [showCreatePostModal, setShowCreatePostModal] = useState(false);
     const [showEditModal, setShowEditModal] = useState(false); // *** THÊM ***
@@ -206,7 +210,8 @@ const CommunityFeedPage = () => {
                                 />
                             )}
                             
-                            {communityIdFromUrl && (
+                            {/* *** UPDATED: Chỉ hiển thị nút tạo bài nếu user đã join community *** */}
+                            {communityIdFromUrl && isAuthenticated && isCurrentUserMember && (
                                 <Button variant="success" onClick={() => setShowCreatePostModal(true)}>
                                     + Tạo Bài Đăng
                                 </Button>

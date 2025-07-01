@@ -416,6 +416,27 @@ export const selectIsCurrentUserMemberOfSelectedCommunity = (state) => {
     return state.community.currentCommunityMembership !== null;
 };
 
+// *** THÊM: Selector để check membership cho một community cụ thể ***
+export const selectIsCurrentUserMemberOfCommunity = (communityId) => (state) => {
+    if (!communityId) {
+        console.log(`[selectIsCurrentUserMemberOfCommunity] No communityId provided, returning false`);
+        return false;
+    }
+    
+    // Kiểm tra trong currentCommunityMembership trước (nếu đang trong context của community đó)
+    if (state.community.selectedCommunityId === communityId) {
+        const result = state.community.currentCommunityMembership !== null;
+        console.log(`[selectIsCurrentUserMemberOfCommunity] Using currentCommunityMembership: communityId=${communityId}, selectedCommunityId=${state.community.selectedCommunityId}, currentMembership=${!!state.community.currentCommunityMembership}, result=${result}`);
+        return result;
+    }
+    
+    // Fallback: kiểm tra trong myJoinedCommunities
+    const joinedCommunities = state.community.myJoinedCommunities;
+    const result = joinedCommunities.some(membership => membership.communityId === communityId);
+    console.log(`[selectIsCurrentUserMemberOfCommunity] Using myJoinedCommunities: communityId=${communityId}, joinedCommunitiesCount=${joinedCommunities.length}, joinedCommunityIds=[${joinedCommunities.map(m => m.communityId).join(', ')}], result=${result}`);
+    return result;
+};
+
 // Clear community state when user logs out
 const clearCommunityStateOnLogout = (state) => {
     Object.assign(state, {

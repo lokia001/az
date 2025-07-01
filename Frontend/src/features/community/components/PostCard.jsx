@@ -24,6 +24,7 @@ import {
     selectSetReactionStatus,
 } from '../../reactions/slices/reactionSlice';
 import { selectIsAuthenticated, selectCurrentUser } from '../../auth/slices/authSlice';
+import { selectSelectedCommunityId } from '../slices/communitySlice'; // *** THÊM ***
 import { getCachedUserInfo } from '../../../utils/userCache';
 import { formatVietnameseTime } from '../../../utils/timeUtils';
 import { deletePost } from '../../posts/slices/postDetailSlice';
@@ -49,6 +50,9 @@ const PostCard = ({ post }) => {
     // *** THAY ĐỔI: Sử dụng global state thay vì local state ***
     const activeCommentPostId = useSelector(selectActiveCommentPostId);
     const showComments = activeCommentPostId === post.id; // true nếu post này đang active
+    
+    // *** THÊM: Lấy communityId hiện tại để truyền vào CommentList ***
+    const currentCommunityId = useSelector(selectSelectedCommunityId);
     
     const [authorInfo, setAuthorInfo] = useState({
         displayName: 'Đang tải...',
@@ -349,7 +353,11 @@ const PostCard = ({ post }) => {
             </Card.Footer>
             <Collapse in={showComments}><div id={`comments-for-post-${post.id}`} className="border-top px-3 pb-2 pt-1">
                 {post.id && showComments && (
-                    <CommentList parentEntityType="Post" parentId={post.id} />
+                    <CommentList 
+                        parentEntityType="Post" 
+                        parentId={post.id} 
+                        communityId={currentCommunityId} 
+                    />
                 )}
             </div>
             </Collapse>

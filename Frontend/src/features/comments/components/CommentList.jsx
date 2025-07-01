@@ -1,5 +1,5 @@
 // src/features/comments/components/CommentList.jsx
-import React, { useEffect, useState } from 'react'; // useState might not be needed if showAddCommentForm is handled differently
+import React, { useEffect, useState, useMemo } from 'react'; // *** THÊM useMemo ***
 import { useSelector, useDispatch } from 'react-redux';
 import { Link } from 'react-router-dom';
 import CommentItem from './CommentItem';
@@ -10,6 +10,11 @@ import Button from 'react-bootstrap/Button';
 import Collapse from 'react-bootstrap/Collapse';
 import Pagination from 'react-bootstrap/Pagination';
 import { selectIsAuthenticated } from '../../auth/slices/authSlice';
+// *** THÊM import cho membership check ***
+import { 
+    selectIsCurrentUserMemberOfCommunity,
+    selectMyJoinedCommunitiesStatus 
+} from '../../community/slices/communitySlice';
 import {
     fetchCommentsForParent,
     setCurrentParentEntityForComments,
@@ -24,7 +29,7 @@ import {
 
 const defaultPaginationState = { PageNumber: 1, PageSize: 5, totalCount: 0, totalPages: 0 };
 
-const CommentList = ({ parentEntityType, parentId }) => {
+const CommentList = ({ parentEntityType, parentId, communityId }) => {
     const dispatch = useDispatch();
 
     // These selectors now refer to the *globally active* comment thread in commentSlice
@@ -35,6 +40,22 @@ const CommentList = ({ parentEntityType, parentId }) => {
     const error = useSelector(selectCommentsError);           // And this
 
     const isAuthenticated = useSelector(selectIsAuthenticated);
+    
+    // *** THÊM: Kiểm tra membership nếu đây là comment trong community ***
+    // Memoize selector để tránh recreate và infinite calls
+    const membershipSelector = useMemo(() => selectIsCurrentUserMemberOfCommunity(communityId), [communityId]);
+    const isCurrentUserMember = useSelector(membershipSelector);
+    const myJoinedCommunitiesStatus = useSelector(selectMyJoinedCommunitiesStatus);
+    
+    // *** STRICT: Logic membership check nghiêm ngặt hơn ***
+    const canComment = isAuthenticated && (
+        (!communityId || communityId === 'null' || communityId === 'undefined') ? true : // Không có communityId -> cho phép
+        (myJoinedCommunitiesStatus === 'succeeded' && isCurrentUserMember) // Có communityId -> phải fetch succeeded VÀ là member
+    );
+    
+    // *** DEBUG: Log để kiểm tra logic ***
+    console.log(`[CommentList] MEMBERSHIP CHECK: communityId="${communityId}", isAuthenticated=${isAuthenticated}, isCurrentUserMember=${isCurrentUserMember}, myJoinedCommunitiesStatus=${myJoinedCommunitiesStatus}, canComment=${canComment}`);
+    
     const [showTopLevelAddCommentForm, setShowTopLevelAddCommentForm] = useState(false);
 
     // Determine if *this instance* of CommentList is for the parent currently active in Redux
@@ -209,7 +230,7 @@ const CommentList = ({ parentEntityType, parentId }) => {
                 Bình luận ({status === 'succeeded' ? pagination.totalCount : (status === 'loading' ? '...' : '?')})
             </h5>
 
-            {isAuthenticated && (
+            {canComment && (
                 <div className="mb-3">
                     {!showTopLevelAddCommentForm && (
                         <Button variant="outline-primary" size="sm" onClick={() => setShowTopLevelAddCommentForm(true)}>
@@ -224,14 +245,25 @@ const CommentList = ({ parentEntityType, parentId }) => {
                                 onCommentAdded={handleTopLevelCommentAdded}
                                 onCancelReply={() => setShowTopLevelAddCommentForm(false)} // Use onCancelReply to hide form
                                 isReplyForm={false} // Explicitly false for top-level
+                                communityId={communityId} // *** THÊM ***
                             />
                         </div>
                     </Collapse>
                 </div>
             )}
-            {!isAuthenticated && !showTopLevelAddCommentForm && (
+            {!canComment && !showTopLevelAddCommentForm && (
                 <Alert variant="light" className="text-center small p-2">
-                    Vui lòng <Link to="/login">đăng nhập</Link> để bình luận.
+                    {!isAuthenticated ? (
+                        <>Vui lòng <Link to="/login">đăng nhập</Link> để bình luận.</>
+                    ) : myJoinedCommunitiesStatus === 'loading' ? (
+                        <>Đang kiểm tra quyền bình luận...</>
+                    ) : myJoinedCommunitiesStatus === 'failed' ? (
+                        <>Lỗi kiểm tra quyền bình luận. Vui lòng thử lại.</>
+                    ) : communityId && !isCurrentUserMember ? (
+                        <>Bạn cần tham gia cộng đồng để bình luận.</>
+                    ) : (
+                        <>Không thể bình luận lúc này.</>
+                    )}
                 </Alert>
             )}
 
@@ -242,7 +274,14 @@ const CommentList = ({ parentEntityType, parentId }) => {
             )}
 
             {comments.map(comment => (
-                <CommentItem key={comment.id} comment={comment} parentEntityType={parentEntityType} parentEntityId={parentId} />
+                <CommentItem 
+                    key={comment.id} 
+                    comment={comment} 
+                    parentEntityType={parentEntityType} 
+                    parentEntityId={parentId} 
+                    communityId={communityId} 
+                    canComment={canComment}
+                />
             ))}
 
             {status === 'loading' && comments.length > 0 && (
