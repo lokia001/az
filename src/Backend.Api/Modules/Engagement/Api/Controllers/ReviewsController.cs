@@ -69,7 +69,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             catch (UnauthorizedAccessException ex) // Ví dụ: User không có quyền review booking/space này
             {
                 _logger.LogWarning(ex, "CreateReview: Unauthorized attempt by User {UserId}, Request: {@Request}", userIdString, request);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (InvalidOperationException ex) // Ví dụ: Đã review booking này rồi, hoặc booking chưa completed
             {
@@ -166,7 +166,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             }
             // ... (Thêm các catch block: KeyNotFound, Unauthorized, Argument, Exception) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
             catch (Exception ex)
             {
@@ -198,7 +198,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             }
             // ... (Thêm các catch block) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "DeleteReview: Error for Review {ReviewId} by User {UserId}", id, userIdString);
@@ -243,7 +243,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (InvalidOperationException ex)
             {

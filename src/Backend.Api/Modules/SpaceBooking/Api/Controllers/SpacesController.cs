@@ -44,7 +44,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning("CreateSpace: Unauthorized attempt by User {UserId}. Message: {Message}", creatorUserIdString, ex.Message);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (ArgumentException ex)
             {
@@ -122,7 +122,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning("UpdateSpace: Unauthorized attempt for Space {SpaceId} by User {UserId}. Message: {Message}", id, editorUserIdString, ex.Message);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (ArgumentException ex)
             {
@@ -169,7 +169,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning("DeleteSpace: Unauthorized attempt for Space {SpaceId} by User {UserId}. Message: {Message}", id, deleterUserIdString, ex.Message);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -212,7 +212,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (ArgumentException ex) // Từ FileStorageService hoặc logic nghiệp vụ
             {
@@ -251,7 +251,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -286,7 +286,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -321,7 +321,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -367,7 +367,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
                 }
                 if (spaceDto.OwnerId != userId)
                 {
-                    return Forbid("You are not the owner of this space.");
+                    return StatusCode(StatusCodes.Status403Forbidden, new { message = "You are not the owner of this space." });
                 }
                 // Return the images list (spaceImages)
                 return Ok(spaceDto.SpaceImages ?? new List<SpaceImageDto>());

@@ -15,12 +15,16 @@ import {
     selectSelectedCommunityName
 } from '../slices/communitySlice';
 
-const CreatePostModal = ({ show, onHide }) => {
+const CreatePostModal = ({ show, onHide, communityId: propCommunityId, communityName: propCommunityName }) => {
     const dispatch = useDispatch();
     const createStatus = useSelector(selectCreatePostStatus);
     const createError = useSelector(selectCreatePostError);
-    const communityId = useSelector(selectSelectedCommunityId);
-    const communityName = useSelector(selectSelectedCommunityName);
+    const stateCommunityId = useSelector(selectSelectedCommunityId);
+    const stateCommunityName = useSelector(selectSelectedCommunityName);
+
+    // Use prop values if provided, otherwise fall back to Redux state
+    const communityId = propCommunityId || stateCommunityId;
+    const communityName = propCommunityName || stateCommunityName;
 
     const [title, setTitle] = useState('');
     const [content, setContent] = useState('');

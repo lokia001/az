@@ -332,8 +332,8 @@ function PostDetailPage() {
         <Container className="py-4">
             <Row className="justify-content-center">
                 <Col md={10} lg={8}>
-                    <Button variant="outline-secondary" size="sm" onClick={() => navigate(post.communityId ? `/communities/${post.communityId}` : -1)} className="mb-3">
-                        ← Quay lại {post.communityName || 'Cộng đồng'}
+                    <Button variant="outline-secondary" size="sm" onClick={() => navigate(post.CommunityId ? `/communities/${post.CommunityId}` : -1)} className="mb-3">
+                        ← Quay lại {post.CommunityName || 'Cộng đồng'}
                     </Button>
 
                     <Card className="shadow-sm">
@@ -359,7 +359,7 @@ function PostDetailPage() {
                                 <div>
                                     <h5 className="mb-0">{authorInfo.displayName}</h5>
                                     <small className="text-muted">
-                                        Đã đăng trong <Link to={`/communities/${post.communityId}`}>{post.communityName || 'một cộng đồng'}</Link>
+                                        Đã đăng trong <Link to={`/communities/${post.CommunityId}`}>{post.CommunityName || 'một cộng đồng'}</Link>
                                         {' • '}
                                         {postTime}
                                     </small>

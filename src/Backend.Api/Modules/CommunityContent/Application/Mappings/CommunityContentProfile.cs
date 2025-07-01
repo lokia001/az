@@ -80,6 +80,7 @@ namespace Backend.Api.Modules.CommunityContent.Application.Mappings
                 // Map tường minh các thuộc tính của PostDto
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))
                 .ForMember(dest => dest.CommunityId, opt => opt.MapFrom(src => src.CommunityId))
+                .ForMember(dest => dest.CommunityName, opt => opt.MapFrom(src => src.Community != null ? src.Community.Name : string.Empty))
                 .ForMember(dest => dest.AuthorUserId, opt => opt.MapFrom(src => src.AuthorUserId))
                 .ForMember(dest => dest.Title, opt => opt.MapFrom(src => src.Title))
                 .ForMember(dest => dest.Content, opt => opt.MapFrom(src => src.Content))

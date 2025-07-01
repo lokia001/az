@@ -87,7 +87,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning("GetBookingById: Unauthorized attempt for Booking {BookingId} by User {UserId}. Message: {Message}", id, requestorUserIdString, ex.Message);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -144,7 +144,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning("GetBookingsForSpace: Unauthorized attempt for Space {SpaceId} by User {UserId}. Message: {Message}", spaceId, requestorUserIdString, ex.Message);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -182,7 +182,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             }
             catch (UnauthorizedAccessException ex)
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -226,7 +226,7 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning("UpdateBookingStatus: Unauthorized attempt for Booking {BookingId} by User {UserId}. Message: {Message}", id, updaterUserIdString, ex.Message);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (ArgumentException ex) // Ví dụ: NewStatus không hợp lệ
             {

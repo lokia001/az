@@ -160,3 +160,49 @@ export const fetchUserProfileAPI = async () => {
         throw new Error(translatedError);
     }
 };
+
+// REFRESH TOKEN API
+export const refreshTokenAPI = async (accessToken, refreshToken) => {
+    try {
+        console.log('[AuthAPI] Attempting to refresh token');
+        const response = await apiClient.post('/api/auth/refresh-token', {
+            expiredAccessToken: accessToken,
+            refreshToken: refreshToken
+        });
+        console.log('[AuthAPI] Token refresh successful');
+        // Response is { accessToken, accessTokenExpiration, refreshToken }
+        return response.data;
+    } catch (error) {
+        const errorMessage = error.response?.data?.message || 
+            error.response?.data?.title || 
+            error.message || 
+            'Token refresh failed';
+            
+        // Use the translated error if available
+        const translatedError = getErrorTranslation(errorMessage);
+        throw new Error(translatedError);
+    }
+};
+
+// Helper to set tokens in localStorage and apiClient
+export const setAuthTokens = (data) => {
+    // data should be { accessToken, refreshToken, (accessTokenExpiration) }
+    localStorage.setItem('accessToken', data.accessToken);
+    if (data.refreshToken) {
+        localStorage.setItem('refreshToken', data.refreshToken);
+    }
+    // accessTokenExpiration can also be stored if needed for client-side expiry checks
+    if (data.accessTokenExpiration) {
+        localStorage.setItem('accessTokenExpiration', data.accessTokenExpiration);
+    }
+    apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+};
+
+// Helper to clear tokens
+export const clearAuthTokens = () => {
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('authUser'); // User object
+    localStorage.removeItem('accessTokenExpiration');
+    delete apiClient.defaults.headers.common['Authorization'];
+};

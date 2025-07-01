@@ -10,6 +10,7 @@ namespace Backend.Api.Modules.CommunityContent.Application.Contracts.Dtos
     {
         public Guid Id { get; set; }
         public Guid CommunityId { get; set; }
+        public string CommunityName { get; set; } = string.Empty; // Add this field
         public Guid AuthorUserId { get; set; }
         public CommunityRole? AuthorCommunityRole { get; set; } // Đã thêm ở bước trước
         public string Title { get; set; } = string.Empty;

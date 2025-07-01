@@ -53,7 +53,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             catch (UnauthorizedAccessException ex) // Ví dụ: User không phải thành viên community
             {
                 _logger.LogWarning(ex, "CreatePost: Unauthorized attempt by User {UserId}, Request: {@Request}", authorUserIdString, request);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (ArgumentException ex)
             {
@@ -108,7 +108,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
             // ... (Thêm các catch block: KeyNotFound, Unauthorized, Argument, Exception) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (ArgumentException ex) { return BadRequest(new { message = ex.Message }); }
             catch (Exception ex)
             {
@@ -140,7 +140,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
             // ... (Thêm các catch block) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "DeletePost: Error for Post {PostId} by User {UserId}", id, deleterUserIdString);
@@ -168,7 +168,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
             // ... (Thêm các catch block) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "PinPost: Error for Post {PostId} by Admin/Mod {UserId}", id, adminOrModUserIdString);
@@ -194,7 +194,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
             // ... (Thêm các catch block) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "UnpinPost: Error for Post {PostId} by Admin/Mod {UserId}", id, adminOrModUserIdString);
@@ -220,7 +220,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
             // ... (Thêm các catch block) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "LockPost: Error for Post {PostId} by Admin/Mod {UserId}", id, adminOrModUserIdString);
@@ -246,7 +246,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
             // ... (Thêm các catch block) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "UnlockPost: Error for Post {PostId} by Admin/Mod {UserId}", id, adminOrModUserIdString);

@@ -135,7 +135,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "UpdateCommunity: Unauthorized attempt for Community {CommunityId} by User {UserId}.", id, updaterUserIdString);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (ArgumentException ex) // Ví dụ: Tên mới đã tồn tại
             {
@@ -178,7 +178,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             catch (UnauthorizedAccessException ex)
             {
                 _logger.LogWarning(ex, "DeleteCommunity: Unauthorized attempt for Community {CommunityId} by User {UserId}.", id, deleterUserIdString);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (KeyNotFoundException ex)
             {
@@ -221,7 +221,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
             catch (UnauthorizedAccessException ex) // Ví dụ: community private không cho join
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -284,6 +284,36 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
             }
         }
 
+        // GET api/communities/{communityId}/members/me - Check current user membership
+        [HttpGet("{communityId:guid}/members/me")]
+        [Authorize]
+        public async Task<IActionResult> GetMyMembershipInCommunity(Guid communityId)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid user identifier in token." });
+            }
+
+            try
+            {
+                var membership = await _communityMemberService.GetMembershipDetailsAsync(communityId, userId);
+                if (membership == null)
+                {
+                    return NotFound(new { message = "You are not a member of this community." });
+                }
+                return Ok(membership);
+            }
+            catch (KeyNotFoundException ex) // Community không tồn tại
+            {
+                return NotFound(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetMyMembershipInCommunity: Error checking membership for User {UserId} in Community {CommunityId}.", userIdString, communityId);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while checking membership.");
+            }
+        }
 
         // --- Admin/Moderator actions for Community Members ---
 
@@ -308,7 +338,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
                 return Ok(updatedMemberDto);
             }
             // ... (Thêm các catch block: KeyNotFound, Unauthorized, InvalidOperation, Argument, Exception) ...
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "UpdateMemberRole error for TargetUser {TargetUserId} in Community {CommunityId} by Admin/Mod {AdminOrModUserId}", targetUserId, communityId, adminOrModUserId);
@@ -337,7 +367,7 @@ namespace Backend.Api.Modules.CommunityContent.Api.Controllers
                 return Ok(new { message = $"User {targetUserId} removed from community {communityId}." }); // Hoặc NoContent()
             }
             // ... (Thêm các catch block) ...
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "RemoveMemberFromCommunity error for TargetUser {TargetUserId} in Community {CommunityId} by Admin/Mod {AdminOrModUserId}", targetUserId, communityId, adminOrModUserId);

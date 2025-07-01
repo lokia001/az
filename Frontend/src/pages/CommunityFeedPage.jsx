@@ -185,7 +185,7 @@ const CommunityFeedPage = () => {
                     <div className="d-flex justify-content-between align-items-center mb-3">
                         <div>
                             <h2 className="mb-0">
-                                {selectedCommunityName || `Cộng đồng`}
+                                {communityDetail?.name || `Cộng đồng`}
                             </h2>
                             {/* *** THÊM: Hiển thị thông tin community detail *** */}
                             {communityDetail && (

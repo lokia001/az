@@ -51,7 +51,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             catch (UnauthorizedAccessException ex) // User không có quyền comment trên parent entity
             {
                 _logger.LogWarning(ex, "CreateComment: Unauthorized attempt. User {UserId}, Request: {@Request}", userIdString, request);
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (ArgumentException ex) // Ví dụ: ParentCommentId không hợp lệ với ParentEntity
             {
@@ -81,7 +81,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             }
             catch (UnauthorizedAccessException ex) // Nếu service throw khi không có quyền xem parent
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -119,7 +119,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             }
             catch (UnauthorizedAccessException ex) // Không có quyền xem parent entity
             {
-                return Forbid(ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
             }
             catch (Exception ex)
             {
@@ -151,7 +151,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             }
             // ... (Thêm các catch block: KeyNotFound, Unauthorized, Argument, InvalidOperation, Exception) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (InvalidOperationException ex) { return BadRequest(new { message = ex.Message }); } // Ví dụ: comment trên entity bị khóa
             catch (Exception ex)
             {
@@ -183,7 +183,7 @@ namespace Backend.Api.Modules.Engagement.Api.Controllers
             }
             // ... (Thêm các catch block) ...
             catch (KeyNotFoundException ex) { return NotFound(new { message = ex.Message }); }
-            catch (UnauthorizedAccessException ex) { return Forbid(ex.Message); }
+            catch (UnauthorizedAccessException ex) { return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message }); }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "DeleteComment: Error for Comment {CommentId} by User {UserId}", id, userIdString);

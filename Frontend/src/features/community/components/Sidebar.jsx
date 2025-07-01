@@ -17,6 +17,7 @@ import {
     setCommunitySearchFilter,
     resetCommunitySearchFilters,
 } from '../slices/communitySlice';
+import { selectIsAuthenticated } from '../../auth/slices/authSlice'; // *** THÊM import selectIsAuthenticated ***
 import CreateCommunityModal from './CreateCommunityModal';
 
 const getGroupIconUrl = (community) => { /* ... same ... */
@@ -31,10 +32,10 @@ const getGroupIconUrl = (community) => { /* ... same ... */
 const Sidebar = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const myJoinedCommunities = useSelector(selectMyJoinedCommunities);
+    const communities = useSelector(selectMyJoinedCommunities); // *** SỬA: Rename từ myJoinedCommunities thành communities ***
     const status = useSelector(selectMyJoinedCommunitiesStatus);
     const error = useSelector(selectMyJoinedCommunitiesError);
-    const isAuthenticated = useSelector(state => state.auth.accessToken);
+    const isAuthenticated = useSelector(selectIsAuthenticated); // *** SỬA: Dùng selector thay vì direct state ***
     const selectedCommunityIdForHighlight = useSelector(selectSelectedCommunityId); // For styling active item
 
     const [showCreateModal, setShowCreateModal] = useState(false);
@@ -140,7 +141,7 @@ const Sidebar = () => {
                     {status === 'failed' && error && <Alert variant="danger" className="m-2 small p-2">Lỗi: {String(error)}</Alert>}
                     {status === 'succeeded' && (
                         <ul style={styles.groupList}>
-                            {myJoinedCommunities.length > 0 ? myJoinedCommunities.map(comm => (
+                            {communities.length > 0 ? communities.map(comm => (
                                 <li key={comm.communityId} style={styles.groupListItem}>
                                     <Link
                                         to={`/communities/${comm.communityId}`}

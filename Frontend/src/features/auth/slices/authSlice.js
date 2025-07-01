@@ -1,30 +1,31 @@
 // src/features/auth/slices/authSlice.js
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import { loginAPI, registerAPI, fetchUserProfileAPI } from '../services/authApi';
+import { loginAPI, registerAPI, fetchUserProfileAPI, refreshTokenAPI, setAuthTokens, clearAuthTokens } from '../services/authApi';
+import { fetchMyJoinedCommunities } from '../../community/slices/communitySlice'; // *** THÊM import ***
 import apiClient from '../../../services/apiClient';
 
 // Helper to set tokens in localStorage and apiClient
-const setAuthTokens = (data) => {
-    // data should be { accessToken, refreshToken, (accessTokenExpiration) }
-    localStorage.setItem('accessToken', data.accessToken);
-    if (data.refreshToken) {
-        localStorage.setItem('refreshToken', data.refreshToken);
-    }
-    // accessTokenExpiration can also be stored if needed for client-side expiry checks
-    if (data.accessTokenExpiration) {
-        localStorage.setItem('accessTokenExpiration', data.accessTokenExpiration);
-    }
-    apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
-};
+// const setAuthTokens = (data) => {
+//     // data should be { accessToken, refreshToken, (accessTokenExpiration) }
+//     localStorage.setItem('accessToken', data.accessToken);
+//     if (data.refreshToken) {
+//         localStorage.setItem('refreshToken', data.refreshToken);
+//     }
+//     // accessTokenExpiration can also be stored if needed for client-side expiry checks
+//     if (data.accessTokenExpiration) {
+//         localStorage.setItem('accessTokenExpiration', data.accessTokenExpiration);
+//     }
+//     apiClient.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+// };
 
 // Helper to clear tokens
-const clearAuthTokens = () => {
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('authUser'); // User object
-    localStorage.removeItem('accessTokenExpiration');
-    delete apiClient.defaults.headers.common['Authorization'];
-};
+// const clearAuthTokens = () => {
+//     localStorage.removeItem('accessToken');
+//     localStorage.removeItem('refreshToken');
+//     localStorage.removeItem('authUser'); // User object
+//     localStorage.removeItem('accessTokenExpiration');
+//     delete apiClient.defaults.headers.common['Authorization'];
+// };
 
 const initialState = {
     user: JSON.parse(localStorage.getItem('authUser')) || null,
@@ -49,6 +50,10 @@ export const loginUser = createAsyncThunk(
             const userProfile = await fetchUserProfileAPI();
             localStorage.setItem('authUser', JSON.stringify(userProfile));
 
+            // *** THÊM: Fetch joined communities ngay sau khi login thành công ***
+            console.log('[AuthSlice] Login successful, fetching joined communities...');
+            dispatch(fetchMyJoinedCommunities());
+
             return { ...tokenData, user: userProfile }; // Return combined data
         } catch (error) {
             clearAuthTokens();
@@ -69,6 +74,10 @@ export const registerUser = createAsyncThunk(
 
             const userProfile = await fetchUserProfileAPI();
             localStorage.setItem('authUser', JSON.stringify(userProfile));
+
+            // *** THÊM: Fetch joined communities ngay sau khi register thành công ***
+            console.log('[AuthSlice] Register successful, fetching joined communities...');
+            dispatch(fetchMyJoinedCommunities());
 
             return { ...tokenData, user: userProfile };
         } catch (error) {
@@ -127,13 +136,51 @@ export const loadUserFromToken = createAsyncThunk(
             localStorage.setItem('authUser', JSON.stringify(userProfile));
             const refreshToken = localStorage.getItem('refreshToken'); // Also retrieve these for consistent state
             const accessTokenExpiration = localStorage.getItem('accessTokenExpiration');
+
+            // *** THÊM: Fetch joined communities khi load user từ token thành công ***
+            console.log('[AuthSlice] Load user from token successful, fetching joined communities...');
+            dispatch(fetchMyJoinedCommunities());
+
             return { user: userProfile, accessToken, refreshToken, accessTokenExpiration };
         } catch (error) {
             // If fetchUserProfileAPI fails (e.g. 401 due to invalid/expired token),
             // this catch block will be executed.
             console.error('loadUserFromToken failed:', error.message);
+            clearAuthTokens();
             dispatch(logoutUser()); // Dispatch logoutUser action to clear state and localStorage
             return rejectWithValue(error.message || 'Failed to load user from token');
+        }
+    }
+);
+
+// Async Thunk for refresh token
+export const refreshToken = createAsyncThunk(
+    'auth/refreshToken',
+    async (_, { getState, dispatch, rejectWithValue }) => {
+        const state = getState().auth;
+        const accessToken = state.accessToken || localStorage.getItem('accessToken');
+        const refreshTokenValue = state.refreshToken || localStorage.getItem('refreshToken');
+
+        if (!accessToken || !refreshTokenValue) {
+            console.error('No access token or refresh token found');
+            dispatch(logoutUser());
+            return rejectWithValue('No tokens available for refresh');
+        }
+
+        try {
+            const tokenData = await refreshTokenAPI(accessToken, refreshTokenValue);
+            setAuthTokens(tokenData);
+
+            // *** THÊM: Fetch joined communities khi refresh token thành công ***
+            console.log('[AuthSlice] Token refresh successful, fetching joined communities...');
+            dispatch(fetchMyJoinedCommunities());
+
+            return tokenData;
+        } catch (error) {
+            console.error('Token refresh failed:', error.message);
+            clearAuthTokens();
+            dispatch(logoutUser());
+            return rejectWithValue(error.message || 'Token refresh failed');
         }
     }
 );
@@ -215,6 +262,17 @@ const authSlice = createSlice({
                     state.refreshToken = null;
                     state.accessTokenExpiration = null;
                 }
+            })
+            // Refresh Token
+            .addCase(refreshToken.pending, (state) => {
+                state.status = 'loading';
+                state.error = null;
+            })
+            .addCase(refreshToken.fulfilled, sharedFulfilledHandler)
+            .addCase(refreshToken.rejected, (state, action) => {
+                // For refresh token failure, user should be logged out
+                sharedRejectedHandler(state, action);
+                clearAuthTokens();
             });
     },
 });
