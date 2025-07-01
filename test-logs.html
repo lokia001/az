@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test System Logs</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .logs-container { 
+            height: 400px; 
+            background: #1e1e1e; 
+            color: #fff; 
+            font-family: 'Courier New', monospace; 
+            padding: 15px; 
+            overflow-y: auto; 
+            border-radius: 5px; 
+        }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .success { color: green; }
+        .error { color: red; }
+        input { padding: 8px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Test System Logs API</h1>
+        
+        <div class="section">
+            <h3>1. Login as SysAdmin</h3>
+            <input type="text" id="username" placeholder="Username" value="admin">
+            <input type="password" id="password" placeholder="Password" value="Admin@123">
+            <button onclick="login()">Login</button>
+            <div id="loginStatus"></div>
+        </div>
+        
+        <div class="section">
+            <h3>2. Test Logs API</h3>
+            <button onclick="fetchLogs()">Fetch System Logs</button>
+            <button onclick="fetchLogLevels()">Fetch Log Levels</button>
+            <div id="apiStatus"></div>
+        </div>
+        
+        <div class="section">
+            <h3>3. System Logs Display</h3>
+            <div id="logsContainer" class="logs-container">
+                Click "Fetch System Logs" to load logs...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:5035/api';
+        let authToken = '';
+
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const statusDiv = document.getElementById('loginStatus');
+            
+            try {
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    authToken = data.accessToken;
+                    statusDiv.innerHTML = '<span class="success">✅ Login successful! SysAdmin role detected.</span>';
+                    console.log('Login successful, token:', authToken);
+                } else {
+                    const error = await response.text();
+                    statusDiv.innerHTML = `<span class="error">❌ Login failed: ${error}</span>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">❌ Login error: ${error.message}</span>`;
+            }
+        }
+        
+        async function fetchLogs() {
+            const statusDiv = document.getElementById('apiStatus');
+            const logsContainer = document.getElementById('logsContainer');
+            
+            if (!authToken) {
+                statusDiv.innerHTML = '<span class="error">❌ Please login first</span>';
+                return;
+            }
+            
+            try {
+                logsContainer.innerHTML = '🔄 Loading logs...';
+                
+                const response = await fetch(`${API_BASE}/admin/logs?pageSize=50`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    statusDiv.innerHTML = `<span class="success">✅ Fetched ${data.logs.length} logs</span>`;
+                    
+                    logsContainer.innerHTML = '';
+                    if (data.logs.length === 0) {
+                        logsContainer.innerHTML = '📝 No logs found';
+                    } else {
+                        logsContainer.innerHTML = `📊 Displaying ${data.logs.length} logs (newest first):\n\n`;
+                        data.logs.forEach(log => {
+                            const timestamp = new Date(log.timestamp).toLocaleString();
+                            const level = log.level.padEnd(12);
+                            const source = log.source.padEnd(25);
+                            
+                            let line = `[${timestamp}] ${level} ${source} ${log.message}`;
+                            
+                            if (log.userId) line += ` | User: ${log.userId}`;
+                            if (log.relatedEntityId) line += ` | Entity: ${log.relatedEntityId}`;
+                            if (log.ipAddress) line += ` | IP: ${log.ipAddress}`;
+                            if (log.errorDetails) line += `\n    ↳ Error: ${log.errorDetails}`;
+                            
+                            const logDiv = document.createElement('div');
+                            logDiv.style.color = getLogColor(log.level);
+                            logDiv.style.marginBottom = '3px';
+                            logDiv.style.borderLeft = `3px solid ${getLogColor(log.level)}`;
+                            logDiv.style.paddingLeft = '8px';
+                            logDiv.textContent = line;
+                            logsContainer.appendChild(logDiv);
+                        });
+                    }
+                } else {
+                    const error = await response.text();
+                    statusDiv.innerHTML = `<span class="error">❌ API Error (${response.status}): ${error}</span>`;
+                    logsContainer.innerHTML = `❌ Failed to load logs: ${error}`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">❌ Fetch error: ${error.message}</span>`;
+                logsContainer.innerHTML = `❌ Error: ${error.message}`;
+            }
+        }
+        
+        async function fetchLogLevels() {
+            const statusDiv = document.getElementById('apiStatus');
+            
+            if (!authToken) {
+                statusDiv.innerHTML = '<span class="error">❌ Please login first</span>';
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/logs/levels`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.ok) {
+                    const levels = await response.json();
+                    statusDiv.innerHTML = `<span class="success">✅ Available log levels: ${levels.join(', ')}</span>`;
+                } else {
+                    const error = await response.text();
+                    statusDiv.innerHTML = `<span class="error">❌ Error fetching levels: ${error}</span>`;
+                }
+            } catch (error) {
+                statusDiv.innerHTML = `<span class="error">❌ Error: ${error.message}</span>`;
+            }
+        }
+        
+        function getLogColor(level) {
+            switch (level) {
+                case 'ERROR': return '#ff6b6b';
+                case 'WARNING': return '#ffa726';
+                case 'INFO': return '#42a5f5';
+                case 'DEBUG': return '#78909c';
+                case 'ADMIN_ACTION': return '#66bb6a';
+                default: return '#ffffff';
+            }
+        }
+    </script>
+</body>
+</html>

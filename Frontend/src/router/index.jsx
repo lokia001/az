@@ -8,6 +8,7 @@ import { selectIsAuthenticated, selectCurrentUser, logoutUser, selectAuthStatus 
 import {
     HomePage, NotFoundPage, AboutUs, Community, OwnerDashboard, AdminDashboard
 } from '../pages';
+import SystemLogs from '../components/SystemLogs';
 import MyBookingsPage from '../pages/MyBookings/MyBookingsPage';
 
 // import SpaceList from '../features/manageSpace/components/SpaceList';
@@ -125,15 +126,11 @@ const AppRouter = () => {
                     <Route path="/admin/users" element={<AdminUserListPage />} />
                     <Route path="/community" element={<CommunityPlatformPage />} />
                     {/* System Admin Routes */}
-                    <Route path="/admin/dashboard" element={<NotFoundPage message="Admin Dashboard - Coming Soon" />} />
-                    <Route path="/admin/system-amenities" element={<SystemAmenitiesPage />} />
-                    <Route path="/admin/system-space-services" element={<SystemSpaceServicesPage />} />
                     <Route path="/admin/community" element={<NotFoundPage message="Admin Community Management - Coming Soon" />} />
                     <Route path="/my-bookings" element={<MyBookingsPage />} />
                     <Route path="/admin/reports" element={<NotFoundPage message="Admin Reports - Coming Soon" />} />
                     <Route path="/admin/settings" element={<NotFoundPage message="Admin Settings - Coming Soon" />} />
                     <Route path="/admin/profile" element={<NotFoundPage message="Admin Profile - Coming Soon" />} />
-                    <Route path="/admin/system-logs" element={<NotFoundPage message="System Logs - Coming Soon" />} />
                     <Route path="/admin/security" element={<NotFoundPage message="Security Settings - Coming Soon" />} />
                     {/* End System Admin Routes */}
                     <Route
