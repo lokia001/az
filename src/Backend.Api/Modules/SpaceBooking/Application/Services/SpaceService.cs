@@ -29,6 +29,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
         // private readonly IUserService _userService; // Xem xét lại sự cần thiết
         private readonly ISystemAmenityRepository _systemAmenityRepository;
         private readonly ISystemSpaceServiceRepository _systemSpaceServiceRepository;
+        private readonly IBookingRepository _bookingRepository; // << THÊM ĐỂ LẤY BOOKING INFO
         private readonly IMapper _mapper;
         private readonly AppDbContext _dbContext;
 
@@ -41,6 +42,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             // IUserService userService, // Xem xét lại
             ISystemAmenityRepository systemAmenityRepository,
             ISystemSpaceServiceRepository systemSpaceServiceRepository,
+            IBookingRepository bookingRepository, // << THÊM BOOKING REPOSITORY
             IMapper mapper,
             AppDbContext dbContext,
             IFileStorageService fileStorageService,
@@ -52,6 +54,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             // _userService = userService;
             _systemAmenityRepository = systemAmenityRepository;
             _systemSpaceServiceRepository = systemSpaceServiceRepository;
+            _bookingRepository = bookingRepository; // << GÁN GIÁ TRỊ
             _mapper = mapper;
             _dbContext = dbContext;
             _fileStorageService = fileStorageService; // << GÁN GIÁ TRỊ
@@ -505,12 +508,56 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
         {
             var spaces = await _spaceRepository.GetByOwnerIdWithDetailsAsync(ownerId);
             var spaceDtos = _mapper.Map<IEnumerable<SpaceDto>>(spaces).ToList();
-            // ... (logic làm giàu DTO đã bị loại bỏ theo yêu cầu loose coupling) ...
-            // Giờ chỉ còn:
-            // return _mapper.Map<IEnumerable<SpaceDto>>(spaces);
-            // Hoặc nếu bạn muốn giữ lại ToList() để xử lý tiếp:
+            
             if (!spaces.Any()) return Enumerable.Empty<SpaceDto>();
-            return _mapper.Map<IEnumerable<SpaceDto>>(spaces);
+
+            // Enrich with booking information for owner dashboard
+            foreach (var dto in spaceDtos)
+            {
+                await EnrichSpaceWithBookingInfoAsync(dto);
+            }
+
+            return spaceDtos;
+        }
+
+        private async Task EnrichSpaceWithBookingInfoAsync(SpaceDto spaceDto)
+        {
+            try
+            {
+                var now = DateTime.UtcNow;
+
+                // Get pending bookings count
+                var pendingBookings = await _bookingRepository.FindAsync(b => 
+                    b.SpaceId == spaceDto.Id && 
+                    b.Status == BookingStatus.Pending && 
+                    !b.IsDeleted);
+                spaceDto.PendingBookingsCount = pendingBookings.Count();
+
+                // Get current active booking (CheckedIn status)
+                var currentBooking = await _bookingRepository.FindAsync(b => 
+                    b.SpaceId == spaceDto.Id && 
+                    b.Status == BookingStatus.CheckedIn && 
+                    !b.IsDeleted);
+                spaceDto.CurrentBooking = _mapper.Map<BookingDto>(currentBooking.FirstOrDefault());
+
+                // Get next confirmed upcoming booking
+                var nextBooking = await _bookingRepository.FindAsync(b => 
+                    b.SpaceId == spaceDto.Id && 
+                    b.Status == BookingStatus.Confirmed && 
+                    b.StartTime > now && 
+                    !b.IsDeleted);
+                spaceDto.NextBooking = _mapper.Map<BookingDto>(
+                    nextBooking.OrderBy(b => b.StartTime).FirstOrDefault());
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Failed to enrich space {SpaceId} with booking info: {Error}", 
+                    spaceDto.Id, ex.Message);
+                // Set defaults on error
+                spaceDto.PendingBookingsCount = 0;
+                spaceDto.CurrentBooking = null;
+                spaceDto.NextBooking = null;
+            }
         }
 
         public async Task<SpaceDto?> GetSpaceBySlugAsync(string slug)

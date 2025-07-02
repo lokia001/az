@@ -118,6 +118,7 @@ const AppRouter = () => {
                     <Route path="/owner/manage-spaces" element={<OwnerSpacesPage />} />
                     <Route path="/owner/manage-spaces/:id" element={<OwnerSpaceDetailPage />} />
                     <Route path="/owner/bookings" element={<OwnerBookingManagement />} />
+                    <Route path="/owner/spaces/:spaceId/bookings" element={<OwnerBookingManagement />} />
                     <Route path="/owner/customers" element={<OwnerCustomerManagement />} />
 
                     {/* <Route path="/bookings/space/:id" element={<OwnerBookingManagement />} /> */}

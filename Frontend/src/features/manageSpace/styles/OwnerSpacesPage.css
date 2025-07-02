@@ -59,3 +59,23 @@
   background-color: #ffc107;
   color: #212529;
 }
+
+/* Utility classes for interactive elements */
+.cursor-pointer {
+  cursor: pointer !important;
+}
+
+.hover-shadow:hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(-1px);
+}
+
+/* Booking notification styles */
+.alert.cursor-pointer {
+  user-select: none;
+  border-radius: 0.25rem;
+}
+
+.alert.cursor-pointer:hover {
+  opacity: 0.9;
+}

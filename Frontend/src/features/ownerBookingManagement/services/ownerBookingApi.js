@@ -116,6 +116,8 @@ export const fetchOwnerBookingsAPI = async (filters = {}) => {
                 status: booking.status || 'Pending',
                 notes: booking.notesFromUser || booking.notes || '',
                 paymentStatus: booking.paymentStatus || 'Unpaid',
+                notificationEmail: booking.notificationEmail || null, // Map notification email from backend
+                numberOfPeople: booking.numberOfPeople || 1,
                 // Keep original data for modal details
                 customer: {
                     name: customerName,
@@ -164,7 +166,15 @@ export const fetchOwnerBookingsAPI = async (filters = {}) => {
 export const getOwnerBookingDetailsAPI = async (bookingId) => {
     try {
         const response = await api.get(`/bookings/${bookingId}`);
-        return response.data;
+        const booking = response.data;
+        
+        // Map the booking data to include notification email
+        return {
+            ...booking,
+            notificationEmail: booking.notificationEmail || null,
+            customerName: generateDisplayName(booking.userId),
+            spaceName: booking.spaceName || booking.space?.name || 'Chưa có tên không gian'
+        };
     } catch (error) {
         throw error.response?.data || error.message;
     }

@@ -368,9 +368,14 @@ const OwnerSpacesPage = () => {
         // 2. Check for pending bookings that need confirmation
         if (space.pendingBookingsCount > 0) {
             return (
-                <div className="alert alert-warning py-1 px-2 mb-2 small">
+                <div 
+                    className="alert alert-warning py-1 px-2 mb-2 small cursor-pointer hover-shadow"
+                    onClick={() => handleViewBookings(space.id)}
+                    title="Nhấn để xem chi tiết booking cần xác nhận"
+                    style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                >
                     <i className="fas fa-clock me-1"></i>
-                    <strong>Có {space.pendingBookingsCount} booking</strong> cần xác nhận
+                    <strong>Cần xác nhận</strong> - {space.pendingBookingsCount} booking
                 </div>
             );
         }

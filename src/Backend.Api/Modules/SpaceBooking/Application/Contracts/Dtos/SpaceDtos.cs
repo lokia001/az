@@ -58,6 +58,11 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         public IEnumerable<CustomFeatureDto> CustomAmenities { get; set; } = Enumerable.Empty<CustomFeatureDto>();
         public IEnumerable<SystemFeatureLinkDto> SystemServices { get; set; } = Enumerable.Empty<SystemFeatureLinkDto>();
         public IEnumerable<CustomFeatureDto> CustomServices { get; set; } = Enumerable.Empty<CustomFeatureDto>();
+        
+        // Booking information for owner dashboard
+        public int PendingBookingsCount { get; set; } // Number of pending bookings awaiting confirmation
+        public BookingDto? CurrentBooking { get; set; } // Current active booking (CheckedIn status)
+        public BookingDto? NextBooking { get; set; } // Next confirmed upcoming booking
 
         public SpaceDto() { } // Constructor không tham số
     }

@@ -1,6 +1,7 @@
 // src/features/ownerBookingManagement/OwnerBookingManagement.jsx
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useParams } from 'react-router-dom'; // << THÊM VÀO để lấy spaceId từ URL
 import { 
     Container, Table, Button, Badge, Form, Row, Col, 
     Pagination, Spinner, Alert, Card, Stack, InputGroup,
@@ -29,6 +30,7 @@ import { formatVietnameseDateTime } from '../../utils/timeUtils';
 import { getOwnerSpaces } from '../../services/api';
 
 const OwnerBookingManagement = () => {
+    const { spaceId } = useParams(); // << LẤY spaceId từ URL
     const { t } = useTranslation();
     
     // Fallback translation function for missing keys
@@ -68,9 +70,21 @@ const OwnerBookingManagement = () => {
                 const spaces = await getOwnerSpaces(currentUser.id);
                 setOwnerSpaces(spaces);
                 
-                // If there are spaces and no space is selected, select the first one
-                if (spaces.length > 0 && !filters.spaceId) {
-                    dispatch(setOwnerBookingFilter({ filterName: 'spaceId', value: spaces[0].id }));
+                // Determine which space to select
+                let selectedSpaceId = null;
+                
+                // 1. Priority: spaceId from URL parameter (when navigating from space management)
+                if (spaceId && spaces.find(space => space.id === spaceId)) {
+                    selectedSpaceId = spaceId;
+                }
+                // 2. Fallback: first space if no space is currently selected
+                else if (spaces.length > 0 && !filters.spaceId) {
+                    selectedSpaceId = spaces[0].id;
+                }
+                
+                // Set selected space and fetch bookings
+                if (selectedSpaceId) {
+                    dispatch(setOwnerBookingFilter({ filterName: 'spaceId', value: selectedSpaceId }));
                     dispatch(fetchOwnerBookings());
                 }
             } catch (error) {
@@ -82,7 +96,7 @@ const OwnerBookingManagement = () => {
         };
         
         fetchSpaces();
-    }, [currentUser?.id, dispatch]);
+    }, [currentUser?.id, spaceId, dispatch]); // << THÊM spaceId vào dependencies
 
     useEffect(() => {
         dispatch(fetchOwnerBookings());
@@ -292,6 +306,7 @@ const OwnerBookingManagement = () => {
                     <tr>
                         <th>ID</th>
                         <th>Khách hàng</th>
+                        <th>Email nhận thông báo</th>
                         <th>Không gian</th>
                         <th>Thời gian bắt đầu</th>
                         <th>Thời gian kết thúc</th>
@@ -306,6 +321,13 @@ const OwnerBookingManagement = () => {
                         <tr key={booking.id}>
                             <td>{booking.id}</td>
                             <td>{booking.customerName}</td>
+                            <td>
+                                <div>
+                                    <span className="text-muted small" title={booking.notificationEmail || 'Sử dụng email đăng ký'}>
+                                        {booking.notificationEmail || <em className="text-secondary">Email đăng ký</em>}
+                                    </span>
+                                </div>
+                            </td>
                             <td>{booking.spaceName}</td>
                             <td>{formatVietnameseDateTime(booking.startTime)}</td>
                             <td>{formatVietnameseDateTime(booking.endTime)}</td>
@@ -317,7 +339,7 @@ const OwnerBookingManagement = () => {
                     ))}
                     {(!Array.isArray(bookings) || !bookings.length) && (
                         <tr>
-                            <td colSpan="9" className="text-center py-4">
+                            <td colSpan="10" className="text-center py-4">
                                 {status === 'loading' ? (
                                     <Spinner animation="border" size="sm" className="me-2" />
                                 ) : (
@@ -414,7 +436,19 @@ const OwnerBookingManagement = () => {
                                     <strong>Khách hàng:</strong> {selectedBooking.customerName}
                                 </Col>
                                 <Col md={6}>
+                                    <strong>Email nhận thông báo:</strong> 
+                                    <br />
+                                    <span className="text-muted">
+                                        {selectedBooking.notificationEmail || <em className="text-secondary">Sử dụng email đăng ký của khách hàng</em>}
+                                    </span>
+                                </Col>
+                            </Row>
+                            <Row className="mb-3">
+                                <Col md={6}>
                                     <strong>Không gian:</strong> {selectedBooking.spaceName}
+                                </Col>
+                                <Col md={6}>
+                                    <strong>Số người:</strong> {selectedBooking.numberOfPeople} người
                                 </Col>
                             </Row>
                             <Row className="mb-3">
