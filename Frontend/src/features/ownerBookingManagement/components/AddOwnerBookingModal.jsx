@@ -1,5 +1,6 @@
 // src/features/ownerBookingManagement/components/AddOwnerBookingModal.jsx
 import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
 import { 
     Modal, Form, Button, Row, Col, Alert, Spinner,
     InputGroup, Badge, Card, ListGroup, Accordion, ButtonGroup
@@ -9,6 +10,7 @@ import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
 import { Search, CheckCircle, XCircle, FunnelFill } from 'react-bootstrap-icons';
 import { getOwnerSpaces, searchUsers, getSystemAmenities, getSystemSpaceServices } from '../../../services/api';
+import { selectOwnerBookingCreateStatus, selectOwnerBookingCreateError, clearCreateStatus } from '../slices/ownerBookingSlice';
 
 const AddOwnerBookingModal = ({ 
     show, 
@@ -19,6 +21,11 @@ const AddOwnerBookingModal = ({
     currentUser = null  // Add currentUser prop
 }) => {
     const { t } = useTranslation();
+    const dispatch = useDispatch();
+    
+    // Redux state
+    const createStatus = useSelector(selectOwnerBookingCreateStatus);
+    const createError = useSelector(selectOwnerBookingCreateError);
     
     // Form state
     const [formData, setFormData] = useState({
@@ -58,6 +65,7 @@ const AddOwnerBookingModal = ({
     const [systemSpaceServices, setSystemSpaceServices] = useState([]);
     const [showAllAmenities, setShowAllAmenities] = useState(false);
     const [showAllServices, setShowAllServices] = useState(false);
+    const [showSuccessModal, setShowSuccessModal] = useState(false);
 
     // Reset form when modal opens/closes
     useEffect(() => {
@@ -86,6 +94,19 @@ const AddOwnerBookingModal = ({
         }
     }, [allSpaces, spaceFilters]);
 
+    // Monitor create status for success notification
+    useEffect(() => {
+        if (createStatus === 'succeeded') {
+            setShowSuccessModal(true);
+            // Reset form after showing success
+            setTimeout(() => {
+                resetForm();
+                onHide();
+                dispatch(clearCreateStatus());
+            }, 2500);
+        }
+    }, [createStatus, dispatch, onHide]);
+
     const resetForm = () => {
         setFormData({
             spaceId: '',
@@ -112,6 +133,7 @@ const AddOwnerBookingModal = ({
             spaceType: 'all',
             showFilters: false
         });
+        setShowSuccessModal(false);
     };
 
     const loadSpaces = async () => {
@@ -433,6 +455,7 @@ const AddOwnerBookingModal = ({
     };
 
     return (
+        <>
         <Modal show={show} onHide={onHide} size="lg" backdrop="static">
             <Modal.Header closeButton>
                 <Modal.Title>Thêm đặt chỗ mới</Modal.Title>
@@ -991,6 +1014,31 @@ const AddOwnerBookingModal = ({
                 </Modal.Footer>
             </Form>
         </Modal>
+
+        {/* Success Modal */}
+        <Modal 
+            show={showSuccessModal} 
+            onHide={() => setShowSuccessModal(false)}
+            centered
+            className="booking-success-modal"
+        >
+            <Modal.Body className="text-center py-4">
+                <div className="booking-success-icon mb-3">
+                    <CheckCircle size={48} className="text-success" />
+                </div>
+                <h5 className="mb-3">Đặt chỗ thành công!</h5>
+                <p className="mb-2">
+                    {formData.isGuestBooking 
+                        ? `Đặt chỗ cho khách "${formData.guestName}" đã được tạo thành công.`
+                        : `Đặt chỗ cho khách hàng "${selectedUser?.fullName || selectedUser?.username || ''}" đã được tạo thành công.`
+                    }
+                </p>
+                <p className="text-muted mb-0">
+                    <strong>Email xác nhận đã được gửi!</strong>
+                </p>
+            </Modal.Body>
+        </Modal>
+        </>
     );
 };
 

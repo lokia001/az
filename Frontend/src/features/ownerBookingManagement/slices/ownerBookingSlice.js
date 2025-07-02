@@ -247,6 +247,10 @@ const ownerBookingSlice = createSlice({
             state.conflicts = [];
             state.lastConflictCheck = new Date().toISOString();
         },
+        clearCreateStatus: (state) => {
+            state.createStatus = 'idle';
+            state.createError = null;
+        },
     },
     extraReducers: (builder) => {
         builder
@@ -398,6 +402,7 @@ export const {
     clearSelectedBooking,
     setViewMode,
     clearConflicts,
+    clearCreateStatus,
 } = ownerBookingSlice.actions;
 
 // Selectors

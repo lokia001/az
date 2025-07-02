@@ -108,6 +108,16 @@ const OwnerBookingManagement = () => {
         dispatch(fetchOwnerBookings());
     }, [dispatch]);
 
+    // Handle modal closing after successful booking creation
+    useEffect(() => {
+        if (createStatus === 'succeeded' && showAddBookingModal) {
+            // Close modal after the success notification is shown (handled by the modal itself)
+            setTimeout(() => {
+                setShowAddBookingModal(false);
+            }, 2500); // Match the timeout in AddOwnerBookingModal
+        }
+    }, [createStatus, showAddBookingModal]);
+
     const handleFilter = (filterName, value) => {
         dispatch(setOwnerBookingFilter({ filterName, value }));
         dispatch(fetchOwnerBookings());
@@ -157,7 +167,7 @@ const OwnerBookingManagement = () => {
     const handleCreateBooking = async (bookingData) => {
         try {
             await dispatch(createOwnerBooking(bookingData)).unwrap();
-            setShowAddBookingModal(false);
+            // Modal will handle success notification and closing
             // Refresh bookings list
             dispatch(fetchOwnerBookings());
         } catch (error) {

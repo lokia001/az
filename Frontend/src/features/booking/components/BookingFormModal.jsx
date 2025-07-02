@@ -915,7 +915,10 @@ const BookingFormModal = ({ show, onHide, space }) => {
                         <i className="bi bi-check-circle-fill"></i>
                     </div>
                     <h5 className="mb-3">Đặt phòng thành công!</h5>
-                    <p className="mb-0">Bạn đã đặt phòng "{space?.name}" thành công.</p>
+                    <p className="mb-2">Bạn đã đặt phòng "{space?.name}" thành công.</p>
+                    <p className="text-muted mb-0">
+                        <strong>Email xác nhận đã được gửi!</strong>
+                    </p>
                 </Modal.Body>
             </Modal>
         </>
