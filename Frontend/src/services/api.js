@@ -361,7 +361,7 @@ export const cancelBooking = async (bookingId) => {
 // System Items API functions
 export const getSystemSpaceServices = async () => {
     try {
-        const response = await api.get('/system/space-services');
+        const response = await api.get('/admin/system/space-services');
         console.log("getSystemSpaceServices response:", response.data);
         return response.data;
     } catch (error) {
@@ -405,7 +405,7 @@ export const deleteSystemSpaceService = async (serviceId) => {
 
 export const getSystemAmenities = async () => {
     try {
-        const response = await api.get('/system/amenities');
+        const response = await api.get('/admin/system/amenities');
         console.log("getSystemAmenities response:", response.data);
         return response.data;
     } catch (error) {

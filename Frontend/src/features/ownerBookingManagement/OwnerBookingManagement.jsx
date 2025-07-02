@@ -513,6 +513,7 @@ const OwnerBookingManagement = () => {
                 onSubmit={handleCreateBooking}
                 isSubmitting={createStatus === 'loading'}
                 error={createError}
+                currentUser={currentUser}
             />
         </Container>
     );
