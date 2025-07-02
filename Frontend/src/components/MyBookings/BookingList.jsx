@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, Badge, Stack, Button, Placeholder } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
-import { formatDate, formatCurrency } from '../../utils/formatters';
+import { formatCurrency } from '../../utils/formatters';
+import { formatVietnameseDate } from '../../utils/timeUtils';
 
 const BookingStatusBadge = ({ status }) => {
   const { t } = useTranslation();
@@ -77,7 +78,7 @@ const BookingList = ({ bookings = [], isLoading, onBookingClick }) => {
             <Stack gap={2}>
               <div>
                 <div className="text-muted">{t('myBookings.dates')}:</div>
-                <div>{formatDate(booking.startDate)} - {formatDate(booking.endDate)}</div>
+                <div>{formatVietnameseDate(booking.startDate)} - {formatVietnameseDate(booking.endDate)}</div>
               </div>
 
               <div>

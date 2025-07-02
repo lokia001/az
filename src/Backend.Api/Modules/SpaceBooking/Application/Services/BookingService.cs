@@ -25,6 +25,9 @@ public class BookingService : IBookingService
     private readonly AppDbContext _dbContext; // Unit of Work
 
     private readonly ILogger<BookingService> _logger;
+    
+    // Vietnam timezone for proper time validation
+    private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
     // private readonly IUserService _userService; // Tùy chọn, nếu cần làm giàu BookingDto với BookerName
 
     public BookingService(
@@ -42,6 +45,19 @@ public class BookingService : IBookingService
         _dbContext = dbContext;
         _logger = logger;
         // _userService = userService;
+    }
+    
+    /// <summary>
+    /// Convert UTC datetime to Vietnam local time for proper time validation
+    /// </summary>
+    private DateTime ConvertToVietnamTime(DateTime utcDateTime)
+    {
+        if (utcDateTime.Kind == DateTimeKind.Unspecified)
+        {
+            // Assume it's already in Vietnam time if not specified
+            return utcDateTime;
+        }
+        return TimeZoneInfo.ConvertTimeFromUtc(utcDateTime, VietnamTimeZone);
     }
 
     public async Task<bool> IsSpaceAvailableAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null)
@@ -72,32 +88,42 @@ public class BookingService : IBookingService
             return false;
         }
 
-        if (space.OpenTime.HasValue && startTime.TimeOfDay < space.OpenTime.Value)
+        // Convert UTC times to Vietnam local time for operating hours validation
+        var localStartTime = ConvertToVietnamTime(startTime);
+        var localEndTime = ConvertToVietnamTime(endTime);
+
+        _logger.LogInformation("Converted times - Local start: {LocalStart}, Local end: {LocalEnd}", 
+            localStartTime, localEndTime);
+
+        if (space.OpenTime.HasValue && localStartTime.TimeOfDay < space.OpenTime.Value)
         {
-            _logger.LogWarning("Availability check failed: Booking starts before space open time for SpaceId: {SpaceId}.", spaceId);
+            _logger.LogWarning("Availability check failed: Booking starts before space open time for SpaceId: {SpaceId}. Local start time: {LocalStartTime}, Open time: {OpenTime}", 
+                spaceId, localStartTime.TimeOfDay, space.OpenTime.Value);
             return false;
         }
         if (space.CloseTime.HasValue)
         {
-            var effectiveEndTimeForCheck = endTime;
+            var effectiveEndTimeForCheck = localEndTime;
             // Nếu booking kết thúc đúng 00:00, coi như là cuối ngày hôm trước cho việc so sánh với CloseTime
-            if (endTime.TimeOfDay == TimeSpan.Zero && endTime.Date > startTime.Date)
+            if (localEndTime.TimeOfDay == TimeSpan.Zero && localEndTime.Date > localStartTime.Date)
             {
-                effectiveEndTimeForCheck = endTime.AddTicks(-1); // Lùi lại 1 tick để nó là ngày hôm trước
+                effectiveEndTimeForCheck = localEndTime.AddTicks(-1); // Lùi lại 1 tick để nó là ngày hôm trước
             }
 
-            if (effectiveEndTimeForCheck.Date > startTime.Date && space.CloseTime.Value.Hours != 23 && space.CloseTime.Value.Minutes != 59) // Booking qua ngày và space không phải 24/7 (gần đúng)
+            if (effectiveEndTimeForCheck.Date > localStartTime.Date && space.CloseTime.Value.Hours != 23 && space.CloseTime.Value.Minutes != 59) // Booking qua ngày và space không phải 24/7 (gần đúng)
             {
                 // Cần logic chính xác hơn nếu CloseTime là 00:00 (nghĩa là 24h)
                 if (space.CloseTime.Value < effectiveEndTimeForCheck.TimeOfDay && space.CloseTime.Value != TimeSpan.Zero)
                 { // Nếu giờ đóng cửa < giờ kết thúc hiệu quả của ngày cuối cùng VÀ giờ đóng cửa không phải là 00:00 (24h)
-                    _logger.LogWarning("Availability check failed: Overnight booking part ends after space close time for SpaceId: {SpaceId}.", spaceId);
+                    _logger.LogWarning("Availability check failed: Overnight booking part ends after space close time for SpaceId: {SpaceId}. Local end time: {LocalEndTime}, Close time: {CloseTime}", 
+                        spaceId, effectiveEndTimeForCheck.TimeOfDay, space.CloseTime.Value);
                     return false;
                 }
             }
             else if (effectiveEndTimeForCheck.TimeOfDay > space.CloseTime.Value && space.CloseTime.Value != TimeSpan.Zero) // Cùng ngày, kết thúc sau giờ đóng cửa
             {
-                _logger.LogWarning("Availability check failed: Booking ends after space close time for SpaceId: {SpaceId}.", spaceId);
+                _logger.LogWarning("Availability check failed: Booking ends after space close time for SpaceId: {SpaceId}. Local end time: {LocalEndTime}, Close time: {CloseTime}", 
+                    spaceId, effectiveEndTimeForCheck.TimeOfDay, space.CloseTime.Value);
                 return false;
             }
         }

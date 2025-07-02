@@ -509,119 +509,96 @@ function SpaceDetailPage() {
                                                 </div>
                                             </Col>
                                             <Col xs={6} className="text-end">
-                                                {space.pricePerHour != null ? (
-                                                    <h5 className="fw-bold text-primary mb-0">
-                                                        {space.pricePerHour.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">VND/giờ</span>
-                                                    </h5>
-                                                ) : (
-                                                    <span className="text-muted">Không có</span>
-                                                )}
+                                                <h5 className="fw-bold text-primary mb-0">
+                                                    {space.pricePerHour.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">VND/giờ</span>
+                                                </h5>
                                             </Col>
                                         </Row>
 
                                         {/* Daily Rate */}
-                                        <Row className="mb-3 align-items-center">
-                                            <Col xs={6}>
-                                                <div className="d-flex align-items-center">
-                                                    <i className="bi bi-calendar-day me-2 text-success" style={{ fontSize: "1.5rem" }}></i>
-                                                    <div>
-                                                        <h6 className="mb-0">Giá theo ngày</h6>
-                                                        <small className="text-muted">Phù hợp cho thuê cả ngày</small>
+                                        {space.pricePerDay != null && (
+                                            <Row className="mb-3 align-items-center">
+                                                <Col xs={6}>
+                                                    <div className="d-flex align-items-center">
+                                                        <i className="bi bi-calendar-day me-2 text-success" style={{ fontSize: "1.5rem" }}></i>
+                                                        <div>
+                                                            <h6 className="mb-0">Giá theo ngày</h6>
+                                                            <small className="text-muted">Phù hợp cho thuê cả ngày</small>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </Col>
-                                            <Col xs={6} className="text-end">
-                                                {space.pricePerDay != null ? (
+                                                </Col>
+                                                <Col xs={6} className="text-end">
                                                     <h5 className="fw-bold text-success mb-0">
                                                         {space.pricePerDay.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">VND/ngày</span>
                                                     </h5>
-                                                ) : (
-                                                    <span className="text-muted">Không có</span>
-                                                )}
-                                            </Col>
-                                        </Row>
-
-                                        {/* Weekly Rate */}
-                                        <Row className="mb-3 align-items-center">
-                                            <Col xs={6}>
-                                                <div className="d-flex align-items-center">
-                                                    <i className="bi bi-calendar-week me-2 text-info" style={{ fontSize: "1.5rem" }}></i>
-                                                    <div>
-                                                        <h6 className="mb-0">Giá theo tuần</h6>
-                                                        <small className="text-muted">Giảm giá cho thuê dài hạn</small>
-                                                    </div>
-                                                </div>
-                                            </Col>
-                                            <Col xs={6} className="text-end">
-                                                {space.pricePerWeek != null ? (
-                                                    <h5 className="fw-bold text-info mb-0">
-                                                        {space.pricePerWeek.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">VND/tuần</span>
-                                                    </h5>
-                                                ) : (
-                                                    <span className="text-muted">Không có</span>
-                                                )}
-                                            </Col>
-                                        </Row>
-
-                                        {/* Monthly Rate */}
-                                        <Row className="align-items-center">
-                                            <Col xs={6}>
-                                                <div className="d-flex align-items-center">
-                                                    <i className="bi bi-calendar-month me-2 text-danger" style={{ fontSize: "1.5rem" }}></i>
-                                                    <div>
-                                                        <h6 className="mb-0">Giá theo tháng</h6>
-                                                        <small className="text-muted">Giảm giá đặc biệt cho thuê dài hạn</small>
-                                                    </div>
-                                                </div>
-                                            </Col>
-                                            <Col xs={6} className="text-end">
-                                                {space.pricePerMonth != null ? (
-                                                    <h5 className="fw-bold text-danger mb-0">
-                                                        {space.pricePerMonth.toLocaleString('vi-VN')} <span className="fs-6 fw-normal text-muted">VND/tháng</span>
-                                                    </h5>
-                                                ) : (
-                                                    <span className="text-muted">Không có</span>
-                                                )}
-                                            </Col>
-                                        </Row>
+                                                </Col>
+                                            </Row>
+                                        )}
                                     </div>
                                 </div>
                                 
-                                {/* Additional Pricing Info */}
+                                {/* Booking Constraints */}
                                 <div className="card mb-3">
                                     <div className="card-body">
-                                        <h5 className="mb-3">Thông tin thêm về giá</h5>
+                                        <h5 className="mb-3">Điều kiện đặt chỗ</h5>
                                         
                                         <Row className="mb-2">
                                             <Col xs={6}>
-                                                <p className="mb-0"><strong>Đặt cọc:</strong></p>
+                                                <p className="mb-0"><strong>Thời gian đặt tối thiểu:</strong></p>
                                             </Col>
                                             <Col xs={6} className="text-end">
-                                                {space.depositAmount != null ? (
-                                                    <p className="mb-0">{space.depositAmount.toLocaleString('vi-VN')} VND</p>
-                                                ) : (
-                                                    <p className="text-muted mb-0">Không yêu cầu</p>
-                                                )}
+                                                <p className="mb-0">{space.minBookingDurationMinutes} phút</p>
                                             </Col>
                                         </Row>
                                         
                                         <Row className="mb-2">
                                             <Col xs={6}>
-                                                <p className="mb-0"><strong>Thời gian thuê tối thiểu:</strong></p>
+                                                <p className="mb-0"><strong>Thời gian đặt tối đa:</strong></p>
                                             </Col>
                                             <Col xs={6} className="text-end">
-                                                <p className="mb-0">{space.minimumRentalTime || 1} {space.minimumRentalTimeUnit || 'giờ'}</p>
+                                                <p className="mb-0">{Math.floor(space.maxBookingDurationMinutes / 60)} giờ {space.maxBookingDurationMinutes % 60 !== 0 ? `${space.maxBookingDurationMinutes % 60} phút` : ''}</p>
                                             </Col>
                                         </Row>
                                         
                                         <Row>
                                             <Col xs={6}>
-                                                <p className="mb-0"><strong>Phí hủy đặt chỗ:</strong></p>
+                                                <p className="mb-0"><strong>Báo trước khi hủy:</strong></p>
                                             </Col>
                                             <Col xs={6} className="text-end">
-                                                <p className="mb-0">{space.cancellationPolicy || 'Liên hệ chủ không gian'}</p>
+                                                <p className="mb-0">{space.cancellationNoticeHours} giờ</p>
                                             </Col>
                                         </Row>
+                                        
+                                        {/* Operating Hours */}
+                                        {space.openTime && space.closeTime && (
+                                            <Row>
+                                                <Col xs={6}>
+                                                    <p className="mb-0"><strong>Giờ hoạt động:</strong></p>
+                                                </Col>
+                                                <Col xs={6} className="text-end">
+                                                    <p className="mb-0">
+                                                        {(() => {
+                                                            const openParts = space.openTime.split(':');
+                                                            const closeParts = space.closeTime.split(':');
+                                                            const openHour = openParts[0] || '00';
+                                                            const openMinute = openParts[1] || '00';
+                                                            const closeHour = closeParts[0] || '23';
+                                                            const closeMinute = closeParts[1] || '59';
+                                                            const openDisplay = `${openHour.padStart(2, '0')}:${openMinute.padStart(2, '0')}`;
+                                                            const closeDisplay = `${closeHour.padStart(2, '0')}:${closeMinute.padStart(2, '0')}`;
+                                                            
+                                                            // Check if operates across midnight
+                                                            const operatesAcrossMidnight = parseInt(closeHour) < parseInt(openHour) || 
+                                                                (parseInt(closeHour) === parseInt(openHour) && parseInt(closeMinute) < parseInt(openMinute));
+                                                                
+                                                            return operatesAcrossMidnight 
+                                                                ? `${openDisplay} - ${closeDisplay} (qua đêm)`
+                                                                : `${openDisplay} - ${closeDisplay}`;
+                                                        })()}
+                                                    </p>
+                                                </Col>
+                                            </Row>
+                                        )}
                                     </div>
                                 </div>
                                 
@@ -633,24 +610,6 @@ function SpaceDetailPage() {
                             <hr className="my-4" />
                             <div id="reviews" ref={sectionRefs.current.reviews} className="space-detail-section">
                                 <h3 className="h4 mb-3 pt-2">Đánh giá Khách hàng</h3>
-                                <Card className="mb-4">
-                                    <Card.Body>
-                                        <Row>
-                                            <Col md={4} className="text-center border-end-md">
-                                                <div className="display-4 fw-bold">
-                                                    {space.averageRating != null ? space.averageRating.toFixed(1) : 'Mới'}
-                                                </div>
-                                                <StarRatingDisplay rating={space.averageRating || 0} size="lg" className="mb-1" />
-                                                <div className="text-muted">({space.reviewCount || 0} đánh giá)</div>
-                                            </Col>
-                                            <Col md={8} className="mt-3 mt-md-0">
-                                                <p className="small text-muted mb-1">Location: <StarRatingDisplay rating={4} size="sm" /></p>
-                                                <p className="small text-muted mb-1">Workspace Comfort: <StarRatingDisplay rating={5} size="sm" /></p>
-                                                <p className="small text-muted mb-0">Amenities: <StarRatingDisplay rating={4.2} size="sm" /></p>
-                                            </Col>
-                                        </Row>
-                                    </Card.Body>
-                                </Card>
                                 <ReviewList spaceId={space.id} />
                             </div>
                         </div>

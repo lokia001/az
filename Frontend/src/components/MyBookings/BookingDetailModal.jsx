@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, Button, Row, Col, Badge, Stack } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatCurrency } from '../../utils/formatters';
+import { formatVietnameseDateTime } from '../../utils/timeUtils';
 
 const DetailSection = ({ title, children }) => (
   <div className="mb-4">
@@ -27,19 +28,6 @@ const BookingStatusBadge = ({ status }) => {
       {config.label}
     </Badge>
   );
-};
-
-const formatDateTime = (dateTimeStr) => {
-  if (!dateTimeStr) return '';
-  const date = new Date(dateTimeStr);
-  return new Intl.DateTimeFormat('vi-VN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  }).format(date);
 };
 
 const calculateDuration = (startTime, endTime) => {
@@ -108,11 +96,11 @@ const BookingDetailModal = ({ booking, show, onHide }) => {
                 <div className="booking-times">
                   <div className="mb-2">
                     <strong>{t('myBookings.details.startTime')}:</strong><br />
-                    {formatDateTime(booking.startTime)}
+                    {formatVietnameseDateTime(booking.startTime)}
                   </div>
                   <div className="mb-2">
                     <strong>{t('myBookings.details.endTime')}:</strong><br />
-                    {formatDateTime(booking.endTime)}
+                    {formatVietnameseDateTime(booking.endTime)}
                   </div>
                   <div className="text-muted mt-2">
                     <strong>{t('myBookings.details.duration')}:</strong>{' '}
@@ -130,13 +118,13 @@ const BookingDetailModal = ({ booking, show, onHide }) => {
                   {booking.actualCheckIn && (
                     <div className="mb-2">
                       <strong>{t('myBookings.details.actualCheckIn')}:</strong><br />
-                      {formatDateTime(booking.actualCheckIn)}
+                      {formatVietnameseDateTime(booking.actualCheckIn)}
                     </div>
                   )}
                   {booking.actualCheckOut && (
                     <div>
                       <strong>{t('myBookings.details.actualCheckOut')}:</strong><br />
-                      {formatDateTime(booking.actualCheckOut)}
+                      {formatVietnameseDateTime(booking.actualCheckOut)}
                     </div>
                   )}
                 </DetailSection>

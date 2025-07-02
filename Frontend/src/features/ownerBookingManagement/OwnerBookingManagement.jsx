@@ -24,6 +24,7 @@ import {
     selectOwnerBookingStats
 } from './slices/ownerBookingSlice';
 import { selectCurrentUser } from '../auth/slices/authSlice';
+import { formatVietnameseDateTime } from '../../utils/timeUtils';
 import * as api from '../../services/api';
 
 const OwnerBookingManagement = () => {
@@ -294,8 +295,8 @@ const OwnerBookingManagement = () => {
                             <td>{booking.id}</td>
                             <td>{booking.customerName}</td>
                             <td>{booking.spaceName}</td>
-                            <td>{new Date(booking.startTime).toLocaleString()}</td>
-                            <td>{new Date(booking.endTime).toLocaleString()}</td>
+                            <td>{formatVietnameseDateTime(booking.startTime)}</td>
+                            <td>{formatVietnameseDateTime(booking.endTime)}</td>
                             <td>{booking.duration} {t('common.time.hours')}</td>
                             <td>{booking.totalPrice?.toLocaleString()} ₫</td>
                             <td>{renderStatusBadge(booking.status)}</td>
