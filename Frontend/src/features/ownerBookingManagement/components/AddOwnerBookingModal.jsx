@@ -759,8 +759,10 @@ const AddOwnerBookingModal = ({
                                     selected={formData.startTime}
                                     onChange={(date) => setFormData(prev => ({ ...prev, startTime: date }))}
                                     showTimeSelect
-                                    timeIntervals={30}
+                                    timeIntervals={15}
+                                    timeCaption="Giờ"
                                     dateFormat="dd/MM/yyyy HH:mm"
+                                    timeFormat="HH:mm"
                                     className={`form-control ${validation.startTime ? 'is-invalid' : ''}`}
                                     placeholderText="Chọn thời gian bắt đầu..."
                                     minDate={new Date()}
@@ -779,8 +781,10 @@ const AddOwnerBookingModal = ({
                                     selected={formData.endTime}
                                     onChange={(date) => setFormData(prev => ({ ...prev, endTime: date }))}
                                     showTimeSelect
-                                    timeIntervals={30}
+                                    timeIntervals={15}
+                                    timeCaption="Giờ"
                                     dateFormat="dd/MM/yyyy HH:mm"
+                                    timeFormat="HH:mm"
                                     className={`form-control ${validation.endTime ? 'is-invalid' : ''}`}
                                     placeholderText="Chọn thời gian kết thúc..."
                                     minDate={formData.startTime || new Date()}
