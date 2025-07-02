@@ -311,6 +311,25 @@ public class BookingService : IBookingService
         }
 
         var bookingDto = _mapper.Map<BookingDto>(booking);
+        
+        // If NotificationEmail is null or empty, fallback to user email
+        if (string.IsNullOrWhiteSpace(bookingDto.NotificationEmail))
+        {
+            try
+            {
+                var user = await _userService.GetUserByIdAsync(booking.UserId);
+                if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+                {
+                    bookingDto.NotificationEmail = user.Email;
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get user email for booking {BookingId}, user {UserId}", 
+                    bookingId, booking.UserId);
+            }
+        }
+        
         // Làm giàu DTO với BookerName nếu cần và nếu IUserService được inject
         // if (booking.UserId == requestorUserId) { // Chỉ làm giàu nếu người xem là người đặt
         //    var booker = await _userService.GetUserByIdAsync(booking.UserId);
@@ -345,7 +364,31 @@ public class BookingService : IBookingService
 
         // BookingRepository.GetBySpaceIdAsync nên Include(b => b.Space)
         var bookings = await _bookingRepository.GetBySpaceIdAsync(spaceId);
-        return _mapper.Map<IEnumerable<BookingDto>>(bookings);
+        var bookingDtos = _mapper.Map<IEnumerable<BookingDto>>(bookings).ToList();
+        
+        // Enrich booking DTOs with user email fallback for notification email
+        foreach (var bookingDto in bookingDtos)
+        {
+            // If NotificationEmail is null or empty, fallback to user email
+            if (string.IsNullOrWhiteSpace(bookingDto.NotificationEmail))
+            {
+                try
+                {
+                    var user = await _userService.GetUserByIdAsync(bookingDto.UserId);
+                    if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+                    {
+                        bookingDto.NotificationEmail = user.Email;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get user email for booking {BookingId}, user {UserId}", 
+                        bookingDto.Id, bookingDto.UserId);
+                }
+            }
+        }
+        
+        return bookingDtos;
         // Không cần làm giàu BookerUsername ở đây vì đây là Owner xem, họ quan tâm ai đặt chứ không phải tên của chính họ.
     }
 
