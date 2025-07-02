@@ -10,7 +10,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         public Guid Id { get; set; }
         public Guid SpaceId { get; set; }
         public string SpaceName { get; set; } = string.Empty;
-        public Guid UserId { get; set; }
+        public Guid? UserId { get; set; } // Make nullable for guest bookings
         // public string? BookerUsername { get; set; } // Giữ nguyên không có theo loose coupling
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }
@@ -27,6 +27,12 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         public DateTime? UpdatedAt { get; set; }
         public Guid? UpdatedByUserId { get; set; }
         public bool CanReview { get; set; } // << THÊM VÀO: Cho biết user có thể review booking này không
+        
+        // Guest booking fields
+        public string? GuestName { get; set; }
+        public string? GuestEmail { get; set; }
+        public string? GuestPhone { get; set; }
+        public bool IsGuestBooking { get; set; }
 
         public BookingDto() { } // Constructor không tham số
     }

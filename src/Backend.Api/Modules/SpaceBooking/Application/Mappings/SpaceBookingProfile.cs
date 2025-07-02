@@ -226,7 +226,12 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Mappings
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
                 .ForMember(dest => dest.UpdatedByUserId, opt => opt.MapFrom(src => src.UpdatedByUserId))
-                .ForMember(dest => dest.CanReview, opt => opt.Ignore()); // CanReview được set trong service, không map tự động
+                .ForMember(dest => dest.CanReview, opt => opt.Ignore()) // CanReview được set trong service, không map tự động
+                // Guest booking fields
+                .ForMember(dest => dest.GuestName, opt => opt.MapFrom(src => src.GuestName))
+                .ForMember(dest => dest.GuestEmail, opt => opt.MapFrom(src => src.GuestEmail))
+                .ForMember(dest => dest.GuestPhone, opt => opt.MapFrom(src => src.GuestPhone))
+                .ForMember(dest => dest.IsGuestBooking, opt => opt.MapFrom(src => src.UserId == null));
 
             // --- SystemAmenity Mappings ---
             // Trong SpaceBookingProfile.cs

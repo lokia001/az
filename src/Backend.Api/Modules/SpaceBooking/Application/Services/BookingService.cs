@@ -378,11 +378,11 @@ public class BookingService : IBookingService
         foreach (var bookingDto in bookingDtos)
         {
             // If NotificationEmail is null or empty, fallback to user email
-            if (string.IsNullOrWhiteSpace(bookingDto.NotificationEmail))
+            if (string.IsNullOrWhiteSpace(bookingDto.NotificationEmail) && bookingDto.UserId.HasValue)
             {
                 try
                 {
-                    var user = await _userService.GetUserByIdAsync(bookingDto.UserId);
+                    var user = await _userService.GetUserByIdAsync(bookingDto.UserId.Value);
                     if (user != null && !string.IsNullOrWhiteSpace(user.Email))
                     {
                         bookingDto.NotificationEmail = user.Email;

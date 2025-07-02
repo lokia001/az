@@ -103,7 +103,16 @@ export const fetchOwnerBookingsAPI = async (filters = {}) => {
         
         // Map data to match component expectations
         items = items.map(booking => {
-            const customerName = generateDisplayName(booking.userId);
+            // Generate proper customer name based on booking type
+            let customerName = 'Chưa có tên';
+            if (booking.isGuestBooking && booking.guestName) {
+                customerName = `${booking.guestName} (khách)`;
+            } else if (booking.userId) {
+                // For registered users, try to get real name
+                // For now, we'll use a placeholder - this could be enhanced to fetch user info
+                const shortId = booking.userId.toString().substring(0, 8);
+                customerName = `Khách hàng ${shortId}`;
+            }
             
             return {
                 id: booking.id,
@@ -169,10 +178,18 @@ export const getOwnerBookingDetailsAPI = async (bookingId) => {
         const booking = response.data;
         
         // Map the booking data to include notification email
+        let customerName = 'Chưa có tên';
+        if (booking.isGuestBooking && booking.guestName) {
+            customerName = `${booking.guestName} (khách)`;
+        } else if (booking.userId) {
+            const shortId = booking.userId.toString().substring(0, 8);
+            customerName = `Khách hàng ${shortId}`;
+        }
+        
         return {
             ...booking,
             notificationEmail: booking.notificationEmail || null,
-            customerName: generateDisplayName(booking.userId),
+            customerName: customerName,
             spaceName: booking.spaceName || booking.space?.name || 'Chưa có tên không gian'
         };
     } catch (error) {
@@ -480,18 +497,6 @@ export const getSpaceAvailabilityAPI = async (spaceId, params = {}) => {
     } catch (error) {
         throw error.response?.data || error.message;
     }
-};
-
-/**
- * Generate a display name from user ID
- * @param {string} userId - User ID to generate name from
- * @returns {string} Display name
- */
-const generateDisplayName = (userId) => {
-    if (!userId) return 'Chưa có tên';
-    // Create a simple display name from the first 8 characters of UUID
-    const shortId = userId.toString().substring(0, 8);
-    return `Khách hàng ${shortId}`;
 };
 
 export default {
