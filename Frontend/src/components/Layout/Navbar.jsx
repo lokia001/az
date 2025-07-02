@@ -178,18 +178,21 @@ function Navbar() {
         switch (userRole) {
             case 'owner':
                 items = [
-                    { path: '/profile', label: 'Profile' }
+                    { path: '/profile', label: 'Profile' },
+                    { path: '/favorites', label: 'Favorites' }
                 ];
                 break;
             case 'sysadmin':
             case 'admin':
                 items = [
-                    { path: '/profile', label: 'Profile' }
+                    { path: '/profile', label: 'Profile' },
+                    { path: '/favorites', label: 'Favorites' }
                 ];
                 break;
             default: // User
                 items = [
                     { path: '/profile', label: 'Profile' },
+                    { path: '/favorites', label: 'Favorites' },
                     { path: '/owner-registration', label: 'Become Owner' }
                 ];
                 break;

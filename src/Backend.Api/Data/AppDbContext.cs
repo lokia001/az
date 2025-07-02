@@ -29,6 +29,7 @@ namespace Backend.Api.Data
         public DbSet<User> Users { get; set; } = default!;
         public DbSet<OwnerProfile> OwnerProfiles { get; set; } = default!;
         public DbSet<OwnerRegistrationRequest> OwnerRegistrationRequests { get; set; } = default!;
+        public DbSet<FavoriteSpace> FavoriteSpaces { get; set; } = default!;
 
         // Engagement Module DbSets
         public DbSet<Review> Reviews { get; set; } = default!;

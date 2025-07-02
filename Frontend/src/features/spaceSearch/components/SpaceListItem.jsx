@@ -10,6 +10,7 @@ import { Link, useNavigate } from 'react-router-dom'; // For navigation
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../auth/slices/authSlice';
 import Modal from 'react-bootstrap/Modal';
+import FavoriteButton from '../../favoriteSpaces/components/FavoriteButton';
 
 // Helper to get the display image (cover image or first image)
 const getImageUrl = (space) => {
@@ -150,16 +151,22 @@ const SpaceListItem = ({ space }) => {
                             <p className="mb-1 small text-muted"><strong>Tiện ích:</strong> {formatAmenities(space, 3)}</p>
                         </div>
 
-                        <div className="d-flex justify-content-between align-items.center mt-auto">
+                        <div className="d-flex justify-content-between align-items-center mt-auto">
                             {space.pricePerHour != null ? (
                                 <strong className="text-success fs-5">${space.pricePerHour.toFixed(2)}/giờ</strong>
                             ) : (
                                 <span className="text-muted">Liên hệ giá</span>
                             )}
-                            {/* Optional Action Button */}
-                            <Button as={Link} to={detailLink} variant="outline-primary" size="sm" className="ms-auto">
-                                Xem chi tiết
-                            </Button>
+                            <div className="d-flex gap-2 align-items-center">
+                                <FavoriteButton 
+                                    spaceId={space.id} 
+                                    size="sm"
+                                    showCount={false}
+                                />
+                                <Button as={Link} to={detailLink} variant="outline-primary" size="sm">
+                                    Xem chi tiết
+                                </Button>
+                            </div>
                         </div>
                     </Card.Body>
                 </Col>

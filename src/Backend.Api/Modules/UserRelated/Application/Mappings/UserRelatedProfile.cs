@@ -101,6 +101,14 @@ namespace Backend.Api.Modules.UserRelated.Application.Mappings
                 .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : string.Empty))
                 .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
                 .ForMember(dest => dest.ProcessedByUsername, opt => opt.MapFrom(src => src.ProcessedByAdmin != null ? src.ProcessedByAdmin.Username : null));
+
+            // FavoriteSpace mappings
+            CreateMap<FavoriteSpace, FavoriteSpaceDto>();
+            CreateMap<AddFavoriteSpaceRequest, FavoriteSpace>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Will be set from current user
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.User, opt => opt.Ignore());
         }
     }
 }

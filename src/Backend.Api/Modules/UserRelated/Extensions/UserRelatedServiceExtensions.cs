@@ -26,12 +26,14 @@ public static class UserRelatedServiceExtensions
         // Register repositories
         services.AddScoped<IUserRepository, UserRepository>();
         services.AddScoped<IOwnerRegistrationRequestRepository, OwnerRegistrationRequestRepository>();
+        services.AddScoped<IFavoriteSpaceRepository, FavoriteSpaceRepository>();
         services.AddScoped<Backend.Api.Modules.UserRelated.Domain.Interfaces.Repositories.IOwnerProfileRepository, Backend.Api.Modules.UserRelated.Infrastructure.Persistence.Repositories.OwnerProfileRepository>();
 
         // Register services
         services.AddScoped<IUserService, UserService>();
         services.AddScoped<IAuthenticationService, AuthenticationService>();
         services.AddScoped<IOwnerRegistrationRequestService, OwnerRegistrationRequestService>();
+        services.AddScoped<IFavoriteSpaceService, FavoriteSpaceService>();
         services.AddScoped<Backend.Api.Modules.UserRelated.Application.Contracts.Services.IAuthService, Backend.Api.Modules.UserRelated.Application.Services.AuthService>();
         services.AddScoped<Backend.Api.Modules.UserRelated.Application.Contracts.Services.IOwnerProfileService, Backend.Api.Modules.UserRelated.Application.Services.OwnerProfileService>();
         

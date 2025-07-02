@@ -27,6 +27,7 @@ import systemAmenitiesReducer from '../features/systemItems/slices/systemAmeniti
 import bookingReducer from '../features/booking/slices/bookingSlice';
 import ownerBookingReducer from '../features/ownerBookingManagement/slices/ownerBookingSlice';
 import myBookingsReducer from '../features/myBookings/slices/myBookingsSlice';
+import favoriteSpacesReducer from '../features/favoriteSpaces/slices/favoriteSpacesSlice';
 
 const persistConfig = {
     key: 'root',
@@ -61,6 +62,7 @@ export const store = configureStore({
         booking: bookingReducer,
         ownerBooking: ownerBookingReducer,
         myBookings: myBookingsReducer,
+        favoriteSpaces: favoriteSpacesReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({

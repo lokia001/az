@@ -31,6 +31,7 @@ import StarRatingDisplay from '../components/common/StarRatingDisplay';
 import ReviewList from '../features/reviews/components/ReviewList';
 import BookingFormModal from '../features/booking/components/BookingFormModal';
 import { getPublicOwnerProfile } from '../services/api';
+import FavoriteButton from '../features/favoriteSpaces/components/FavoriteButton';
 
 // Helper function to get image URLs from space object
 const getImageUrl = (space, index = 0, placeholderSize = "800x500") => {
@@ -726,6 +727,18 @@ function SpaceDetailPage() {
                                         </p>
                                     )}
                                     <p className="small text-muted">Sức chứa: {space.capacity} người</p>
+                                    
+                                    {/* Favorite button */}
+                                    <div className="mb-3">
+                                        <FavoriteButton 
+                                            spaceId={space.id} 
+                                            variant="outline-danger"
+                                            size="sm"
+                                            showCount={true}
+                                            className="w-100"
+                                        />
+                                    </div>
+                                    
                                     <div className="d-grid gap-2 mt-4">
                                         <Button 
                                             variant="warning" 
