@@ -4,11 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Logging;
+using Microsoft.EntityFrameworkCore;
 using AutoMapper;
+using Backend.Api.Data;
 using Backend.Api.Modules.UserRelated.Application.Contracts.Services;
 using Backend.Api.Modules.UserRelated.Application.Contracts.Dtos;
 using Backend.Api.Modules.UserRelated.Domain.Interfaces.Repositories;
 using Backend.Api.Modules.UserRelated.Domain.Entities;
+using Backend.Api.Modules.SpaceBooking.Domain.Entities;
 
 namespace Backend.Api.Modules.UserRelated.Application.Services
 {
@@ -16,17 +19,20 @@ namespace Backend.Api.Modules.UserRelated.Application.Services
     {
         private readonly IFavoriteSpaceRepository _favoriteSpaceRepository;
         private readonly IUserRepository _userRepository;
+        private readonly AppDbContext _context;
         private readonly IMapper _mapper;
         private readonly ILogger<FavoriteSpaceService> _logger;
 
         public FavoriteSpaceService(
             IFavoriteSpaceRepository favoriteSpaceRepository,
             IUserRepository userRepository,
+            AppDbContext context,
             IMapper mapper,
             ILogger<FavoriteSpaceService> logger)
         {
             _favoriteSpaceRepository = favoriteSpaceRepository;
             _userRepository = userRepository;
+            _context = context;
             _mapper = mapper;
             _logger = logger;
         }
@@ -85,8 +91,34 @@ namespace Backend.Api.Modules.UserRelated.Application.Services
         {
             _logger.LogInformation("Getting favorite spaces for user {UserId}", userId);
 
-            var favoriteSpaces = await _favoriteSpaceRepository.GetByUserIdAsync(userId);
-            return _mapper.Map<IEnumerable<FavoriteSpaceDto>>(favoriteSpaces);
+            // Get all favorite spaces with space details in one query
+            var favoriteSpacesWithDetails = await (from fs in _context.FavoriteSpaces
+                                                  join s in _context.Set<Space>() on fs.SpaceId equals s.Id
+                                                  where fs.UserId == userId
+                                                  orderby fs.CreatedAt descending
+                                                  select new 
+                                                  {
+                                                      FavoriteSpace = fs,
+                                                      Space = s,
+                                                      CoverImage = s.SpaceImages.FirstOrDefault(img => img.IsCoverImage) ??
+                                                                  s.SpaceImages.OrderBy(img => img.DisplayOrder).FirstOrDefault()
+                                                  })
+                                                 .ToListAsync();
+
+            var results = favoriteSpacesWithDetails.Select(item => new FavoriteSpaceDto
+            {
+                Id = item.FavoriteSpace.Id,
+                UserId = item.FavoriteSpace.UserId,
+                SpaceId = item.FavoriteSpace.SpaceId,
+                CreatedAt = item.FavoriteSpace.CreatedAt,
+                // Space details
+                SpaceName = item.Space.Name,
+                SpaceAddress = item.Space.Address,
+                SpacePricePerHour = item.Space.PricePerHour,
+                SpaceImageUrl = item.CoverImage?.ImageUrl // This will be Cloudinary URL if configured
+            }).ToList();
+
+            return results;
         }
 
         public async Task<FavoriteSpaceStatusDto> GetFavoriteStatusAsync(Guid userId, Guid spaceId)

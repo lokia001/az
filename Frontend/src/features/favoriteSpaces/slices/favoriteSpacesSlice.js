@@ -224,7 +224,8 @@ export const selectFavoriteStatuses = (state) => state.favoriteSpaces.favoriteSt
 
 // Selector for checking if a specific space is favorited
 export const selectIsSpaceFavorited = (spaceId) => (state) => {
-    return state.favoriteSpaces.favoriteStatuses[spaceId]?.isFavorited || false;
+    const status = state.favoriteSpaces.favoriteStatuses[spaceId];
+    return status !== undefined ? status.isFavorited : undefined;
 };
 
 // Selector for getting favorite count of a specific space

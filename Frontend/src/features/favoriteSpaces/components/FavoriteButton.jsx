@@ -29,13 +29,14 @@ const FavoriteButton = ({
     const operationStatus = useSelector(selectFavoriteSpacesOperationStatus);
 
     const isLoading = operationStatus === 'loading';
+    const hasData = isFavorited !== undefined;
 
     useEffect(() => {
-        // Fetch favorite status when component mounts
-        if (isAuthenticated && spaceId) {
+        // Only fetch favorite status if we don't already have it and user is authenticated
+        if (isAuthenticated && spaceId && !hasData) {
             dispatch(fetchFavoriteStatus(spaceId));
         }
-    }, [dispatch, spaceId, isAuthenticated]);
+    }, [dispatch, spaceId, isAuthenticated, hasData]);
 
     const handleToggleFavorite = async (e) => {
         // Prevent event bubbling to parent elements
@@ -84,6 +85,22 @@ const FavoriteButton = ({
                 {showCount && favoriteCount > 0 && (
                     <span className="ms-1">{favoriteCount}</span>
                 )}
+            </Button>
+        );
+    }
+
+    // Show loading state when fetching initial data
+    if (!hasData) {
+        return (
+            <Button
+                variant="outline-secondary"
+                size={size}
+                disabled
+                className={className}
+                style={style}
+                title="Đang tải..."
+            >
+                <Spinner size="sm" animation="border" />
             </Button>
         );
     }

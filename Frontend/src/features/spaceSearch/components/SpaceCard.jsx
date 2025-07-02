@@ -2,37 +2,9 @@
 import React from 'react';
 import Card from 'react-bootstrap/Card';
 import Badge from 'react-bootstrap/Badge';
+import { getSpaceImageUrl } from '../../../utils/imageUtils';
 // import { Link } from 'react-router-dom'; // If you have detail pages
 
-// Helper to get the display image (cover image or first image)
-const getImageUrl = (space) => {
-    if (space.spaceImages && space.spaceImages.length > 0) {
-        // First try to find cover image
-        const coverImage = space.spaceImages.find(img => img.isCoverImage);
-        // If no cover image, use the first image
-        const imageToUse = coverImage || space.spaceImages[0];
-        
-        if (imageToUse && imageToUse.imageUrl) {
-            const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-            let imgUrl = imageToUse.imageUrl;
-            
-            // If it's already a full URL (like Cloudinary), return as is
-            if (imgUrl.startsWith('http')) {
-                return imgUrl;
-            }
-            
-            // Remove any accidental /api prefix
-            if (imgUrl.startsWith('/api/uploads/')) {
-                imgUrl = imgUrl.replace('/api', '');
-            }
-            // Always prepend baseUrl if not absolute
-            const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
-            const cleanImgUrl = imgUrl.startsWith('/') ? imgUrl : `/${imgUrl}`;
-            return `${cleanBaseUrl}${cleanImgUrl}`;
-        }
-    }
-    return `https://via.placeholder.com/300x200?text=${encodeURIComponent(space.name || 'Space')}`;
-};
 
 const SpaceCard = ({ space }) => {
     if (!space) return null;
@@ -41,7 +13,7 @@ const SpaceCard = ({ space }) => {
         <Card className="mb-3 shadow-sm">
             <Card.Img 
                 variant="top" 
-                src={getImageUrl(space)} 
+                src={getSpaceImageUrl(space, null, { width: 300, height: 200 })} 
                 alt={space.name} 
                 style={{ height: '200px', objectFit: 'cover' }}
             />

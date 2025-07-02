@@ -1,16 +1,18 @@
 // Frontend/src/features/favoriteSpaces/pages/FavoriteSpacesPage.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Container, Row, Col, Card, Alert, Spinner, Badge } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
 import { 
     fetchFavoriteSpaces,
+    fetchFavoriteStatuses,
     selectFavoriteSpaces,
     selectFavoriteSpacesStatus,
     selectFavoriteSpacesError 
 } from '../slices/favoriteSpacesSlice';
 import FavoriteButton from '../components/FavoriteButton';
 import { selectIsAuthenticated } from '../../auth/slices/authSlice';
+import { getFavoriteSpaceImageUrl } from '../../../utils/imageUtils';
 
 const FavoriteSpacesPage = () => {
     const dispatch = useDispatch();
@@ -20,20 +22,28 @@ const FavoriteSpacesPage = () => {
     const status = useSelector(selectFavoriteSpacesStatus);
     const error = useSelector(selectFavoriteSpacesError);
 
+    // Memoize space IDs to prevent unnecessary re-fetches
+    const spaceIds = useMemo(() => {
+        return favoriteSpaces.map(fs => fs.spaceId);
+    }, [favoriteSpaces.length]); // Only depend on length, not the array itself
+
     useEffect(() => {
         if (isAuthenticated) {
             dispatch(fetchFavoriteSpaces());
         }
     }, [dispatch, isAuthenticated]);
 
+    // Batch fetch favorite statuses when favoriteSpaces are loaded
+    useEffect(() => {
+        if (isAuthenticated && spaceIds.length > 0) {
+            dispatch(fetchFavoriteStatuses(spaceIds));
+        }
+    }, [dispatch, isAuthenticated, spaceIds]);
+
     const handleSpaceClick = (spaceId) => {
         navigate(`/spaces/${spaceId}`);
     };
 
-    const getImageUrl = (space) => {
-        // Default image logic - you may need to adjust this based on your space data structure
-        return space.spaceImageUrl || '/images/default-space.jpg';
-    };
 
     if (!isAuthenticated) {
         return (
@@ -103,14 +113,11 @@ const FavoriteSpacesPage = () => {
                                 style={{ cursor: 'pointer' }}
                                 onClick={() => handleSpaceClick(favoriteSpace.spaceId)}
                             >
-                                <Card.Img
-                                    variant="top"
-                                    src={getImageUrl(favoriteSpace)}
-                                    style={{ height: '200px', objectFit: 'cover' }}
-                                    onError={(e) => {
-                                        e.target.src = '/images/default-space.jpg';
-                                    }}
-                                />
+                            <Card.Img
+                                variant="top"
+                                src={getFavoriteSpaceImageUrl(favoriteSpace, { width: 400, height: 200 })}
+                                style={{ height: '200px', objectFit: 'cover' }}
+                            />
                                 <Card.Body className="d-flex flex-column">
                                     <div className="d-flex justify-content-between align-items-start mb-2">
                                         <Card.Title className="h6 mb-0 flex-grow-1">
