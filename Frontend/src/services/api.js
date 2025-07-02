@@ -470,5 +470,50 @@ export const updateProfile = async (profileData) => {
     }
 };
 
+// Owner Profile API functions
+export const getPublicOwnerProfile = async (ownerId) => {
+    try {
+        const response = await api.get(`/owner-profiles/public/${ownerId}`);
+        console.log("getPublicOwnerProfile response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching public owner profile:", error);
+        throw error;
+    }
+};
+
+export const getMyOwnerProfile = async () => {
+    try {
+        const response = await api.get('/owner-profiles/me');
+        console.log("getMyOwnerProfile response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error fetching my owner profile:", error);
+        throw error;
+    }
+};
+
+export const createOwnerProfile = async (profileData) => {
+    try {
+        const response = await api.post('/owner-profiles/me', profileData);
+        console.log("createOwnerProfile response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error creating owner profile:", error);
+        throw error;
+    }
+};
+
+export const updateOwnerProfile = async (profileData) => {
+    try {
+        const response = await api.put('/owner-profiles/me', profileData);
+        console.log("updateOwnerProfile response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating owner profile:", error);
+        throw error;
+    }
+};
+
 // Export the axios instance for use in other services
 export default api;

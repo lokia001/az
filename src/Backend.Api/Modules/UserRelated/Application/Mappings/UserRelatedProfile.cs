@@ -79,6 +79,28 @@ namespace Backend.Api.Modules.UserRelated.Application.Mappings
                 .ForMember(dest => dest.User, opt => opt.Ignore())
                 .ForMember(dest => dest.CreatedAt, opt => opt.Ignore()) // Sẽ được set thủ công khi tạo mới
                 .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore());// Sẽ được set thủ công khi cập nhật
+
+            // Owner Registration Request mappings
+            // CreateOwnerRegistrationRequest -> OwnerRegistrationRequest
+            CreateMap<CreateOwnerRegistrationRequest, OwnerRegistrationRequest>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.UserId, opt => opt.Ignore()) // Set from context
+                .ForMember(dest => dest.User, opt => opt.Ignore())
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => OwnerRegistrationStatus.Pending))
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.ProcessedBy, opt => opt.Ignore())
+                .ForMember(dest => dest.ProcessedByAdmin, opt => opt.Ignore())
+                .ForMember(dest => dest.ProcessedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.AdminNotes, opt => opt.Ignore())
+                .ForMember(dest => dest.RejectionReason, opt => opt.Ignore());
+
+            // OwnerRegistrationRequest -> OwnerRegistrationRequestDto
+            CreateMap<OwnerRegistrationRequest, OwnerRegistrationRequestDto>()
+                .ForMember(dest => dest.Username, opt => opt.MapFrom(src => src.User != null ? src.User.Username : string.Empty))
+                .ForMember(dest => dest.UserEmail, opt => opt.MapFrom(src => src.User != null ? src.User.Email : string.Empty))
+                .ForMember(dest => dest.Status, opt => opt.MapFrom(src => src.Status.ToString()))
+                .ForMember(dest => dest.ProcessedByUsername, opt => opt.MapFrom(src => src.ProcessedByAdmin != null ? src.ProcessedByAdmin.Username : null));
         }
     }
 }

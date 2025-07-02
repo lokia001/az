@@ -42,10 +42,13 @@ import LoginForm from '../features/auth/components/LoginForm';
 import RegisterForm from '../features/auth/components/RegisterForm';
 import SpaceSearchPage from '../features/spaceSearch/SpaceSearchPage';
 import SpaceDetailPage from '../pages/SpaceDetailPage';
+import OwnerProfilePage from '../pages/OwnerProfilePage';
 import AdminUserListPage from '../features/adminUserManagement/pages/AdminUserListPage';
 import CommunityPlatformPage from '../pages/CommunityPlatformPage';
 import CommunityFeedPage from '../pages/CommunityFeedPage';
 import PostDetailPage from '../pages/PostDetailPage';
+import OwnerRegistrationPage from '../features/ownerRegistration/pages/OwnerRegistrationPage';
+import AdminOwnerRegistrationPage from '../features/ownerRegistration/pages/AdminOwnerRegistrationPage';
 // import CommunitySearchPage from '../pages/CommunitySearchPage';
 import SystemAmenitiesPage from '../features/systemItems/pages/SystemAmenitiesPage';
 import SystemSpaceServicesPage from '../features/systemItems/pages/SystemSpaceServicesPage';
@@ -125,7 +128,18 @@ const AppRouter = () => {
                     {/* start  ok */}
                     <Route path="/searchPage" element={<SpaceSearchPage />} />
                     <Route path="/spaces/:spaceIdOrSlug" element={<SpaceDetailPage />} />
+                    <Route path="/owner/:ownerId" element={<OwnerProfilePage />} />
+                    <Route path="/owner-registration" element={
+                        <ProtectedRoute requiredRole="User">
+                            <OwnerRegistrationPage />
+                        </ProtectedRoute>
+                    } />
                     <Route path="/admin/users" element={<AdminUserListPage />} />
+                    <Route path="/admin/owner-registration" element={
+                        <ProtectedRoute requiredRole="SysAdmin">
+                            <AdminOwnerRegistrationPage />
+                        </ProtectedRoute>
+                    } />
                     <Route path="/community" element={<CommunityPlatformPage />} />
                     {/* System Admin Routes */}
                     <Route path="/admin/community" element={<NotFoundPage message="Admin Community Management - Coming Soon" />} />

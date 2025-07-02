@@ -1,11 +1,12 @@
 // src/features/profile/components/ProfileTabs.jsx
 import React, { useState } from 'react';
 import { Nav, Tab, Container } from 'react-bootstrap';
-import { FaUser, FaEdit, FaLock, FaCog } from 'react-icons/fa';
+import { FaUser, FaEdit, FaLock, FaCog, FaBuilding } from 'react-icons/fa';
 import ProfileView from './ProfileView';
 import ProfileEdit from './ProfileEdit';
 import ChangePassword from './ChangePassword';
 import AccountSettings from './AccountSettings';
+import OwnerProfileManagement from './OwnerProfileManagement';
 
 const ProfileTabs = ({
     profile,
@@ -23,6 +24,9 @@ const ProfileTabs = ({
 }) => {
     const [activeTab, setActiveTab] = useState('view');
     const [isEditing, setIsEditing] = useState(false);
+    
+    // Check if user is Owner
+    const isOwner = profile?.role === 'Owner';
 
     const handleUpdateProfile = (profileData) => {
         updateProfile(profileData);
@@ -63,6 +67,14 @@ const ProfileTabs = ({
                             Đổi mật khẩu
                         </Nav.Link>
                     </Nav.Item>
+                    {isOwner && (
+                        <Nav.Item>
+                            <Nav.Link eventKey="business">
+                                <FaBuilding className="me-2" />
+                                Thông tin doanh nghiệp
+                            </Nav.Link>
+                        </Nav.Item>
+                    )}
                     <Nav.Item>
                         <Nav.Link eventKey="settings">
                             <FaCog className="me-2" />
@@ -107,6 +119,12 @@ const ProfileTabs = ({
                             success={passwordSuccess}
                         />
                     </Tab.Pane>
+
+                    {isOwner && (
+                        <Tab.Pane eventKey="business">
+                            <OwnerProfileManagement />
+                        </Tab.Pane>
+                    )}
 
                     <Tab.Pane eventKey="settings">
                         <AccountSettings

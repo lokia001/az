@@ -26,7 +26,7 @@ function ChangeMapView({ center, zoom }) {
     return null;
 }
 
-const InteractiveMap = ({ center, zoom, markers, onMarkerClick }) => {
+const InteractiveMap = ({ center, zoom, markers, onMarkerClick, disableScrollZoom = false }) => {
     // ... (prop validation and console logs same as before) ...
     if (!center || typeof center.lat !== 'number' || typeof center.lng !== 'number') {
         return <div className="border bg-light text-center p-5">Dữ liệu vị trí không hợp lệ.</div>;
@@ -38,7 +38,18 @@ const InteractiveMap = ({ center, zoom, markers, onMarkerClick }) => {
         <MapContainer
             center={[center.lat, center.lng]}
             zoom={zoom}
-            style={{ height: '100%', width: '100%', minHeight: '400px', borderRadius: '0.25rem' }}
+            scrollWheelZoom={!disableScrollZoom}
+            doubleClickZoom={!disableScrollZoom}
+            touchZoom={!disableScrollZoom}
+            boxZoom={!disableScrollZoom}
+            keyboard={!disableScrollZoom}
+            style={{ 
+                height: '100%', 
+                width: '100%', 
+                minHeight: '400px', 
+                borderRadius: '0.25rem',
+                cursor: disableScrollZoom ? 'default' : 'grab'
+            }}
         >
             <TileLayer
                 attribution='© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'

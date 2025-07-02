@@ -144,11 +144,12 @@ function Navbar() {
                     break;
                 case 'sysadmin':
                 case 'admin':
-                    // SysAdmin - Dash, S&A, Account, Community
+                    // SysAdmin - Dash, S&A, Account, Owner Reg, Community
                     links = [
                         { path: '/admin/dashboard', label: 'Dash' },
                         { path: '/admin/services-amenities', label: 'S&A' },
-                        { path: '/admin/accounts', label: 'Account' },
+                        { path: '/admin/users', label: 'Users' },
+                        { path: '/admin/owner-registration', label: 'Owner Reg' },
                         { path: '/community', label: 'Community' }
                     ];
                     break;
@@ -188,7 +189,8 @@ function Navbar() {
                 break;
             default: // User
                 items = [
-                    { path: '/profile', label: 'Profile' }
+                    { path: '/profile', label: 'Profile' },
+                    { path: '/owner-registration', label: 'Become Owner' }
                 ];
                 break;
         }

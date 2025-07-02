@@ -113,5 +113,30 @@ namespace Backend.Api.Modules.UserRelated.Api.Controllers
             }
             return Ok(ownerProfileDto);
         }
+
+        // GET api/owner-profiles/public/{userId} (Lấy thông tin công khai của Owner - Không cần xác thực)
+        [HttpGet("public/{userId:guid}")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetPublicOwnerProfileByUserId(Guid userId)
+        {
+            var ownerProfileDto = await _ownerProfileService.GetOwnerProfileByUserIdAsync(userId);
+            if (ownerProfileDto == null)
+            {
+                return NotFound(new { message = $"Owner profile for user ID {userId} not found." });
+            }
+
+            // Trả về thông tin công khai (loại bỏ thông tin nhạy cảm nếu cần)
+            var publicProfile = new
+            {
+                ownerProfileDto.UserId,
+                ownerProfileDto.CompanyName,
+                ownerProfileDto.Description,
+                ownerProfileDto.Website,
+                ownerProfileDto.LogoUrl,
+                ownerProfileDto.IsVerified
+            };
+
+            return Ok(publicProfile);
+        }
     }
 }

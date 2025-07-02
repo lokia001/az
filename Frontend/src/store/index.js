@@ -17,6 +17,7 @@ import manageSpaceReducer from '../features/manageSpace/manageSpaceSlice';
 import spaceDetailReducer from '../features/spaceDetail/slices/spaceDetailSlice';
 import amenityReducer from '../features/amenities/amenitySlice';
 import bookSpaceReducer from '../features/bookSpace/bookSpaceSlice';
+import ownerRegistrationReducer from '../features/ownerRegistration/slices/ownerRegistrationSlice';
 
 // Import restored slice files
 import usersReducer from '../features/users/slices/usersSlice';
@@ -51,6 +52,7 @@ export const store = configureStore({
         spaceDetail: spaceDetailReducer,
         amenities: amenityReducer,
         bookSpace: bookSpaceReducer,
+        ownerRegistration: ownerRegistrationReducer,
         // Restored slices
         users: usersReducer,
         profile: profileReducer,

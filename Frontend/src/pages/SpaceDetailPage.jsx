@@ -30,6 +30,7 @@ import { geocodeAddress } from '../utils/geocoding';
 import StarRatingDisplay from '../components/common/StarRatingDisplay';
 import ReviewList from '../features/reviews/components/ReviewList';
 import BookingFormModal from '../features/booking/components/BookingFormModal';
+import { getPublicOwnerProfile } from '../services/api';
 
 // Helper function to get image URLs from space object
 const getImageUrl = (space, index = 0, placeholderSize = "800x500") => {
@@ -104,6 +105,7 @@ function SpaceDetailPage() {
 
     const [showBookingModal, setShowBookingModal] = useState(false);
     const [showBookingSuccess, setShowBookingSuccess] = useState(false);
+    const [ownerInfo, setOwnerInfo] = useState(null);
 
     // Map State
     const [detailMapCenter, setDetailMapCenter] = useState(null);
@@ -286,6 +288,28 @@ function SpaceDetailPage() {
             }, 5000); // Hide after 5 seconds
         }
     }, [bookingCreateStatus]);
+    
+    // Effect 6: Fetch owner information when space is loaded
+    useEffect(() => {
+        if (space && space.ownerId) {
+            const fetchOwnerInfo = async () => {
+                try {
+                    console.log(`[SpaceDetailPage] Fetching owner info for ownerId: ${space.ownerId}`);
+                    const ownerData = await getPublicOwnerProfile(space.ownerId);
+                    setOwnerInfo(ownerData);
+                    console.log('[SpaceDetailPage] Owner info fetched successfully:', ownerData);
+                } catch (error) {
+                    console.error('[SpaceDetailPage] Error fetching owner info:', error);
+                    // On error, show a fallback display without company info
+                    setOwnerInfo(null);
+                }
+            };
+
+            fetchOwnerInfo();
+        } else {
+            setOwnerInfo(null);
+        }
+    }, [space]);
     
     // --- Loading and Error States ---
     if (status === 'loading' && !space) { 
@@ -486,6 +510,35 @@ function SpaceDetailPage() {
                             <div id="overview" ref={sectionRefs.current.overview} className="space-detail-section">
                                 <h3 className="h4 mb-3 pt-2">Tổng quan</h3>
                                 <p style={{ whiteSpace: 'pre-line' }}>{space.description || 'Không có mô tả chi tiết.'}</p>
+                                
+                                {/* Owner Information - Simple line format above address */}
+                                {space.ownerId && (
+                                    <p>
+                                        <strong>Chủ không gian:</strong>{' '}
+                                        {ownerInfo ? (
+                                            <Link 
+                                                to={`/owner/${space.ownerId}`}
+                                                className="text-decoration-none text-primary"
+                                            >
+                                                {ownerInfo.CompanyName || ownerInfo.companyName}
+                                            </Link>
+                                        ) : (
+                                            <Link 
+                                                to={`/owner/${space.ownerId}`}
+                                                className="text-decoration-none text-primary"
+                                            >
+                                                Xem thông tin chủ không gian
+                                            </Link>
+                                        )}
+                                        {ownerInfo && (ownerInfo.IsVerified || ownerInfo.isVerified) && (
+                                            <span className="badge bg-success ms-2 small">
+                                                <i className="bi bi-patch-check me-1"></i>
+                                                Đã xác minh
+                                            </span>
+                                        )}
+                                    </p>
+                                )}
+                                
                                 <p><strong>Địa chỉ:</strong> {space.address}</p>
                                 <p><strong>Loại không gian:</strong> {space.type}</p>
                                 <p><strong>Sức chứa:</strong> {space.capacity} người</p>
@@ -503,8 +556,19 @@ function SpaceDetailPage() {
                                         <Spinner animation="border" size="sm" /> Đang tải bản đồ...
                                     </div>
                                 ) : detailMapCenter && detailMapMarker ? (
-                                    <div style={{ height: '400px', width: '100%', border: '1px solid #ccc', borderRadius: '0.25rem' }}>
-                                        <InteractiveMap center={detailMapCenter} zoom={detailMapZoom} markers={[detailMapMarker]} />
+                                    <div>
+                                        <div style={{ height: '400px', width: '100%', border: '1px solid #ccc', borderRadius: '0.25rem' }}>
+                                            <InteractiveMap 
+                                                center={detailMapCenter} 
+                                                zoom={detailMapZoom} 
+                                                markers={[detailMapMarker]} 
+                                                disableScrollZoom={true}
+                                            />
+                                        </div>
+                                        <small className="text-muted mt-2 d-block">
+                                            <i className="bi bi-info-circle me-1"></i>
+                                            Bản đồ chỉ để xem vị trí, không thể phong to/thu nhỏ
+                                        </small>
                                     </div>
                                 ) : (
                                     <Alert variant="info" className="mt-2">Thông tin bản đồ không có sẵn.</Alert>

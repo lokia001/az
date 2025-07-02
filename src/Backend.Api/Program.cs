@@ -20,7 +20,7 @@ using Microsoft.OpenApi.Models;
 using Backend.Api.Services;
 using Backend.Api.Services.Shared;
 using Backend.Api.Modules.UserRelated.Infrastructure.Security;
-using Backend.Api.Modules.UserRelated;
+using Backend.Api.Modules.UserRelated.Extensions;
 using Backend.Api.Modules.UserRelated.Api.Controllers;
 using Backend.Api.Modules.UserRelated.Application.Contracts.Services;
 using Backend.Api.Modules.UserRelated.Application.Services;
@@ -51,15 +51,17 @@ builder.Logging.AddFilter("Quartz", LogLevel.Debug); // Add Quartz logging
 
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
 
+// Get configuration for service registration
+var configuration = builder.Configuration;
+
 // Register modules with their services and seeders
-builder.Services.AddUserRelatedModule();
+builder.Services.AddUserRelatedModule(configuration);
 builder.Services.AddSpaceBookingModule();
 builder.Services.AddCommunityContentModule();
 
 // Register database initializer
 builder.Services.AddScoped<DatabaseInitializer>();
 builder.Services.AddEngagementModule();
-var configuration = builder.Configuration;
 builder.Services.AddChatbotModule(configuration);
 
 
@@ -251,6 +253,7 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<JwtService>();
 builder.Services.AddScoped<ILogger<UsersController>, Logger<UsersController>>();  //Quan trọng :Logging
 builder.Services.AddScoped<IEmailService, EmailService>(); // Hoặc AddTransient
+
 // Add modules:
 builder.Services.AddUserServiceModule(configuration);
 builder.Services.AddSpaceServiceModule(configuration);

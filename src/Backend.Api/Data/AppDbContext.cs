@@ -28,6 +28,7 @@ namespace Backend.Api.Data
         // UserRelated Module DbSets
         public DbSet<User> Users { get; set; } = default!;
         public DbSet<OwnerProfile> OwnerProfiles { get; set; } = default!;
+        public DbSet<OwnerRegistrationRequest> OwnerRegistrationRequests { get; set; } = default!;
 
         // Engagement Module DbSets
         public DbSet<Review> Reviews { get; set; } = default!;
