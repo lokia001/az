@@ -987,6 +987,74 @@ public class BookingService : IBookingService
 
         _logger.LogInformation("Owner booking created successfully. BookingId: {BookingId}, Status: {Status}", booking.Id, booking.Status);
 
+        // Send booking confirmation email to customer
+        try
+        {
+            string? notificationEmail = null;
+            string? customerName = null;
+
+            if (booking.UserId.HasValue)
+            {
+                // Get user info for email
+                var user = await _userService.GetUserByIdAsync(booking.UserId.Value);
+                if (user != null)
+                {
+                    customerName = user.FullName ?? user.Username;
+                    // Determine notification email (use NotificationEmail if provided, otherwise fallback to user email)
+                    notificationEmail = !string.IsNullOrWhiteSpace(booking.NotificationEmail) 
+                        ? booking.NotificationEmail 
+                        : user.Email;
+                }
+            }
+            else
+            {
+                // Guest booking
+                customerName = booking.GuestName;
+                notificationEmail = booking.NotificationEmail ?? booking.GuestEmail;
+            }
+
+            if (!string.IsNullOrWhiteSpace(notificationEmail) && !string.IsNullOrWhiteSpace(customerName))
+            {
+                // Get owner email from space
+                var ownerUser = await _userService.GetUserByIdAsync(space.OwnerId);
+                var ownerEmail = ownerUser?.Email ?? "support@workingspace.com"; // Fallback email
+
+                // Format dates for email
+                var vietnamTime = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+                var startTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime, vietnamTime);
+                var endTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(booking.EndTime, vietnamTime);
+
+                var startTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm");
+                var endTimeStr = endTimeLocal.ToString("dd/MM/yyyy HH:mm");
+                var checkInTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm"); // Use StartTime as check-in time
+
+                // Send confirmation email
+                await _emailService.SendBookingConfirmationEmailAsync(
+                    toEmail: notificationEmail,
+                    customerName: customerName,
+                    spaceName: space.Name,
+                    startTime: startTimeStr,
+                    endTime: endTimeStr,
+                    checkInTime: checkInTimeStr,
+                    ownerEmail: ownerEmail,
+                    bookingCode: booking.Id.ToString("N")[..8].ToUpper() // Use first 8 chars of GUID as booking code
+                );
+
+                _logger.LogInformation("Booking confirmation email sent to {Email} for owner-created booking {BookingId}", 
+                    notificationEmail, booking.Id);
+            }
+            else
+            {
+                _logger.LogWarning("Could not determine notification email or customer name for owner-created booking {BookingId}", 
+                    booking.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send booking confirmation email for owner-created booking {BookingId}", booking.Id);
+            // Don't throw exception - email failure shouldn't affect booking creation
+        }
+
         // Get booking with space details for response
         var createdBookingWithDetails = await _bookingRepository.GetByIdAsync(booking.Id);
         if (createdBookingWithDetails == null)
