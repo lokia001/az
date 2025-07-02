@@ -8,13 +8,16 @@ const BookingStatusBadge = ({ status }) => {
   const { t } = useTranslation();
   
   const statusConfig = {
-    pending: { variant: 'warning', label: t('bookingStatus.pending') },
-    confirmed: { variant: 'success', label: t('bookingStatus.confirmed') },
-    cancelled: { variant: 'danger', label: t('bookingStatus.cancelled') },
-    completed: { variant: 'secondary', label: t('bookingStatus.completed') }
+    Pending: { variant: 'warning', label: t('bookingStatus.pending') },
+    Confirmed: { variant: 'success', label: t('bookingStatus.confirmed') },
+    Cancelled: { variant: 'danger', label: t('bookingStatus.cancelled') },
+    Completed: { variant: 'secondary', label: t('bookingStatus.completed') },
+    CheckedIn: { variant: 'info', label: t('bookingStatus.checkedIn') },
+    CheckedOut: { variant: 'success', label: t('bookingStatus.checkedOut') },
+    NoShow: { variant: 'dark', label: t('bookingStatus.noShow') }
   };
 
-  const config = statusConfig[status] || statusConfig.pending;
+  const config = statusConfig[status] || statusConfig.Pending;
 
   return (
     <Badge bg={config.variant}>
@@ -78,15 +81,15 @@ const BookingList = ({ bookings = [], isLoading, onBookingClick }) => {
             <Stack gap={2}>
               <div>
                 <div className="text-muted">{t('myBookings.dates')}:</div>
-                <div>{formatVietnameseDate(booking.startDate)} - {formatVietnameseDate(booking.endDate)}</div>
+                <div>{formatVietnameseDate(booking.startTime)} - {formatVietnameseDate(booking.endTime)}</div>
               </div>
 
               <div>
                 <div className="text-muted">{t('myBookings.totalAmount')}:</div>
-                <div className="fw-bold">{formatCurrency(booking.totalAmount)}</div>
+                <div className="fw-bold">{formatCurrency(booking.totalPrice)}</div>
               </div>
 
-              {booking.status === 'completed' && !booking.hasReview && (
+              {booking.status === 'Completed' && booking.canReview && (
                 <div className="d-grid gap-2 d-md-flex justify-content-md-end">
                   <Button 
                     variant="outline-primary"

@@ -93,7 +93,11 @@
         "title": "Đơn đặt của tôi",
         "errorLoading": "Có lỗi khi tải dữ liệu. Vui lòng thử lại sau.",
         "noBookings": "Bạn chưa có đơn đặt nào.",
+        "bookingId": "Mã đơn đặt",
         "bookingCode": "Mã đơn",
+        "dates": "Thời gian",
+        "totalAmount": "Tổng tiền",
+        "leaveReview": "Đánh giá",
         "filters": {
             "title": "Bộ lọc",
             "status": "Trạng thái",
@@ -152,6 +156,9 @@
         "pending": "Chờ xác nhận",
         "confirmed": "Đã xác nhận",
         "cancelled": "Đã hủy",
-        "completed": "Đã hoàn thành"
+        "completed": "Đã hoàn thành",
+        "checkedIn": "Đã check-in",
+        "checkedOut": "Đã check-out",
+        "noShow": "Không đến"
     }
 }

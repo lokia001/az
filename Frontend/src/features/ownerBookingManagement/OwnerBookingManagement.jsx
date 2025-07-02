@@ -16,6 +16,7 @@ import {
     setOwnerBookingFilter,
     setOwnerBookingPage,
     resetOwnerBookingFilters,
+    exportOwnerBookings,
     selectOwnerBookings,
     selectOwnerBookingFilters,
     selectOwnerBookingPagination,
@@ -25,10 +26,21 @@ import {
 } from './slices/ownerBookingSlice';
 import { selectCurrentUser } from '../auth/slices/authSlice';
 import { formatVietnameseDateTime } from '../../utils/timeUtils';
-import * as api from '../../services/api';
+import { getOwnerSpaces } from '../../services/api';
 
 const OwnerBookingManagement = () => {
     const { t } = useTranslation();
+    
+    // Fallback translation function for missing keys
+    const getTranslation = (key, fallback) => {
+        try {
+            const translated = t(key);
+            return translated === key ? fallback : translated;
+        } catch {
+            return fallback;
+        }
+    };
+    
     const dispatch = useDispatch();
     const [viewMode, setViewMode] = useState('list');
     const [showDetailModal, setShowDetailModal] = useState(false);
@@ -53,7 +65,7 @@ const OwnerBookingManagement = () => {
             
             try {
                 setLoadingSpaces(true);
-                const spaces = await api.getOwnerSpaces(currentUser.id);
+                const spaces = await getOwnerSpaces(currentUser.id);
                 setOwnerSpaces(spaces);
                 
                 // If there are spaces and no space is selected, select the first one
@@ -102,7 +114,7 @@ const OwnerBookingManagement = () => {
         try {
             await dispatch(updateBookingStatus({ bookingId, newStatus })).unwrap();
             dispatch(fetchOwnerBookings());
-            dispatch(fetchOwnerBookingStats());
+            // Removed fetchOwnerBookingStats call as it's not essential
         } catch (error) {
             console.error('Failed to update booking status:', error);
         }
@@ -131,7 +143,7 @@ const OwnerBookingManagement = () => {
             case 'Completed': variant = 'info'; break;
             default: variant = 'secondary';
         }
-        return <Badge bg={variant}>{t(`booking.status.${status.toLowerCase()}`)}</Badge>;
+        return <Badge bg={variant}>{getTranslation(`booking.status.${status.toLowerCase()}`, status)}</Badge>;
     };
 
     const renderStats = () => null;
@@ -139,25 +151,25 @@ const OwnerBookingManagement = () => {
     const renderToolbar = () => (
         <Stack direction="horizontal" gap={3} className="mb-4">
             <Button variant="primary" size="sm">
-                <Plus className="me-1" /> {t('owner.bookings.actions.addBooking')}
+                <Plus className="me-1" /> Thêm đặt chỗ
             </Button>
             <div className="vr" />
             <Button variant="outline-secondary" size="sm" 
                 onClick={() => setViewMode('list')}
                 active={viewMode === 'list'}>
-                <List className="me-1" /> {t('common.view.list')}
+                <List className="me-1" /> Danh sách
             </Button>
             <Button variant="outline-secondary" size="sm" 
                 onClick={() => setViewMode('calendar')}
                 active={viewMode === 'calendar'}>
-                <Calendar2 className="me-1" /> {t('common.view.calendar')}
+                <Calendar2 className="me-1" /> Lịch
             </Button>
             <div className="ms-auto" />
             <Button variant="outline-success" size="sm" onClick={handleExport}>
-                <Download className="me-1" /> {t('common.actions.export')}
+                <Download className="me-1" /> Xuất Excel
             </Button>
             <Button variant="outline-secondary" size="sm">
-                <Gear className="me-1" /> {t('common.actions.settings')}
+                <Gear className="me-1" /> Cài đặt
             </Button>
         </Stack>
     );
@@ -167,7 +179,7 @@ const OwnerBookingManagement = () => {
             {/* Space selector */}
             <Col md={3}>
                 <Form.Group>
-                    <Form.Label>{t('owner.bookings.filters.space')}</Form.Label>
+                    <Form.Label>Không gian</Form.Label>
                     <Form.Select
                         value={filters.spaceId}
                         onChange={(e) => handleFilter('spaceId', e.target.value)}
@@ -181,7 +193,7 @@ const OwnerBookingManagement = () => {
                     </Form.Select>
                     {loadingSpaces && (
                         <Form.Text className="text-muted">
-                            {t('common.loading')}
+                            Đang tải...
                         </Form.Text>
                     )}
                     {spacesError && (
@@ -193,25 +205,25 @@ const OwnerBookingManagement = () => {
             </Col>
             <Col md={3}>
                 <Form.Group>
-                    <Form.Label>{t('owner.bookings.filters.status')}</Form.Label>
+                    <Form.Label>Trạng thái</Form.Label>
                     <Form.Select
                         value={filters.status}
                         onChange={(e) => handleFilter('status', e.target.value)}
                     >
-                        <option value="">{t('common.filters.all')}</option>
-                        <option value="Pending">{t('booking.status.pending')}</option>
-                        <option value="Confirmed">{t('booking.status.confirmed')}</option>
-                        <option value="Cancelled">{t('booking.status.cancelled')}</option>
-                        <option value="Completed">{t('booking.status.completed')}</option>
+                        <option value="">Tất cả</option>
+                        <option value="Pending">Chờ xác nhận</option>
+                        <option value="Confirmed">Đã xác nhận</option>
+                        <option value="Cancelled">Đã hủy</option>
+                        <option value="Completed">Hoàn thành</option>
                     </Form.Select>
                 </Form.Group>
             </Col>
             <Col md={3}>
                 <Form.Group>
-                    <Form.Label>{t('owner.bookings.filters.customer')}</Form.Label>
+                    <Form.Label>Khách hàng</Form.Label>
                     <Form.Control
                         type="text"
-                        placeholder={t('owner.bookings.filters.customerPlaceholder')}
+                        placeholder="Tìm theo tên khách hàng..."
                         value={filters.customerName}
                         onChange={(e) => handleFilter('customerName', e.target.value)}
                     />
@@ -219,7 +231,7 @@ const OwnerBookingManagement = () => {
             </Col>
             <Col md={3}>
                 <Form.Group>
-                    <Form.Label>{t('owner.bookings.filters.dateRange')}</Form.Label>
+                    <Form.Label>Khoảng thời gian</Form.Label>
                     <InputGroup>
                         <DatePicker
                             selectsRange
@@ -227,11 +239,11 @@ const OwnerBookingManagement = () => {
                             endDate={filters.dateTo ? new Date(filters.dateTo) : null}
                             onChange={([start, end]) => handleDateRangeChange(start, end)}
                             className="form-control"
-                            placeholderText={t('owner.bookings.filters.dateRangePlaceholder')}
+                            placeholderText="Chọn khoảng thời gian..."
                         />
                         <Button variant="outline-secondary" 
                             onClick={() => handleDateRangeChange(null, null)}>
-                            {t('common.actions.clear')}
+                            Xóa
                         </Button>
                     </InputGroup>
                 </Form.Group>
@@ -242,32 +254,32 @@ const OwnerBookingManagement = () => {
     const renderBookingActions = (booking) => (
         <Dropdown>
             <Dropdown.Toggle variant="outline-secondary" size="sm" id={`booking-${booking.id}-actions`}>
-                {t('common.actions.actions')}
+                Hành động
             </Dropdown.Toggle>
             <Dropdown.Menu>
                 <Dropdown.Item onClick={() => {
                     setSelectedBooking(booking);
                     setShowDetailModal(true);
                 }}>
-                    {t('common.actions.viewDetails')}
+                    Xem chi tiết
                 </Dropdown.Item>
                 {booking.status === 'Pending' && (
                     <>
                         <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Confirmed')}>
-                            {t('owner.bookings.actions.confirm')}
+                            Xác nhận
                         </Dropdown.Item>
                         <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Cancelled')}>
-                            {t('owner.bookings.actions.reject')}
+                            Từ chối
                         </Dropdown.Item>
                     </>
                 )}
                 {booking.status === 'Confirmed' && (
                     <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Completed')}>
-                        {t('owner.bookings.actions.markCompleted')}
+                        Đánh dấu hoàn thành
                     </Dropdown.Item>
                 )}
                 <Dropdown.Item>
-                    {t('owner.bookings.actions.contactCustomer')}
+                    Liên hệ khách hàng
                 </Dropdown.Item>
             </Dropdown.Menu>
         </Dropdown>
@@ -278,15 +290,15 @@ const OwnerBookingManagement = () => {
             <Table striped bordered hover>
                 <thead>
                     <tr>
-                        <th>{t('booking.fields.id')}</th>
-                        <th>{t('booking.fields.customer')}</th>
-                        <th>{t('booking.fields.space')}</th>
-                        <th>{t('booking.fields.startTime')}</th>
-                        <th>{t('booking.fields.endTime')}</th>
-                        <th>{t('booking.fields.duration')}</th>
-                        <th>{t('booking.fields.totalPrice')}</th>
-                        <th>{t('booking.fields.status')}</th>
-                        <th>{t('common.actions.actions')}</th>
+                        <th>ID</th>
+                        <th>Khách hàng</th>
+                        <th>Không gian</th>
+                        <th>Thời gian bắt đầu</th>
+                        <th>Thời gian kết thúc</th>
+                        <th>Thời lượng</th>
+                        <th>Tổng tiền</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -297,7 +309,7 @@ const OwnerBookingManagement = () => {
                             <td>{booking.spaceName}</td>
                             <td>{formatVietnameseDateTime(booking.startTime)}</td>
                             <td>{formatVietnameseDateTime(booking.endTime)}</td>
-                            <td>{booking.duration} {t('common.time.hours')}</td>
+                            <td>{booking.duration} giờ</td>
                             <td>{booking.totalPrice?.toLocaleString()} ₫</td>
                             <td>{renderStatusBadge(booking.status)}</td>
                             <td>{renderBookingActions(booking)}</td>
@@ -309,7 +321,7 @@ const OwnerBookingManagement = () => {
                                 {status === 'loading' ? (
                                     <Spinner animation="border" size="sm" className="me-2" />
                                 ) : (
-                                    t('owner.bookings.noBookings')
+                                    'Chưa có đặt chỗ nào'
                                 )}
                             </td>
                         </tr>
@@ -346,7 +358,7 @@ const OwnerBookingManagement = () => {
             <Container className="py-4">
                 <div className="text-center">
                     <Spinner animation="border" role="status">
-                        <span className="visually-hidden">{t('common.loading')}</span>
+                        <span className="visually-hidden">Đang tải...</span>
                     </Spinner>
                 </div>
             </Container>
@@ -355,7 +367,7 @@ const OwnerBookingManagement = () => {
 
     return (
         <Container className="py-4">
-            <h2 className="mb-4">{t('owner.bookings.title')}</h2>
+            <h2 className="mb-4">Quản lý đặt chỗ</h2>
 
             {error && (
                 <Alert variant="danger" dismissible>
@@ -367,9 +379,9 @@ const OwnerBookingManagement = () => {
             {loadingSpaces ? (
                 <div className="text-center py-4">
                     <Spinner animation="border" role="status">
-                        <span className="visually-hidden">{t('common.loading')}</span>
+                        <span className="visually-hidden">Đang tải...</span>
                     </Spinner>
-                    <div className="mt-2">{t('owner.bookings.loadingSpaces')}</div>
+                    <div className="mt-2">Đang tải danh sách không gian...</div>
                 </div>
             ) : spacesError ? (
                 <Alert variant="danger">
@@ -377,14 +389,14 @@ const OwnerBookingManagement = () => {
                 </Alert>
             ) : ownerSpaces.length === 0 ? (
                 <Alert variant="info">
-                    {t('owner.bookings.noSpacesAvailable')}
+                    Bạn chưa có không gian nào. Vui lòng đăng ký không gian trước.
                 </Alert>
             ) : (
                 <>
                     {renderStats()}
                     {renderToolbar()}
                     {renderFilters()}
-                    {viewMode === 'list' ? renderBookingsTable() : <div>{t('owner.bookings.calendarViewComingSoon')}</div>}
+                    {viewMode === 'list' ? renderBookingsTable() : <div>Chế độ lịch sẽ có sớm...</div>}
                     {renderPagination()}
                 </>
             )}
@@ -392,39 +404,39 @@ const OwnerBookingManagement = () => {
             {/* Booking Detail Modal */}
             <Modal show={showDetailModal} onHide={() => setShowDetailModal(false)} size="lg">
                 <Modal.Header closeButton>
-                    <Modal.Title>{t('owner.bookings.detail.title')}</Modal.Title>
+                    <Modal.Title>Chi tiết đặt chỗ</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     {selectedBooking && (
                         <div>
                             <Row className="mb-3">
                                 <Col md={6}>
-                                    <strong>{t('booking.fields.customer')}:</strong> {selectedBooking.customerName}
+                                    <strong>Khách hàng:</strong> {selectedBooking.customerName}
                                 </Col>
                                 <Col md={6}>
-                                    <strong>{t('booking.fields.space')}:</strong> {selectedBooking.spaceName}
-                                </Col>
-                            </Row>
-                            <Row className="mb-3">
-                                <Col md={6}>
-                                    <strong>{t('booking.fields.startTime')}:</strong> {new Date(selectedBooking.startTime).toLocaleString()}
-                                </Col>
-                                <Col md={6}>
-                                    <strong>{t('booking.fields.endTime')}:</strong> {new Date(selectedBooking.endTime).toLocaleString()}
+                                    <strong>Không gian:</strong> {selectedBooking.spaceName}
                                 </Col>
                             </Row>
                             <Row className="mb-3">
                                 <Col md={6}>
-                                    <strong>{t('booking.fields.totalPrice')}:</strong> {selectedBooking.totalPrice?.toLocaleString()} ₫
+                                    <strong>Thời gian bắt đầu:</strong> {new Date(selectedBooking.startTime).toLocaleString()}
                                 </Col>
                                 <Col md={6}>
-                                    <strong>{t('booking.fields.status')}:</strong> {renderStatusBadge(selectedBooking.status)}
+                                    <strong>Thời gian kết thúc:</strong> {new Date(selectedBooking.endTime).toLocaleString()}
+                                </Col>
+                            </Row>
+                            <Row className="mb-3">
+                                <Col md={6}>
+                                    <strong>Tổng tiền:</strong> {selectedBooking.totalPrice?.toLocaleString()} ₫
+                                </Col>
+                                <Col md={6}>
+                                    <strong>Trạng thái:</strong> {renderStatusBadge(selectedBooking.status)}
                                 </Col>
                             </Row>
                             <Row className="mb-3">
                                 <Col>
-                                    <strong>{t('booking.fields.notes')}:</strong>
-                                    <p className="mt-2">{selectedBooking.notes || t('common.noData')}</p>
+                                    <strong>Ghi chú:</strong>
+                                    <p className="mt-2">{selectedBooking.notes || 'Không có ghi chú'}</p>
                                 </Col>
                             </Row>
                         </div>
@@ -432,7 +444,7 @@ const OwnerBookingManagement = () => {
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowDetailModal(false)}>
-                        {t('common.actions.close')}
+                        Đóng
                     </Button>
                 </Modal.Footer>
             </Modal>

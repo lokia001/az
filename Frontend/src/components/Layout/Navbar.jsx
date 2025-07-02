@@ -179,6 +179,7 @@ function Navbar() {
             case 'owner':
                 items = [
                     { path: '/profile', label: 'Profile' },
+                    { path: '/my-bookings', label: 'My Bookings' },
                     { path: '/favorites', label: 'Favorites' },
                     { path: '/nearby-spaces', label: 'Nearby Spaces' }
                 ];
@@ -187,6 +188,7 @@ function Navbar() {
             case 'admin':
                 items = [
                     { path: '/profile', label: 'Profile' },
+                    { path: '/my-bookings', label: 'My Bookings' },
                     { path: '/favorites', label: 'Favorites' },
                     { path: '/nearby-spaces', label: 'Nearby Spaces' }
                 ];
@@ -194,6 +196,7 @@ function Navbar() {
             default: // User
                 items = [
                     { path: '/profile', label: 'Profile' },
+                    { path: '/my-bookings', label: 'My Bookings' },
                     { path: '/favorites', label: 'Favorites' },
                     { path: '/nearby-spaces', label: 'Nearby Spaces' },
                     { path: '/owner-registration', label: 'Become Owner' }

@@ -214,12 +214,12 @@ const BookingDetailModal = ({ booking, show, onHide }) => {
                 <div className="booking-dates text-muted small mt-3">
                   {booking.createdAt && (
                     <div>
-                      {t('myBookings.details.createdAt')}: {formatDateTime(booking.createdAt)}
+                      {t('myBookings.details.createdAt')}: {formatVietnameseDateTime(booking.createdAt)}
                     </div>
                   )}
                   {booking.updatedAt && booking.updatedAt !== booking.createdAt && (
                     <div>
-                      {t('myBookings.details.updatedAt')}: {formatDateTime(booking.updatedAt)}
+                      {t('myBookings.details.updatedAt')}: {formatVietnameseDateTime(booking.updatedAt)}
                     </div>
                   )}
                 </div>

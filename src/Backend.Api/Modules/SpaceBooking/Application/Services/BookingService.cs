@@ -14,7 +14,7 @@ using Backend.Api.Modules.SpaceBooking.Domain.Enums;
 using Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore; // Đảm bảo đã có dòng này
 
-// using Backend.Api.Modules.UserRelated.Application.Contracts.Services; // Có thể cần IUserService để lấy thông tin Booker cho DTO
+using Backend.Api.Modules.UserRelated.Application.Contracts.Services; // Cần IUserService để lấy email user
 
 
 public class BookingService : IBookingService
@@ -23,28 +23,27 @@ public class BookingService : IBookingService
     private readonly ISpaceRepository _spaceRepository; // Cần để lấy thông tin Space (giá, trạng thái)
     private readonly IMapper _mapper;
     private readonly AppDbContext _dbContext; // Unit of Work
-
+    private readonly IUserService _userService; // Cần để lấy email user cho NotificationEmail
     private readonly ILogger<BookingService> _logger;
     
     // Vietnam timezone for proper time validation
     private static readonly TimeZoneInfo VietnamTimeZone = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-    // private readonly IUserService _userService; // Tùy chọn, nếu cần làm giàu BookingDto với BookerName
 
     public BookingService(
         IBookingRepository bookingRepository,
         ISpaceRepository spaceRepository,
         IMapper mapper,
         AppDbContext dbContext,
+        IUserService userService,
         ILogger<BookingService> logger
-        // IUserService userService
         )
     {
         _bookingRepository = bookingRepository;
         _spaceRepository = spaceRepository;
         _mapper = mapper;
         _dbContext = dbContext;
+        _userService = userService;
         _logger = logger;
-        // _userService = userService;
     }
     
     /// <summary>
@@ -220,6 +219,29 @@ public class BookingService : IBookingService
         booking.Status = BookingStatus.Pending; // Mặc định là Confirmed, hoặc Pending nếu cần duyệt
         booking.CreatedAt = DateTime.UtcNow;
         booking.BookingCode = GenerateBookingCodeInternal(booking.Id); // Tự sinh mã booking
+
+        // Validate và xử lý NotificationEmail
+        if (!string.IsNullOrWhiteSpace(booking.NotificationEmail))
+        {
+            // Validate email format nếu được cung cấp
+            if (!IsValidEmail(booking.NotificationEmail))
+            {
+                throw new ArgumentException("NotificationEmail không có định dạng email hợp lệ.");
+            }
+        }
+        else
+        {
+            // Nếu không được cung cấp, dùng email của user
+            var user = await _userService.GetUserByIdAsync(userId);
+            if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+            {
+                booking.NotificationEmail = user.Email;
+            }
+            else
+            {
+                _logger.LogWarning("User {UserId} not found or has no email, NotificationEmail will be null", userId);
+            }
+        }
 
         await _bookingRepository.AddAsync(booking);
         await _dbContext.SaveChangesAsync();
@@ -697,4 +719,24 @@ public class BookingService : IBookingService
         return _mapper.Map<BookingDto>(await _bookingRepository.GetByIdAsync(bookingId));
     }
 
+    /// <summary>
+    /// Validates email format using simple regex pattern
+    /// </summary>
+    private static bool IsValidEmail(string email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+            return false;
+
+        try
+        {
+            // Use simple but effective email regex pattern
+            return System.Text.RegularExpressions.Regex.IsMatch(email,
+                @"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        }
+        catch
+        {
+            return false;
+        }
+    }
 }

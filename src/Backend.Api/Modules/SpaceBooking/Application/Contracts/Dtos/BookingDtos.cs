@@ -22,6 +22,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         public string? BookingCode { get; set; }
         public string? NotesFromUser { get; set; }
         public string? NotesFromOwner { get; set; }
+        public string? NotificationEmail { get; set; } // Email nhận thông báo cho booking này
         public DateTime CreatedAt { get; set; }
         public DateTime? UpdatedAt { get; set; }
         public Guid? UpdatedByUserId { get; set; }
@@ -36,7 +37,8 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         [Required] DateTime StartTime,
         [Required] DateTime EndTime,
         [Required][Range(1, 1000)] int NumberOfPeople,
-        [StringLength(500)] string? NotesFromUser
+        [StringLength(500)] string? NotesFromUser,
+        [StringLength(255)] string? NotificationEmail // Email nhận thông báo (tùy chọn, validation sẽ được xử lý trong service)
     // TotalPrice sẽ được tính toán bởi service
     );
 

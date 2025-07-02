@@ -54,6 +54,20 @@ const createErrorResponse = (message, type = 'error', details = null) => ({
 });
 
 /**
+ * Calculate duration between two dates in hours
+ * @param {string} startTime - Start time string
+ * @param {string} endTime - End time string
+ * @returns {number} Duration in hours
+ */
+const calculateDuration = (startTime, endTime) => {
+    if (!startTime || !endTime) return 0;
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const diffMs = end - start;
+    return Math.round(diffMs / (1000 * 60 * 60)); // Convert to hours
+};
+
+/**
  * Fetch bookings for owner's spaces
  * @param {Object} filters - Filtering parameters
  * @returns {Promise} API response with owner's bookings data or error object
@@ -73,8 +87,8 @@ export const fetchOwnerBookingsAPI = async (filters = {}) => {
         const { spaceType, spaceName, ...otherFilters } = restFilters;
         const queryString = buildQueryString(otherFilters);
         
-        console.log('Fetching bookings:', `/api/bookings/space/${spaceId}?${queryString}`);
-        const response = await api.get(`/api/bookings/space/${spaceId}?${queryString}`);
+        console.log('Fetching bookings:', `/bookings/space/${spaceId}?${queryString}`);
+        const response = await api.get(`/bookings/space/${spaceId}?${queryString}`);
         
         if (!response.data) {
             return createErrorResponse(
@@ -87,53 +101,49 @@ export const fetchOwnerBookingsAPI = async (filters = {}) => {
         // Format and validate data from backend
         let items = Array.isArray(response.data) ? response.data : [];
         
-        // Map data to user-friendly format
-        items = items.map(booking => ({
-            id: booking.id,
-            customer: {
-                name: booking.customer?.name || 'Chưa có tên',
-                email: booking.customer?.email || 'Chưa có email',
-                phone: booking.customer?.phone || 'Chưa có SĐT'
-            },
-            space: {
-                name: booking.space?.name || 'Chưa có tên không gian',
-                type: booking.space?.type || 'Không gian làm việc'
-            },
-            time: {
-                start: new Date(booking.startTime).toLocaleString('vi-VN'),
-                end: new Date(booking.endTime).toLocaleString('vi-VN'),
-                duration: booking.duration || '0 giờ'
-            },
-            payment: {
-                total: new Intl.NumberFormat('vi-VN', {
-                    style: 'currency',
-                    currency: 'VND'
-                }).format(booking.totalPrice || 0),
-                status: booking.paymentStatus || 'Chưa thanh toán'
-            },
-            status: {
-                code: booking.status || 'pending',
-                text: getStatusText(booking.status || 'pending')
-            },
-            rawData: booking // Giữ lại dữ liệu gốc cho các thao tác khác
-        }));
+        // Map data to match component expectations
+        items = items.map(booking => {
+            const customerName = generateDisplayName(booking.userId);
+            
+            return {
+                id: booking.id,
+                customerName: customerName,
+                spaceName: booking.spaceName || booking.space?.name || 'Chưa có tên không gian',
+                startTime: booking.startTime,
+                endTime: booking.endTime,
+                duration: booking.duration || calculateDuration(booking.startTime, booking.endTime),
+                totalPrice: booking.totalPrice || 0,
+                status: booking.status || 'Pending',
+                notes: booking.notesFromUser || booking.notes || '',
+                paymentStatus: booking.paymentStatus || 'Unpaid',
+                // Keep original data for modal details
+                customer: {
+                    name: customerName,
+                    email: 'Thông tin riêng tư',
+                    phone: 'Thông tin riêng tư'
+                },
+                space: {
+                    name: booking.spaceName || booking.space?.name || 'Chưa có tên không gian',
+                    type: booking.space?.type || 'Không gian làm việc'
+                }
+            };
+        });
         
         if (items.length === 0) {
             return {
-                items: [],
-                message: 'Chưa có đặt chỗ nào cho không gian này',
-                totalItems: 0,
-                currentPage: otherFilters.PageNumber || 1,
-                itemsPerPage: otherFilters.PageSize || 10,
+                data: [],
+                pageNumber: otherFilters.PageNumber || 1,
+                pageSize: otherFilters.PageSize || 10,
+                totalCount: 0,
                 totalPages: 0
             };
         }
 
         return {
-            items,
-            totalItems: items.length,
-            currentPage: otherFilters.PageNumber || 1,
-            itemsPerPage: otherFilters.PageSize || 10,
+            data: items,
+            pageNumber: otherFilters.PageNumber || 1,
+            pageSize: otherFilters.PageSize || 10,
+            totalCount: items.length,
             totalPages: Math.ceil(items.length / (otherFilters.PageSize || 10))
         };
     } catch (error) {
@@ -282,17 +292,35 @@ export const checkBookingConflictsAPI = async (spaceId, booking) => {
 };
 
 /**
- * Export owner bookings data
- * @param {Object} filters - Export filters and options
- * @returns {Promise} API response with export data blob
+ * Get owner booking statistics
+ * @param {Object} params - Date range and other parameters
+ * @returns {Promise} API response with booking statistics
  */
-export const exportOwnerBookingsAPI = async (filters = {}) => {
+export const getOwnerBookingStatsAPI = async (params = {}) => {
     try {
-        const queryString = buildQueryString(filters);
-        const response = await api.get(`/bookings/export?${queryString}`, {
-            responseType: 'blob'
-        });
-        return response.data;
+        const queryString = buildQueryString(params);
+        // For now, return mock stats since backend doesn't have this endpoint
+        return {
+            totalBookings: 0,
+            upcomingBookings: 0,
+            completedBookings: 0,
+            cancelledBookings: 0,
+            conflictedBookings: 0,
+        };
+    } catch (error) {
+        throw error.response?.data || error.message;
+    }
+};
+
+/**
+ * Export owner bookings
+ * @param {Object} params - Export parameters
+ * @returns {Promise} API response with export data
+ */
+export const exportOwnerBookingsAPI = async (params = {}) => {
+    try {
+        // For now, return empty blob since backend doesn't have this endpoint
+        return new Blob(['No export available'], { type: 'text/plain' });
     } catch (error) {
         throw error.response?.data || error.message;
     }
@@ -391,11 +419,24 @@ export const getSpaceAvailabilityAPI = async (spaceId, params = {}) => {
     }
 };
 
+/**
+ * Generate a display name from user ID
+ * @param {string} userId - User ID to generate name from
+ * @returns {string} Display name
+ */
+const generateDisplayName = (userId) => {
+    if (!userId) return 'Chưa có tên';
+    // Create a simple display name from the first 8 characters of UUID
+    const shortId = userId.toString().substring(0, 8);
+    return `Khách hàng ${shortId}`;
+};
+
 export default {
     fetchOwnerBookingsAPI,
     getOwnerBookingDetailsAPI,
     updateBookingStatusAPI,
-    // Stats and export APIs removed as they're not available in backend
+    getOwnerBookingStatsAPI,
+    exportOwnerBookingsAPI,
     addOwnerBookingAPI,
     updateSpaceICalSettingsAPI,
     getSpaceICalSettingsAPI,

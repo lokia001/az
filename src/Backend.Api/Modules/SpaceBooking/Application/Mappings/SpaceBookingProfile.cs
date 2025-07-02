@@ -197,6 +197,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Mappings
                 .ForMember(dest => dest.BookingCode, opt => opt.MapFrom(src => src.BookingCode))
                 .ForMember(dest => dest.NotesFromUser, opt => opt.MapFrom(src => src.NotesFromUser))
                 .ForMember(dest => dest.NotesFromOwner, opt => opt.MapFrom(src => src.NotesFromOwner))
+                .ForMember(dest => dest.NotificationEmail, opt => opt.MapFrom(src => src.NotificationEmail))
                 .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => src.CreatedAt))
                 .ForMember(dest => dest.UpdatedAt, opt => opt.MapFrom(src => src.UpdatedAt))
                 .ForMember(dest => dest.UpdatedByUserId, opt => opt.MapFrom(src => src.UpdatedByUserId))

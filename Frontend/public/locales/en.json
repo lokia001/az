@@ -90,7 +90,11 @@
         "title": "My Bookings",
         "errorLoading": "There was an error loading the data. Please try again.",
         "noBookings": "You don't have any bookings yet.",
+        "bookingId": "Booking ID",
         "bookingCode": "Booking Code",
+        "dates": "Dates",
+        "totalAmount": "Total Amount",
+        "leaveReview": "Leave Review",
         "details": {
             "title": "Booking Details",
             "dates": "Time",
@@ -122,6 +126,9 @@
         "pending": "Pending",
         "confirmed": "Confirmed",
         "cancelled": "Cancelled",
-        "completed": "Completed"
+        "completed": "Completed",
+        "checkedIn": "Checked In",
+        "checkedOut": "Checked Out",
+        "noShow": "No Show"
     }
 }

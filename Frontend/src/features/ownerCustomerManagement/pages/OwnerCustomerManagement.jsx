@@ -2,11 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { Container, Table, Form, Row, Col, Alert, Spinner, Pagination } from 'react-bootstrap';
 import { useSelector, useDispatch } from 'react-redux';
 import CustomerDetailModal from '../../../components/CustomerDetailModal';
+import { selectCurrentUser } from '../../auth/slices/authSlice';
+import { fetchOwnerCustomersAPI, getCustomerDetailsAPI } from '../services/ownerCustomerApi';
 
 const OwnerCustomerManagement = () => {
+    const dispatch = useDispatch();
+    const currentUser = useSelector(selectCurrentUser);
+    
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedCustomer, setSelectedCustomer] = useState(null);
     const [loading, setLoading] = useState(false);
+    const [detailLoading, setDetailLoading] = useState(false);
     const [error, setError] = useState(null);
     const [customers, setCustomers] = useState([]);
     const [pagination, setPagination] = useState({
@@ -19,9 +25,18 @@ const OwnerCustomerManagement = () => {
         bookingStatus: 'all'
     });
 
-    const handleShowDetails = (customer) => {
-        setSelectedCustomer(customer);
-        setShowDetailModal(true);
+    const handleShowDetails = async (customer) => {
+        try {
+            setDetailLoading(true);
+            const customerDetails = await getCustomerDetailsAPI(customer.id, currentUser.id);
+            setSelectedCustomer(customerDetails);
+            setShowDetailModal(true);
+        } catch (error) {
+            console.error('Error loading customer details:', error);
+            setError('Không thể tải chi tiết khách hàng. Vui lòng thử lại.');
+        } finally {
+            setDetailLoading(false);
+        }
     };
 
     const handleFilter = (filterType, value) => {
@@ -38,33 +53,33 @@ const OwnerCustomerManagement = () => {
     };
 
     const loadCustomers = async (page, currentFilters) => {
+        if (!currentUser?.id) {
+            setError('Vui lòng đăng nhập để xem danh sách khách hàng.');
+            return;
+        }
+
         try {
             setLoading(true);
-            // TODO: Replace with actual API call
-            // const response = await api.get('/owner/customers', { 
-            //     params: { 
-            //         page,
-            //         pageSize: pagination.pageSize,
-            //         search: currentFilters.search,
-            //         bookingStatus: currentFilters.bookingStatus 
-            //     }
-            // });
-            // setCustomers(response.data.items);
-            // setPagination(prev => ({
-            //     ...prev,
-            //     currentPage: response.data.currentPage,
-            //     totalPages: response.data.totalPages
-            // }));
-
-            // Mock data for now
-            setCustomers([
-                { id: 1, name: 'John Doe', email: 'john@example.com', phone: '0123456789', totalBookings: 5, lastBooking: '2024-01-15' },
-                { id: 2, name: 'Jane Smith', email: 'jane@example.com', phone: '0987654321', totalBookings: 3, lastBooking: '2024-01-10' },
-            ]);
+            setError(null);
+            
+            const response = await fetchOwnerCustomersAPI(currentUser.id, {
+                pageNumber: page,
+                pageSize: pagination.pageSize,
+                search: currentFilters.search,
+                bookingStatus: currentFilters.bookingStatus
+            });
+            
+            setCustomers(response.data || []);
+            setPagination(prev => ({
+                ...prev,
+                currentPage: response.pageNumber || page,
+                totalPages: response.totalPages || 1
+            }));
             
         } catch (err) {
-            setError('Failed to load customers. Please try again later.');
+            setError('Không thể tải danh sách khách hàng. Vui lòng thử lại sau.');
             console.error('Error loading customers:', err);
+            setCustomers([]);
         } finally {
             setLoading(false);
         }
@@ -176,14 +191,32 @@ const OwnerCustomerManagement = () => {
                                     <td>{customer.name}</td>
                                     <td>{customer.email}</td>
                                     <td>{customer.phone}</td>
-                                    <td>{customer.totalBookings}</td>
-                                    <td>{new Date(customer.lastBooking).toLocaleDateString()}</td>
+                                    <td>
+                                        <span className="badge bg-primary me-1">{customer.totalBookings}</span>
+                                        {customer.completedBookings > 0 && (
+                                            <span className="badge bg-success me-1">
+                                                {customer.completedBookings} hoàn thành
+                                            </span>
+                                        )}
+                                        {customer.cancelledBookings > 0 && (
+                                            <span className="badge bg-danger">
+                                                {customer.cancelledBookings} đã hủy
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td>
+                                        {customer.lastBooking 
+                                            ? new Date(customer.lastBooking).toLocaleDateString('vi-VN')
+                                            : 'Chưa có'
+                                        }
+                                    </td>
                                     <td>
                                         <button
                                             className="btn btn-sm btn-primary"
                                             onClick={() => handleShowDetails(customer)}
+                                            disabled={detailLoading}
                                         >
-                                            Xem chi tiết
+                                            {detailLoading ? 'Đang tải...' : 'Xem chi tiết'}
                                         </button>
                                     </td>
                                 </tr>
@@ -191,7 +224,7 @@ const OwnerCustomerManagement = () => {
                         ) : (
                             <tr>
                                 <td colSpan="6" className="text-center">
-                                    Không có khách hàng nào.
+                                    {loading ? 'Đang tải...' : 'Chưa có khách hàng nào.'}
                                 </td>
                             </tr>
                         )}
@@ -210,6 +243,7 @@ const OwnerCustomerManagement = () => {
                     setSelectedCustomer(null);
                 }}
                 customer={selectedCustomer}
+                isLoading={detailLoading}
             />
         </Container>
     );

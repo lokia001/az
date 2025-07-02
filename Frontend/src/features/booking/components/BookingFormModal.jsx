@@ -54,6 +54,7 @@ const BookingFormModal = ({ show, onHide, space }) => {
     
     const [numGuests, setNumGuests] = useState(1);
     const [additionalNotes, setAdditionalNotes] = useState('');
+    const [notificationEmail, setNotificationEmail] = useState(''); // Email nhận thông báo (tùy chọn)
     const [formErrors, setFormErrors] = useState({});
     const [showToast, setShowToast] = useState(false);
     const [showSuccessMessage, setShowSuccessMessage] = useState(false);
@@ -412,6 +413,14 @@ const BookingFormModal = ({ show, onHide, space }) => {
             errors.numGuests = `Sức chứa tối đa là ${space.capacity} khách`;
         }
 
+        // Validate notification email (optional field, but if provided must be valid)
+        if (notificationEmail && notificationEmail.trim()) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(notificationEmail.trim())) {
+                errors.notificationEmail = 'Vui lòng nhập email hợp lệ';
+            }
+        }
+
         setFormErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -420,6 +429,16 @@ const BookingFormModal = ({ show, onHide, space }) => {
     useEffect(() => {
         if (bookingCreateStatus === 'succeeded') {
             setShowSuccessMessage(true);
+            // Reset form fields
+            setBookingDate('');
+            setEndDate('');
+            setStartTime('');
+            setEndTime('');
+            setNumGuests(1);
+            setAdditionalNotes('');
+            setNotificationEmail('');
+            setFormErrors({});
+            
             // Close modal after showing success message
             setTimeout(() => {
                 onHide();
@@ -442,6 +461,7 @@ const BookingFormModal = ({ show, onHide, space }) => {
             endTime: endDateTime.toISOString(),
             numberOfPeople: parseInt(numGuests, 10),
             notes: additionalNotes || '',
+            notificationEmail: notificationEmail && notificationEmail.trim() ? notificationEmail.trim() : '', // Thêm email nhận thông báo
             totalPrice: estimatedPrice,
             status: 'Pending' // Default status for new bookings
         };
@@ -825,6 +845,28 @@ const BookingFormModal = ({ show, onHide, space }) => {
                                 value={additionalNotes}
                                 onChange={(e) => setAdditionalNotes(e.target.value)}
                             />
+                        </Form.Group>
+
+                        <Form.Group className="mb-3" controlId="notificationEmail">
+                            <Form.Label className="fw-bold">
+                                <i className="bi bi-envelope me-2"></i>
+                                Email nhận thông báo (Tùy chọn)
+                            </Form.Label>
+                            <Form.Control
+                                type="email"
+                                placeholder="Để trống sẽ dùng email tài khoản của bạn"
+                                value={notificationEmail}
+                                onChange={(e) => setNotificationEmail(e.target.value)}
+                                isInvalid={!!formErrors.notificationEmail}
+                            />
+                            <Form.Text className="text-muted">
+                                <i className="bi bi-info-circle me-1"></i>
+                                Nếu để trống, thông báo sẽ được gửi đến email tài khoản của bạn
+                            </Form.Text>
+                            <Form.Control.Feedback type="invalid">
+                                <i className="bi bi-exclamation-circle me-1"></i>
+                                {formErrors.notificationEmail}
+                            </Form.Control.Feedback>
                         </Form.Group>
 
                         {/* Display API error message during booking submission */}

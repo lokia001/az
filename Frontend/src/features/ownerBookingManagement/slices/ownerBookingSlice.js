@@ -3,8 +3,11 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import {
     fetchOwnerBookingsAPI,
     updateBookingStatusAPI,
-    getOwnerBookingDetailsAPI
+    getOwnerBookingDetailsAPI,
+    getOwnerBookingStatsAPI,
+    exportOwnerBookingsAPI
 } from '../services/ownerBookingApi';
+import * as api from '../../../services/api';
 
 const initialFilters = {
     searchTerm: '', // For searching by customer name, booking ID, space name
@@ -234,25 +237,6 @@ const ownerBookingSlice = createSlice({
             const { filterName, value } = action.payload;
             state.filters[filterName] = value;
             // Reset to first page when filters change
-            state.pagination.PageNumber = 1;
-        },
-        setOwnerBookingPage: (state, action) => {
-            state.pagination.PageNumber = action.payload;
-        },
-        resetOwnerBookingFilters: (state) => {
-            state.filters = { ...initialFilters };
-            state.pagination.PageNumber = 1;
-        },
-        clearSelectedBooking: (state) => {
-            state.selectedBooking = null;
-            state.selectedBookingStatus = 'idle';
-            state.selectedBookingError = null;
-        },
-    },
-    reducers: {
-        setOwnerBookingFilter: (state, action) => {
-            const { filterName, value } = action.payload;
-            state.filters[filterName] = value;
             state.pagination.PageNumber = 1;
         },
         setOwnerBookingPage: (state, action) => {

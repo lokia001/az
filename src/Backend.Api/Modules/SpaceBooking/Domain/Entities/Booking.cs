@@ -57,6 +57,10 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         [MaxLength(500)]
         public string? Notes { get; set; } // Ghi chú chung
 
+        [MaxLength(255)]
+        [EmailAddress]
+        public string? NotificationEmail { get; set; } // Email nhận thông báo cho booking này
+
         // Audit fields
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
         public Guid? CreatedByUserId { get; set; } // Ai đã tạo booking (thường là UserId ở trên)
