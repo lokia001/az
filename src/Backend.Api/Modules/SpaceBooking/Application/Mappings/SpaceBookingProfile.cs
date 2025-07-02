@@ -212,6 +212,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Mappings
                 .ForMember(dest => dest.SpaceId, opt => opt.MapFrom(src => src.SpaceId))
                 .ForMember(dest => dest.SpaceName, opt => opt.MapFrom(src => src.Space != null ? src.Space.Name : string.Empty)) // Cần Include(b => b.Space)
                 .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.UserId))
+                .ForMember(dest => dest.UserFullName, opt => opt.Ignore()) // Will be set manually in service
                 .ForMember(dest => dest.StartTime, opt => opt.MapFrom(src => src.StartTime))
                 .ForMember(dest => dest.EndTime, opt => opt.MapFrom(src => src.EndTime))
                 .ForMember(dest => dest.ActualCheckIn, opt => opt.MapFrom(src => src.ActualCheckIn))

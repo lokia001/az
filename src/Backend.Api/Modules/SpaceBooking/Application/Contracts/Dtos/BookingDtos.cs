@@ -11,6 +11,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         public Guid SpaceId { get; set; }
         public string SpaceName { get; set; } = string.Empty;
         public Guid? UserId { get; set; } // Make nullable for guest bookings
+        public string? UserFullName { get; set; } // Full name of the user who made the booking
         // public string? BookerUsername { get; set; } // Giữ nguyên không có theo loose coupling
         public DateTime StartTime { get; set; }
         public DateTime EndTime { get; set; }

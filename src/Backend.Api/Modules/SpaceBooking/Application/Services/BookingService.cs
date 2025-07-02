@@ -374,23 +374,30 @@ public class BookingService : IBookingService
         var bookings = await _bookingRepository.GetBySpaceIdAsync(spaceId);
         var bookingDtos = _mapper.Map<IEnumerable<BookingDto>>(bookings).ToList();
         
-        // Enrich booking DTOs with user email fallback for notification email
+        // Enrich booking DTOs with user information and email fallback
         foreach (var bookingDto in bookingDtos)
         {
-            // If NotificationEmail is null or empty, fallback to user email
-            if (string.IsNullOrWhiteSpace(bookingDto.NotificationEmail) && bookingDto.UserId.HasValue)
+            // Set user full name if available
+            if (bookingDto.UserId.HasValue)
             {
                 try
                 {
                     var user = await _userService.GetUserByIdAsync(bookingDto.UserId.Value);
-                    if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+                    if (user != null)
                     {
-                        bookingDto.NotificationEmail = user.Email;
+                        // Set user full name
+                        bookingDto.UserFullName = user.FullName ?? user.Username;
+                        
+                        // If NotificationEmail is null or empty, fallback to user email
+                        if (string.IsNullOrWhiteSpace(bookingDto.NotificationEmail) && !string.IsNullOrWhiteSpace(user.Email))
+                        {
+                            bookingDto.NotificationEmail = user.Email;
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogWarning(ex, "Failed to get user email for booking {BookingId}, user {UserId}", 
+                    _logger.LogWarning(ex, "Failed to get user info for booking {BookingId}, user {UserId}", 
                         bookingDto.Id, bookingDto.UserId);
                 }
             }

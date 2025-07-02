@@ -107,9 +107,11 @@ export const fetchOwnerBookingsAPI = async (filters = {}) => {
             let customerName = 'Chưa có tên';
             if (booking.isGuestBooking && booking.guestName) {
                 customerName = `${booking.guestName} (khách)`;
+            } else if (booking.userId && booking.userFullName) {
+                // Use real user name from backend
+                customerName = booking.userFullName;
             } else if (booking.userId) {
-                // For registered users, try to get real name
-                // For now, we'll use a placeholder - this could be enhanced to fetch user info
+                // Fallback if userFullName is not available
                 const shortId = booking.userId.toString().substring(0, 8);
                 customerName = `Khách hàng ${shortId}`;
             }
@@ -181,7 +183,11 @@ export const getOwnerBookingDetailsAPI = async (bookingId) => {
         let customerName = 'Chưa có tên';
         if (booking.isGuestBooking && booking.guestName) {
             customerName = `${booking.guestName} (khách)`;
+        } else if (booking.userId && booking.userFullName) {
+            // Use real user name from backend
+            customerName = booking.userFullName;
         } else if (booking.userId) {
+            // Fallback if userFullName is not available
             const shortId = booking.userId.toString().substring(0, 8);
             customerName = `Khách hàng ${shortId}`;
         }
