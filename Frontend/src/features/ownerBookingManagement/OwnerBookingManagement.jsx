@@ -30,6 +30,7 @@ import {
 import { selectCurrentUser } from '../auth/slices/authSlice';
 import { formatVietnameseDateTime } from '../../utils/timeUtils';
 import { getOwnerSpaces } from '../../services/api';
+import { getStatusText } from './services/ownerBookingApi';
 import AddOwnerBookingModal from './components/AddOwnerBookingModal';
 
 const OwnerBookingManagement = () => {
@@ -181,11 +182,22 @@ const OwnerBookingManagement = () => {
         switch (status) {
             case 'Pending': variant = 'warning'; break;
             case 'Confirmed': variant = 'success'; break;
-            case 'Cancelled': variant = 'danger'; break;
+            case 'CheckedIn': variant = 'primary'; break;
             case 'Completed': variant = 'info'; break;
+            case 'Overdue': variant = 'danger'; break;
+            case 'NoShow': variant = 'dark'; break;
+            case 'Cancelled': variant = 'danger'; break;
+            case 'Abandoned': variant = 'secondary'; break;
+            case 'External': variant = 'light'; break;
+            case 'Conflict': variant = 'warning'; break;
             default: variant = 'secondary';
         }
-        return <Badge bg={variant}>{getTranslation(`booking.status.${status.toLowerCase()}`, status)}</Badge>;
+        
+        // Try to get translation, fallback to Vietnamese status text
+        const translatedText = getTranslation(`booking.status.${status.toLowerCase()}`, status);
+        const statusText = translatedText === status ? getStatusText(status) : translatedText;
+        
+        return <Badge bg={variant}>{statusText}</Badge>;
     };
 
     const renderStats = () => null;
@@ -310,24 +322,67 @@ const OwnerBookingManagement = () => {
                 }}>
                     Xem chi tiết
                 </Dropdown.Item>
+                
+                {/* Pending status actions */}
                 {booking.status === 'Pending' && (
                     <>
                         <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Confirmed')}>
-                            Xác nhận
+                            ✓ Xác nhận đặt chỗ
                         </Dropdown.Item>
                         <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Cancelled')}>
-                            Từ chối
+                            ✗ Từ chối đặt chỗ
                         </Dropdown.Item>
                     </>
                 )}
+                
+                {/* Confirmed status actions */}
                 {booking.status === 'Confirmed' && (
-                    <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Completed')}>
-                        Đánh dấu hoàn thành
-                    </Dropdown.Item>
+                    <>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'CheckedIn')}>
+                            📍 Check-in khách hàng
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'NoShow')}>
+                            ❌ Đánh dấu không đến
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Cancelled')}>
+                            🚫 Hủy đặt chỗ
+                        </Dropdown.Item>
+                    </>
                 )}
-                <Dropdown.Item>
-                    Liên hệ khách hàng
-                </Dropdown.Item>
+                
+                {/* CheckedIn status actions */}
+                {booking.status === 'CheckedIn' && (
+                    <>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Completed')}>
+                            ✅ Check-out & Hoàn thành
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Overdue')}>
+                            ⏰ Đánh dấu quá hạn
+                        </Dropdown.Item>
+                    </>
+                )}
+                
+                {/* Overdue status actions */}
+                {booking.status === 'Overdue' && (
+                    <>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Completed')}>
+                            ✅ Hoàn thành (muộn)
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Abandoned')}>
+                            🏃 Đánh dấu bỏ trốn
+                        </Dropdown.Item>
+                    </>
+                )}
+                
+                {/* Contact customer - available for most statuses */}
+                {!['Cancelled', 'Abandoned', 'Completed'].includes(booking.status) && (
+                    <>
+                        <Dropdown.Divider />
+                        <Dropdown.Item>
+                            📞 Liên hệ khách hàng
+                        </Dropdown.Item>
+                    </>
+                )}
             </Dropdown.Menu>
         </Dropdown>
     );

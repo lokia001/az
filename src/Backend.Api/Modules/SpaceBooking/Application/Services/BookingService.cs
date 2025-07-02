@@ -576,7 +576,6 @@ public class BookingService : IBookingService
         }
 
         // Logic kiểm tra tính hợp lệ của việc chuyển đổi trạng thái
-        // Ví dụ: không thể chuyển từ Completed sang Pending, v.v.
         string errorMessage = string.Empty;
 
         switch (booking.Status)
@@ -586,19 +585,33 @@ public class BookingService : IBookingService
                     errorMessage = $"Cannot change status from Pending to {request.NewStatus}. Allowed: Confirmed, Cancelled.";
                 break;
             case BookingStatus.Confirmed:
-                if (request.NewStatus != BookingStatus.CheckedIn && request.NewStatus != BookingStatus.Cancelled && request.NewStatus != BookingStatus.NoShow)
-                    errorMessage = $"Cannot change status from Confirmed to {request.NewStatus}. Allowed: CheckedIn, Cancelled, NoShow.";
+                if (request.NewStatus != BookingStatus.CheckedIn && 
+                    request.NewStatus != BookingStatus.Cancelled && 
+                    request.NewStatus != BookingStatus.NoShow &&
+                    request.NewStatus != BookingStatus.Completed) // Allow direct completion
+                    errorMessage = $"Cannot change status from Confirmed to {request.NewStatus}. Allowed: CheckedIn, Cancelled, NoShow, Completed.";
                 break;
             case BookingStatus.CheckedIn:
-                if (request.NewStatus != BookingStatus.Completed && request.NewStatus != BookingStatus.Cancelled) // Hiếm khi hủy khi đã check-in
-                    errorMessage = $"Cannot change status from CheckedIn to {request.NewStatus}. Allowed: Completed, Cancelled (with caution).";
+                if (request.NewStatus != BookingStatus.Completed && 
+                    request.NewStatus != BookingStatus.Overdue &&
+                    request.NewStatus != BookingStatus.Cancelled) // Allow cancellation even after check-in
+                    errorMessage = $"Cannot change status from CheckedIn to {request.NewStatus}. Allowed: Completed, Overdue, Cancelled.";
+                break;
+            case BookingStatus.Overdue:
+                if (request.NewStatus != BookingStatus.Completed && 
+                    request.NewStatus != BookingStatus.Abandoned)
+                    errorMessage = $"Cannot change status from Overdue to {request.NewStatus}. Allowed: Completed, Abandoned.";
                 break;
             case BookingStatus.Completed:
             case BookingStatus.Cancelled:
             case BookingStatus.NoShow:
             case BookingStatus.Abandoned:
-            case BookingStatus.Overdue: // Các trạng thái cuối, không nên cho thay đổi qua API này nữa
-                errorMessage = $"Booking with status {booking.Status} cannot be updated via this method.";
+                // These are final states - generally should not be changed
+                errorMessage = $"Booking with status {booking.Status} is in a final state and cannot be updated.";
+                break;
+            case BookingStatus.External:
+            case BookingStatus.Conflict:
+                errorMessage = $"Booking with status {booking.Status} requires special handling and cannot be updated via this method.";
                 break;
         }
 
@@ -608,50 +621,81 @@ public class BookingService : IBookingService
             throw new InvalidOperationException(errorMessage);
         }
 
-        // Nếu NewStatus là một hành động cụ thể (CheckIn, CheckOut, NoShow, Cancel),
-        // nên gọi các domain method tương ứng để có logic nghiệp vụ đầy đủ.
-        // Phương thức này chủ yếu dùng để Owner/Admin xác nhận (Pending -> Confirmed) hoặc các điều chỉnh khác.
-
+        // Handle specific status transitions with appropriate business logic
         bool wasConfirmed = false; // Track if booking was confirmed to send email
+        string statusUpdateReason = "";
 
-        if (request.NewStatus == BookingStatus.Confirmed && booking.Status == BookingStatus.Pending)
+        switch (request.NewStatus)
         {
-            // Update to confirmed status
-            booking.Status = BookingStatus.Confirmed;
-            booking.UpdatedAt = DateTime.UtcNow;
-            booking.UpdatedByUserId = updaterUserId;
-            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
-                ? $"[Confirmed by {updaterUserId}]"
-                : $"{booking.NotesFromOwner}\n[Confirmed by {updaterUserId}]";
-            wasConfirmed = true;
-        }
-        else if (request.NewStatus == BookingStatus.Cancelled && (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed))
-        {
-            // Update to cancelled status
-            booking.Status = BookingStatus.Cancelled;
-            booking.UpdatedAt = DateTime.UtcNow;
-            booking.UpdatedByUserId = updaterUserId;
-            booking.CancellationReason = request.Notes ?? "Cancelled by administrator";
-            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
-                ? $"[Cancelled by administrator {updaterUserId}]"
-                : $"{booking.NotesFromOwner}\n[Cancelled by administrator {updaterUserId}]";
-        }
-        else if (booking.Status != request.NewStatus)
-        {
-            _logger.LogWarning("UpdateBookingStatus: Attempting a generic status update for Booking {BookingId} from {OldStatus} to {NewStatus} by {UpdaterId}. This might bypass specific business logic.",
-               bookingId, booking.Status, request.NewStatus, updaterUserId);
-            booking.Status = request.NewStatus;
-            booking.UpdatedAt = DateTime.UtcNow;
-            booking.UpdatedByUserId = updaterUserId;
+            case BookingStatus.Confirmed when booking.Status == BookingStatus.Pending:
+                booking.Status = BookingStatus.Confirmed;
+                statusUpdateReason = "Confirmed by owner";
+                wasConfirmed = true;
+                break;
+                
+            case BookingStatus.Cancelled:
+                booking.Status = BookingStatus.Cancelled;
+                booking.CancellationReason = request.Notes ?? "Cancelled by administrator";
+                statusUpdateReason = "Cancelled by owner";
+                break;
+                
+            case BookingStatus.CheckedIn when booking.Status == BookingStatus.Confirmed:
+                booking.Status = BookingStatus.CheckedIn;
+                booking.ActualCheckIn = DateTime.UtcNow;
+                booking.CheckedInByUserId = updaterUserId;
+                statusUpdateReason = "Checked in by owner";
+                break;
+                
+            case BookingStatus.Completed:
+                booking.Status = BookingStatus.Completed;
+                if (booking.ActualCheckOut == null)
+                {
+                    booking.ActualCheckOut = DateTime.UtcNow;
+                    booking.CheckedOutByUserId = updaterUserId;
+                }
+                statusUpdateReason = "Completed by owner";
+                break;
+                
+            case BookingStatus.NoShow when booking.Status == BookingStatus.Confirmed:
+                booking.Status = BookingStatus.NoShow;
+                statusUpdateReason = "Marked as no-show by owner";
+                break;
+                
+            case BookingStatus.Overdue when booking.Status == BookingStatus.CheckedIn:
+                booking.Status = BookingStatus.Overdue;
+                statusUpdateReason = "Marked as overdue by owner";
+                break;
+                
+            case BookingStatus.Abandoned when booking.Status == BookingStatus.Overdue:
+                booking.Status = BookingStatus.Abandoned;
+                statusUpdateReason = "Marked as abandoned by owner";
+                break;
+                
+            default:
+                if (booking.Status != request.NewStatus)
+                {
+                    _logger.LogWarning("UpdateBookingStatus: Generic status update for Booking {BookingId} from {OldStatus} to {NewStatus} by {UpdaterId}. This might bypass specific business logic.",
+                       bookingId, booking.Status, request.NewStatus, updaterUserId);
+                    booking.Status = request.NewStatus;
+                    statusUpdateReason = $"Status updated to {request.NewStatus}";
+                }
+                break;
         }
 
-
+        // Update common fields for all status changes
+        booking.UpdatedAt = DateTime.UtcNow;
+        booking.UpdatedByUserId = updaterUserId;
+        
+        // Add status update note with additional notes if provided
+        string noteText = $"[{statusUpdateReason} by {updaterUserId}]";
         if (!string.IsNullOrWhiteSpace(request.Notes))
         {
-            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
-                ? $"[{DateTime.UtcNow:g} by {updaterUserId} for status {request.NewStatus}]: {request.Notes}"
-                : $"{booking.NotesFromOwner}\n[{DateTime.UtcNow:g} by {updaterUserId} for status {request.NewStatus}]: {request.Notes}";
+            noteText += $": {request.Notes}";
         }
+        
+        booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+            ? noteText
+            : $"{booking.NotesFromOwner}\n{noteText}";
 
         _bookingRepository.Update(booking);
         await _dbContext.SaveChangesAsync();

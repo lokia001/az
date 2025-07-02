@@ -6,14 +6,29 @@ import api from '../../../services/api';
  * @param {string} status - Status code
  * @returns {string} Vietnamese status text
  */
-const getStatusText = (status) => {
+export const getStatusText = (status) => {
     const statusMap = {
+        'Pending': 'Chờ xác nhận',
+        'Confirmed': 'Đã xác nhận',
+        'CheckedIn': 'Đã check-in',
+        'Completed': 'Hoàn thành',
+        'Overdue': 'Quá hạn',
+        'NoShow': 'Không đến',
+        'Cancelled': 'Đã hủy',
+        'Abandoned': 'Bỏ trốn',
+        'External': 'Từ bên ngoài',
+        'Conflict': 'Xung đột',
+        // Legacy status mappings for backward compatibility
         'pending': 'Chờ xác nhận',
         'confirmed': 'Đã xác nhận',
         'cancelled': 'Đã hủy',
         'completed': 'Hoàn thành',
         'no-show': 'Không đến',
-        'in-progress': 'Đang sử dụng'
+        'in-progress': 'Đang sử dụng',
+        'checkedIn': 'Đã check-in',
+        'overdue': 'Quá hạn',
+        'noShow': 'Không đến',
+        'abandoned': 'Bỏ trốn'
     };
     return statusMap[status] || 'Không xác định';
 };
