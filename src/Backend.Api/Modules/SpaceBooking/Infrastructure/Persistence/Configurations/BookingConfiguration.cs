@@ -33,8 +33,15 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Configurat
             builder.Property(b => b.NotesFromUser).HasMaxLength(500);
             builder.Property(b => b.NotesFromOwner).HasMaxLength(500);
 
-            builder.Property(b => b.UserId).IsRequired(); // FK đến User (module khác)
-            builder.Property(b => b.CreatedByUserId).IsRequired(); // Thường là UserId
+            // UserId is nullable to support guest bookings
+            builder.Property(b => b.UserId).IsRequired(false); // FK đến User (module khác) - nullable for guest bookings
+            builder.Property(b => b.CreatedByUserId).IsRequired(); // Thường là owner UserId
+
+            // Guest booking properties
+            builder.Property(b => b.GuestName).HasMaxLength(100).IsRequired(false);
+            builder.Property(b => b.GuestEmail).HasMaxLength(255).IsRequired(false);
+            builder.Property(b => b.GuestPhone).HasMaxLength(20).IsRequired(false);
+            builder.Property(b => b.IsGuestBooking).IsRequired().HasDefaultValue(false);
 
             // Mối quan hệ với Space (cùng module)
             builder.HasOne(b => b.Space)

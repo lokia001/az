@@ -22,6 +22,7 @@ namespace Backend.Api.Modules.UserRelated.Domain.Interfaces.Repositories
 
 
         Task<(IEnumerable<User> Items, int TotalCount)> SearchUsersAsync(UserSearchCriteriaDto criteria);
+        Task<IEnumerable<User>> SearchUsersSimpleAsync(string query); // New simple search method
         // Task SaveChangesAsync(); // Thường không đặt ở đây, Unit of Work sẽ xử lý
     }
 }

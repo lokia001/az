@@ -3,6 +3,7 @@ using System;
 using Backend.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace Backend.Api.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250702174835_AddGuestBookingSupport")]
+    partial class AddGuestBookingSupport
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.0");
@@ -385,18 +388,6 @@ namespace Backend.Api.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("TEXT");
 
-                    b.Property<string>("GuestEmail")
-                        .HasMaxLength(255)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("GuestName")
-                        .HasMaxLength(100)
-                        .HasColumnType("TEXT");
-
-                    b.Property<string>("GuestPhone")
-                        .HasMaxLength(20)
-                        .HasColumnType("TEXT");
-
                     b.Property<bool>("IsDeleted")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -404,11 +395,6 @@ namespace Backend.Api.Migrations
 
                     b.Property<bool>("IsExternalBooking")
                         .HasColumnType("INTEGER");
-
-                    b.Property<bool>("IsGuestBooking")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("INTEGER")
-                        .HasDefaultValue(false);
 
                     b.Property<DateTime?>("LastSyncedAt")
                         .HasColumnType("TEXT");
@@ -452,7 +438,7 @@ namespace Backend.Api.Migrations
                     b.Property<Guid?>("UpdatedByUserId")
                         .HasColumnType("TEXT");
 
-                    b.Property<Guid?>("UserId")
+                    b.Property<Guid>("UserId")
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");

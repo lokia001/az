@@ -129,5 +129,25 @@ namespace Backend.Api.Modules.UserRelated.Infrastructure.Persistence.Repositorie
             var items = await query.ToListAsync();
             return (items, totalCount);
         }
+
+        public async Task<IEnumerable<User>> SearchUsersSimpleAsync(string query)
+        {
+            if (string.IsNullOrWhiteSpace(query))
+            {
+                return Enumerable.Empty<User>();
+            }
+
+            var searchTerm = query.ToLower();
+            var users = await _context.Set<User>()
+                .Where(u => !u.IsDeleted && u.IsActive &&
+                    ((u.FullName != null && u.FullName.ToLower().Contains(searchTerm)) ||
+                     u.Username.ToLower().Contains(searchTerm) ||
+                     u.Email.ToLower().Contains(searchTerm)))
+                .OrderBy(u => u.FullName ?? u.Username)
+                .Take(20) // Limit to 20 results for performance
+                .ToListAsync();
+
+            return users;
+        }
     }
 }

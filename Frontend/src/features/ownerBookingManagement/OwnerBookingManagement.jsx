@@ -1,4 +1,3 @@
-// src/features/ownerBookingManagement/OwnerBookingManagement.jsx
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom'; // << THÊM VÀO để lấy spaceId từ URL
@@ -14,6 +13,7 @@ import 'react-datepicker/dist/react-datepicker.css';
 import { 
     fetchOwnerBookings,
     updateBookingStatus,
+    createOwnerBooking,
     setOwnerBookingFilter,
     setOwnerBookingPage,
     resetOwnerBookingFilters,
@@ -23,11 +23,14 @@ import {
     selectOwnerBookingPagination,
     selectOwnerBookingStatus,
     selectOwnerBookingError,
-    selectOwnerBookingStats
+    selectOwnerBookingStats,
+    selectOwnerBookingCreateStatus,
+    selectOwnerBookingCreateError
 } from './slices/ownerBookingSlice';
 import { selectCurrentUser } from '../auth/slices/authSlice';
 import { formatVietnameseDateTime } from '../../utils/timeUtils';
 import { getOwnerSpaces } from '../../services/api';
+import AddOwnerBookingModal from './components/AddOwnerBookingModal';
 
 const OwnerBookingManagement = () => {
     const { spaceId } = useParams(); // << LẤY spaceId từ URL
@@ -46,6 +49,7 @@ const OwnerBookingManagement = () => {
     const dispatch = useDispatch();
     const [viewMode, setViewMode] = useState('list');
     const [showDetailModal, setShowDetailModal] = useState(false);
+    const [showAddBookingModal, setShowAddBookingModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [ownerSpaces, setOwnerSpaces] = useState([]);
     const [loadingSpaces, setLoadingSpaces] = useState(true);
@@ -59,6 +63,8 @@ const OwnerBookingManagement = () => {
     const status = useSelector(selectOwnerBookingStatus);
     const error = useSelector(selectOwnerBookingError);
     const stats = useSelector(selectOwnerBookingStats);
+    const createStatus = useSelector(selectOwnerBookingCreateStatus);
+    const createError = useSelector(selectOwnerBookingCreateError);
 
     // Fetch owner's spaces first
     useEffect(() => {
@@ -148,6 +154,18 @@ const OwnerBookingManagement = () => {
         }
     };
 
+    const handleCreateBooking = async (bookingData) => {
+        try {
+            await dispatch(createOwnerBooking(bookingData)).unwrap();
+            setShowAddBookingModal(false);
+            // Refresh bookings list
+            dispatch(fetchOwnerBookings());
+        } catch (error) {
+            console.error('Failed to create booking:', error);
+            // Error will be handled by the modal component via createError
+        }
+    };
+
     const renderStatusBadge = (status) => {
         let variant = 'secondary';
         switch (status) {
@@ -164,7 +182,12 @@ const OwnerBookingManagement = () => {
 
     const renderToolbar = () => (
         <Stack direction="horizontal" gap={3} className="mb-4">
-            <Button variant="primary" size="sm">
+            <Button 
+                variant="primary" 
+                size="sm"
+                onClick={() => setShowAddBookingModal(true)}
+                disabled={!filters.spaceId || loadingSpaces}
+            >
                 <Plus className="me-1" /> Thêm đặt chỗ
             </Button>
             <div className="vr" />
@@ -482,6 +505,15 @@ const OwnerBookingManagement = () => {
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* Add Booking Modal */}
+            <AddOwnerBookingModal 
+                show={showAddBookingModal} 
+                onHide={() => setShowAddBookingModal(false)}
+                onSubmit={handleCreateBooking}
+                isSubmitting={createStatus === 'loading'}
+                error={createError}
+            />
         </Container>
     );
 };

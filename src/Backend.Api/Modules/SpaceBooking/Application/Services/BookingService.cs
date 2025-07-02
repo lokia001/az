@@ -282,11 +282,11 @@ public class BookingService : IBookingService
         }
 
         // Kiểm tra quyền:
-        // 1. Người đặt booking có quyền xem.
+        // 1. Người đặt booking có quyền xem (nếu không phải guest booking).
         // 2. Owner của Space mà booking đó thuộc về có quyền xem.
         // 3. SysAdmin có quyền xem (nếu có logic này).
         bool canView = false;
-        if (booking.UserId == requestorUserId)
+        if (booking.UserId.HasValue && booking.UserId == requestorUserId)
         {
             canView = true;
         }
@@ -312,21 +312,29 @@ public class BookingService : IBookingService
 
         var bookingDto = _mapper.Map<BookingDto>(booking);
         
-        // If NotificationEmail is null or empty, fallback to user email
+        // If NotificationEmail is null or empty, fallback to user email (if not guest)
         if (string.IsNullOrWhiteSpace(bookingDto.NotificationEmail))
         {
-            try
+            if (booking.UserId.HasValue)
             {
-                var user = await _userService.GetUserByIdAsync(booking.UserId);
-                if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+                try
                 {
-                    bookingDto.NotificationEmail = user.Email;
+                    var user = await _userService.GetUserByIdAsync(booking.UserId.Value);
+                    if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+                    {
+                        bookingDto.NotificationEmail = user.Email;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to get user email for booking {BookingId}, user {UserId}", 
+                        bookingId, booking.UserId);
                 }
             }
-            catch (Exception ex)
+            else if (!string.IsNullOrWhiteSpace(booking.GuestEmail))
             {
-                _logger.LogWarning(ex, "Failed to get user email for booking {BookingId}, user {UserId}", 
-                    bookingId, booking.UserId);
+                // For guest bookings, fallback to guest email
+                bookingDto.NotificationEmail = booking.GuestEmail;
             }
         }
         
@@ -479,7 +487,7 @@ public class BookingService : IBookingService
         // 2. Owner của Space có thể hủy booking trong Space của họ (tùy logic nghiệp vụ).
         // 3. SysAdmin có thể hủy (tùy logic nghiệp vụ).
         bool canCancel = false;
-        if (booking.UserId == userId) // Người đặt tự hủy
+        if (booking.UserId.HasValue && booking.UserId == userId) // Người đặt tự hủy (chỉ cho user bookings, không cho guest)
         {
             canCancel = true;
             // Kiểm tra chính sách hủy của Space đối với người dùng
@@ -649,14 +657,31 @@ public class BookingService : IBookingService
         {
             try
             {
-                // Get user info for email
-                var user = await _userService.GetUserByIdAsync(booking.UserId);
-                if (user != null)
+                string? notificationEmail = null;
+                string? customerName = null;
+
+                if (booking.UserId.HasValue)
                 {
-                    // Determine notification email (use NotificationEmail if provided, otherwise fallback to user email)
-                    var notificationEmail = !string.IsNullOrWhiteSpace(booking.NotificationEmail) 
-                        ? booking.NotificationEmail 
-                        : user.Email;
+                    // Get user info for email
+                    var user = await _userService.GetUserByIdAsync(booking.UserId.Value);
+                    if (user != null)
+                    {
+                        customerName = user.FullName ?? user.Username;
+                        // Determine notification email (use NotificationEmail if provided, otherwise fallback to user email)
+                        notificationEmail = !string.IsNullOrWhiteSpace(booking.NotificationEmail) 
+                            ? booking.NotificationEmail 
+                            : user.Email;
+                    }
+                }
+                else
+                {
+                    // Guest booking
+                    customerName = booking.GuestName;
+                    notificationEmail = booking.NotificationEmail ?? booking.GuestEmail;
+                }
+
+                if (!string.IsNullOrWhiteSpace(notificationEmail) && !string.IsNullOrWhiteSpace(customerName))
+                {
 
                     // Get owner email from space
                     var ownerUser = await _userService.GetUserByIdAsync(booking.Space.OwnerId);
@@ -674,7 +699,7 @@ public class BookingService : IBookingService
                     // Send confirmation email
                     await _emailService.SendBookingConfirmationEmailAsync(
                         toEmail: notificationEmail,
-                        customerName: user.FullName ?? user.Username,
+                        customerName: customerName,
                         spaceName: booking.Space.Name,
                         startTime: startTimeStr,
                         endTime: endTimeStr,
@@ -843,5 +868,132 @@ public class BookingService : IBookingService
         {
             return false;
         }
+    }
+
+    public async Task<BookingDto> CreateOwnerBookingAsync(CreateOwnerBookingRequest request, Guid ownerUserId)
+    {
+        _logger.LogInformation("Creating owner booking for SpaceId: {SpaceId} by OwnerId: {OwnerId}", request.SpaceId, ownerUserId);
+
+        // Validate times
+        if (request.StartTime >= request.EndTime)
+        {
+            throw new ArgumentException("Booking start time must be before end time.");
+        }
+        if (request.StartTime < DateTime.UtcNow.AddMinutes(-5))
+        {
+            throw new ArgumentException("Booking start time cannot be in the past.");
+        }
+
+        // Validate space and ownership
+        var space = await _spaceRepository.GetByIdAsync(request.SpaceId);
+        if (space == null)
+        {
+            throw new KeyNotFoundException($"Space with ID {request.SpaceId} not found.");
+        }
+        if (space.OwnerId != ownerUserId)
+        {
+            throw new UnauthorizedAccessException("You can only create bookings for your own spaces.");
+        }
+        if (space.Status != SpaceStatus.Available)
+        {
+            throw new InvalidOperationException($"Space '{space.Name}' is not available for booking (Status: {space.Status}).");
+        }
+
+        // Validate guest vs user booking
+        if (!request.UserId.HasValue)
+        {
+            // Guest booking - validate required guest fields
+            if (string.IsNullOrWhiteSpace(request.GuestName))
+            {
+                throw new ArgumentException("Guest name is required for guest bookings.");
+            }
+            if (string.IsNullOrWhiteSpace(request.GuestEmail))
+            {
+                throw new ArgumentException("Guest email is required for guest bookings.");
+            }
+            if (!IsValidEmail(request.GuestEmail))
+            {
+                throw new ArgumentException("Guest email must be a valid email format.");
+            }
+        }
+        else
+        {
+            // User booking - validate user exists
+            var user = await _userService.GetUserByIdAsync(request.UserId.Value);
+            if (user == null)
+            {
+                throw new KeyNotFoundException($"User with ID {request.UserId} not found.");
+            }
+        }
+
+        // Check space availability
+        if (!await IsSpaceAvailableAsync(request.SpaceId, request.StartTime, request.EndTime))
+        {
+            throw new InvalidOperationException($"The requested time slot for space '{space.Name}' is not available or does not meet booking criteria.");
+        }
+
+        // Calculate total price
+        decimal totalPrice = 0;
+        var duration = request.EndTime - request.StartTime;
+
+        if (space.PricePerDay.HasValue && space.PricePerDay > 0 && duration.TotalHours >= (space.MaxBookingDurationMinutes < 1440 ? (double)space.MaxBookingDurationMinutes / 60 : 8))
+        {
+            int numberOfDays = (int)Math.Ceiling(duration.TotalDays);
+            if (numberOfDays == 0 && duration.TotalHours > 0) numberOfDays = 1;
+            totalPrice = space.PricePerDay.Value * numberOfDays;
+        }
+        else if (space.PricePerHour > 0)
+        {
+            totalPrice = space.PricePerHour * (decimal)duration.TotalHours;
+        }
+        else
+        {
+            throw new InvalidOperationException("Pricing for this space is not configured correctly.");
+        }
+        totalPrice = Math.Round(totalPrice, 2);
+
+        // Create booking entity using AutoMapper then set additional fields
+        var booking = _mapper.Map<Booking>(request);
+        booking.CreatedByUserId = ownerUserId; // Owner created this booking
+        booking.TotalPrice = totalPrice;
+        booking.CreatedAt = DateTime.UtcNow;
+        booking.BookingCode = string.Empty; // Will be set after save
+
+        // Set notification email if not provided
+        if (string.IsNullOrWhiteSpace(booking.NotificationEmail))
+        {
+            if (booking.UserId.HasValue)
+            {
+                var user = await _userService.GetUserByIdAsync(booking.UserId.Value);
+                if (user != null && !string.IsNullOrWhiteSpace(user.Email))
+                {
+                    booking.NotificationEmail = user.Email;
+                }
+            }
+            else
+            {
+                booking.NotificationEmail = booking.GuestEmail;
+            }
+        }
+        else if (!IsValidEmail(booking.NotificationEmail))
+        {
+            throw new ArgumentException("Notification email must be a valid email format.");
+        }
+
+        // Save booking
+        await _bookingRepository.AddAsync(booking);
+        booking.BookingCode = GenerateBookingCodeInternal(booking.Id);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Owner booking created successfully. BookingId: {BookingId}, Status: {Status}", booking.Id, booking.Status);
+
+        // Get booking with space details for response
+        var createdBookingWithDetails = await _bookingRepository.GetByIdAsync(booking.Id);
+        if (createdBookingWithDetails == null)
+        {
+            throw new Exception("Booking was created but could not be retrieved.");
+        }
+
+        return _mapper.Map<BookingDto>(createdBookingWithDetails);
     }
 }

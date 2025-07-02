@@ -387,11 +387,18 @@ export const exportOwnerBookingsAPI = async (params = {}) => {
  * @param {Object} bookingData - New booking data
  * @returns {Promise} API response with created booking
  */
+/**
+ * Create a new booking for owner
+ * @param {Object} bookingData - Booking data including spaceId, startTime, endTime, etc.
+ * @returns {Promise} API response with created booking data
+ */
 export const addOwnerBookingAPI = async (bookingData) => {
     try {
-        const response = await api.post('/bookings', bookingData);
+        console.log('Creating owner booking:', bookingData);
+        const response = await api.post('/bookings/owner', bookingData);
         return response.data;
     } catch (error) {
+        console.error('Failed to create owner booking:', error);
         throw error.response?.data || error.message;
     }
 };

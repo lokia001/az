@@ -47,6 +47,25 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
         string? Notes // Ghi chú cho việc thay đổi trạng thái (ví dụ: lý do hủy)
     );
 
+    // DTO cho Owner tạo booking
+    public record CreateOwnerBookingRequest(
+        [Required] Guid SpaceId,
+        [Required] DateTime StartTime,
+        [Required] DateTime EndTime,
+        [Required][Range(1, 1000)] int NumberOfPeople,
+        [StringLength(500)] string? NotesFromUser,
+        [StringLength(500)] string? NotesFromOwner,
+        [StringLength(255)] string? NotificationEmail, // Email nhận thông báo (bắt buộc)
+        
+        // Guest info (nếu không phải user đã đăng ký)
+        Guid? UserId, // null nếu là guest
+        [StringLength(255)] string? GuestName, // Bắt buộc nếu UserId = null
+        [StringLength(255)] string? GuestEmail, // Bắt buộc nếu UserId = null
+        [StringLength(20)] string? GuestPhone,
+        
+        BookingStatus Status = BookingStatus.Confirmed // Owner có thể đặt status ngay, mặc định là Confirmed
+    );
+
     // Các DTO khác cho việc check-in, check-out nếu cần truyền thêm dữ liệu
     public record CheckInRequest(string? NotesByStaff);
     public record CheckOutRequest(string? NotesByStaff, decimal? FinalPriceAdjustment); // Ví dụ

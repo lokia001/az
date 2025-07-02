@@ -5,7 +5,8 @@ import {
     updateBookingStatusAPI,
     getOwnerBookingDetailsAPI,
     getOwnerBookingStatsAPI,
-    exportOwnerBookingsAPI
+    exportOwnerBookingsAPI,
+    addOwnerBookingAPI
 } from '../services/ownerBookingApi';
 import * as api from '../../../services/api';
 
@@ -44,6 +45,8 @@ const initialState = {
     error: null,
     updateStatus: 'idle',
     updateError: null,
+    createStatus: 'idle', // For creating new bookings
+    createError: null,
     selectedBooking: null,
     selectedBookingStatus: 'idle',
     selectedBookingError: null,
@@ -202,27 +205,12 @@ export const checkBookingConflicts = createAsyncThunk(
     }
 );
 
-export const createBooking = createAsyncThunk(
+export const createOwnerBooking = createAsyncThunk(
     'ownerBooking/createBooking',
     async (bookingData, { rejectWithValue }) => {
         try {
-            // First check for conflicts
-            const conflictCheck = await api.post('/api/bookings/check-conflicts', {
-                spaceId: bookingData.spaceId,
-                startTime: bookingData.startTime,
-                endTime: bookingData.endTime
-            });
-
-            if (conflictCheck.data.hasConflicts) {
-                return rejectWithValue({
-                    message: 'Time slot conflicts with existing bookings',
-                    conflicts: conflictCheck.data.conflicts
-                });
-            }
-
-            // If no conflicts, create the booking
-            const response = await api.post('/api/bookings', bookingData);
-            return response.data;
+            const response = await addOwnerBookingAPI(bookingData);
+            return response;
         } catch (error) {
             return rejectWithValue(error.message || 'Failed to create booking.');
         }
@@ -386,16 +374,16 @@ const ownerBookingSlice = createSlice({
             })
 
             // Create Booking
-            .addCase(createBooking.pending, (state) => {
+            .addCase(createOwnerBooking.pending, (state) => {
                 state.createStatus = 'loading';
                 state.createError = null;
             })
-            .addCase(createBooking.fulfilled, (state, action) => {
+            .addCase(createOwnerBooking.fulfilled, (state, action) => {
                 state.createStatus = 'succeeded';
                 // Don't modify bookings array here - let the main fetch handle it
                 state.status = 'loading'; // This will trigger a re-fetch
             })
-            .addCase(createBooking.rejected, (state, action) => {
+            .addCase(createOwnerBooking.rejected, (state, action) => {
                 state.createStatus = 'failed';
                 state.createError = action.payload;
             });

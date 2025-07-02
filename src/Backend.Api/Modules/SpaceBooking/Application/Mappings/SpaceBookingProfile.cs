@@ -181,6 +181,31 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Mappings
                 .ForMember(dest => dest.Space, opt => opt.Ignore()); // Không map navigation property
 
 
+            // Map cho CreateOwnerBookingRequest
+            CreateMap<CreateOwnerBookingRequest, Booking>()
+                .ForMember(dest => dest.Id, opt => opt.MapFrom(src => Guid.NewGuid()))
+                .ForMember(dest => dest.TotalPrice, opt => opt.Ignore()) // Sẽ được tính trong service
+                .ForMember(dest => dest.CreatedAt, opt => opt.MapFrom(src => DateTime.UtcNow))
+                .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore()) // Sẽ được set trong service
+                .ForMember(dest => dest.ActualCheckIn, opt => opt.Ignore())
+                .ForMember(dest => dest.ActualCheckOut, opt => opt.Ignore())
+                .ForMember(dest => dest.BookingCode, opt => opt.Ignore()) // Sẽ được tự sinh
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.CheckedInByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.CheckedOutByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.ActualNumberOfPeople, opt => opt.Ignore())
+                .ForMember(dest => dest.CancellationReason, opt => opt.Ignore())
+                .ForMember(dest => dest.Notes, opt => opt.Ignore())
+                .ForMember(dest => dest.ExternalCalendarEventId, opt => opt.Ignore())
+                .ForMember(dest => dest.ExternalCalendarEventUrl, opt => opt.Ignore())
+                .ForMember(dest => dest.ExternalIcalUrl, opt => opt.Ignore())
+                .ForMember(dest => dest.ExternalIcalUid, opt => opt.Ignore())
+                .ForMember(dest => dest.IsExternalBooking, opt => opt.Ignore())
+                .ForMember(dest => dest.LastSyncedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.Space, opt => opt.Ignore()); // Không map navigation property
+
             // Tương tự cho BookingDto
             CreateMap<Booking, BookingDto>()
                 .ForMember(dest => dest.Id, opt => opt.MapFrom(src => src.Id))

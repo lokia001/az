@@ -1,6 +1,6 @@
-
 // File: Backend.Api/Modules/UserRelated/Application/Contracts/Services/IUserService.cs
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Backend.Api.Modules.UserRelated.Application.Contracts.Dtos;
 using Backend.Api.Modules.UserRelated.Domain.Enums;
@@ -13,6 +13,7 @@ namespace Backend.Api.Modules.UserRelated.Application.Contracts.Services
         Task<UserDto?> GetUserByIdAsync(Guid userId);
         Task<UserDto?> GetUserByUsernameAsync(string username);
         Task UpdateUserProfileAsync(Guid userId, UpdateUserProfileRequest request);
+        Task<IEnumerable<UserDto>> SearchUsersAsync(string query); // New method for searching users
         // Task ChangePasswordAsync(Guid userId, string oldPassword, string newPassword);
         // Task<bool> CheckIfUserIsOwnerAsync(Guid userId); // Ví dụ một query nghiệp vụ
 

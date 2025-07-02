@@ -10,6 +10,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Services
     public interface IBookingService
     {
         Task<BookingDto> CreateBookingAsync(CreateBookingRequest request, Guid userId);
+        Task<BookingDto> CreateOwnerBookingAsync(CreateOwnerBookingRequest request, Guid ownerUserId); // New method for owner booking creation
         Task<BookingDto?> GetBookingByIdAsync(Guid bookingId, Guid requestorUserId); // Đã có, nhưng GetMyBookingsAsync sẽ cụ thể hơn cho user hiện tại
         Task<IEnumerable<BookingDto>> GetMyBookingsAsync(Guid userId, BookingSearchParameters? parameters = null); // API mới cho user lấy booking của họ
         Task<IEnumerable<BookingDto>> GetBookingsForUserAsync(Guid userId); // Giữ lại nếu có mục đích khác, hoặc có thể thay thế bằng GetMyBookingsAsync

@@ -541,4 +541,21 @@ export const findNearbySpaces = async ({ latitude, longitude, maxDistanceKm = 5,
     }
 };
 
+/**
+ * Search users by name or email
+ * @param {string} query - Search query string
+ * @returns {Promise<Array>} Array of matching users
+ */
+export const searchUsers = async (query) => {
+    try {
+        const response = await api.get('/users/search', {
+            params: { query }
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error searching users:', error);
+        throw error;
+    }
+};
+
 export default api;

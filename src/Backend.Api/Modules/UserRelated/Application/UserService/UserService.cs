@@ -206,6 +206,19 @@ namespace Backend.Api.Modules.UserRelated.Application.Services
             await _dbContext.SaveChangesAsync(); // Lưu thay đổi
         }
 
+        public async Task<IEnumerable<UserDto>> SearchUsersAsync(string query)
+        {
+            _logger.LogInformation("Searching users with query: {Query}", query);
+
+            if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+            {
+                return Enumerable.Empty<UserDto>();
+            }
+
+            var users = await _userRepository.SearchUsersSimpleAsync(query);
+            return _mapper.Map<IEnumerable<UserDto>>(users);
+        }
+
         // Ví dụ một phương thức nghiệp vụ khác có thể có trong UserService
         // public async Task<bool> CheckIfUserIsOwnerAsync(Guid userId)
         // {

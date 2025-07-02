@@ -110,6 +110,26 @@ namespace Backend.Api.Modules.UserRelated.Api.Controllers
             }
         }
 
+        // GET api/users/search (Tìm kiếm users cho owner booking)
+        [HttpGet("search")]
+        public async Task<IActionResult> SearchUsers([FromQuery] string query)
+        {
+            if (string.IsNullOrWhiteSpace(query) || query.Length < 2)
+            {
+                return BadRequest(new { message = "Query must be at least 2 characters long." });
+            }
+
+            try
+            {
+                var users = await _userService.SearchUsersAsync(query);
+                return Ok(users);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(StatusCodes.Status500InternalServerError, 
+                    new { message = "An error occurred while searching users.", details = ex.Message });
+            }
+        }
 
     }
 }

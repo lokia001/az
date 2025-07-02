@@ -16,8 +16,20 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         public Space Space { get; set; } = default!; // Navigation property
 
         // Khóa ngoại đến User (từ module UserRelated) - người đặt
-        [Required]
-        public Guid UserId { get; set; }
+        // Có thể null cho guest bookings
+        public Guid? UserId { get; set; }
+        
+        // Thông tin guest (nếu UserId = null)
+        [MaxLength(255)]
+        public string? GuestName { get; set; }
+        
+        [MaxLength(255)]
+        public string? GuestEmail { get; set; }
+        
+        [MaxLength(20)]
+        public string? GuestPhone { get; set; }
+        
+        public bool IsGuestBooking { get; set; } = false;
         // KHÔNG có navigation property trực tiếp đến User entity
 
         [Required]

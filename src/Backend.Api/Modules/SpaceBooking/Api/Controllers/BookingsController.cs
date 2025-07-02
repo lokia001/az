@@ -64,6 +64,49 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             }
         }
 
+        // POST api/bookings/owner
+        [HttpPost("owner")]
+        [Authorize] // Owner phải đăng nhập
+        public async Task<IActionResult> CreateOwnerBooking([FromBody] CreateOwnerBookingRequest request)
+        {
+            var ownerUserIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(ownerUserIdString, out var ownerUserId))
+            {
+                return Unauthorized(new { message = "Invalid user identifier in token." });
+            }
+
+            try
+            {
+                var bookingDto = await _bookingService.CreateOwnerBookingAsync(request, ownerUserId);
+                return CreatedAtAction(nameof(GetBookingById), new { id = bookingDto.Id }, bookingDto);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("CreateOwnerBooking: Resource not found. Message: {Message}", ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("CreateOwnerBooking: Unauthorized. Message: {Message}", ex.Message);
+                return Forbid(ex.Message);
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogInformation("CreateOwnerBooking: Invalid operation. Message: {Message}", ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogInformation("CreateOwnerBooking: Argument exception. Message: {Message}", ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "CreateOwnerBooking: Unexpected error for OwnerId {OwnerId}, Request: {@Request}", ownerUserId, request);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred while creating the owner booking.");
+            }
+        }
+
         // GET api/bookings/{id}
         [HttpGet("{id:guid}", Name = "GetBookingById")]
         [Authorize] // Người dùng đăng nhập mới được xem booking (cần logic kiểm tra quyền chi tiết hơn)
