@@ -10,10 +10,9 @@ import '../styles/OwnerSpacesPage.css';
 
 const SPACE_STATUSES = {
     Available: { label: 'Trống', variant: 'success' },
-    Booked: { label: 'Đã đặt', variant: 'primary' },
+    Booked: { label: 'Đang sử dụng', variant: 'primary' },
     Maintenance: { label: 'Đang bảo trì', variant: 'warning' },
-    Draft: { label: 'Bản nháp', variant: 'secondary' },
-    Disabled: { label: 'Đã ẩn', variant: 'danger' }
+    Cleaning: { label: 'Đang dọn dẹp', variant: 'info' }
 };
 
 const OwnerSpacesPage = () => {
@@ -43,30 +42,52 @@ const OwnerSpacesPage = () => {
     const [amenityFilter, setAmenityFilter] = useState([]);
     const [sortBy, setSortBy] = useState('name');
     const [sortDirection, setSortDirection] = useState('asc');
+    const [showBookingGuide, setShowBookingGuide] = useState(true);
 
-    // Update statistics calculation
+    // Update statistics calculation to match backend logic
     const calculateStatistics = useCallback(() => {
         if (!spaces) return;
         
+        // Calculate real space statuses based on backend logic
+        let available = 0;
+        let booked = 0;
+        let maintenance = 0;
+        let cleaning = 0;
+        
+        spaces.forEach(space => {
+            // Check if space has a current active booking (someone is checked in)
+            const hasActiveBooking = space.currentBooking && space.currentBooking.status === 'CheckedIn';
+            
+            if (space.status === 'Maintenance') {
+                maintenance++;
+            } else if (space.status === 'Cleaning') {
+                cleaning++;
+            } else if (hasActiveBooking) {
+                // Space is currently being used (someone checked in)
+                booked++;
+            } else {
+                // Space is available for booking
+                available++;
+            }
+        });
+        
         const stats = {
             total: spaces.length,
-            active: spaces.filter(s => s.status === 'Available').length,
-            booked: spaces.filter(s => s.status === 'Booked').length,
-            maintenance: spaces.filter(s => s.status === 'Maintenance').length,
-            draft: spaces.filter(s => s.status === 'Draft').length,
-            disabled: spaces.filter(s => s.status === 'Disabled').length
+            available: available,
+            booked: booked,
+            maintenance: maintenance,
+            cleaning: cleaning
         };
         setStatistics(stats);
     }, [spaces]);
 
-    // Add statistics state
+    // Add statistics state to match real backend statuses
     const [statistics, setStatistics] = useState({
         total: 0,
-        active: 0,
+        available: 0,
         booked: 0,
         maintenance: 0,
-        draft: 0,
-        disabled: 0
+        cleaning: 0
     });
 
     // Use a refreshSpaces function that can be called whenever needed
@@ -124,13 +145,31 @@ const OwnerSpacesPage = () => {
             case 'rating':
                 comparison = (a.rating || 0) - (b.rating || 0);
                 break;
-            case 'views':
-                comparison = (a.viewCount || 0) - (b.viewCount || 0);
-                break;
+            // case 'views':
+            //     comparison = (a.viewCount || 0) - (b.viewCount || 0);
+            //     break;
             default:
                 comparison = 0;
         }
         return sortDirection === 'asc' ? comparison : -comparison;
+    };
+
+    // Helper function to calculate the actual space status
+    const getActualSpaceStatus = (space) => {
+        // Check if space has a current active booking (someone is checked in)
+        const hasActiveBooking = space.currentBooking && space.currentBooking.status === 'CheckedIn';
+        
+        if (space.status === 'Maintenance') {
+            return 'Maintenance';
+        } else if (space.status === 'Cleaning') {
+            return 'Cleaning';
+        } else if (hasActiveBooking) {
+            // Space is currently being used (someone checked in)
+            return 'Booked';
+        } else {
+            // Space is available for booking
+            return 'Available';
+        }
     };
 
     const filteredSpaces = spaces?.filter(space => {
@@ -141,7 +180,9 @@ const OwnerSpacesPage = () => {
             space.address?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             space.description?.toLowerCase().includes(searchQuery.toLowerCase());
         
-        const matchesStatus = filterStatus === 'all' || space.status === filterStatus;
+        // Use calculated actual status for filtering
+        const actualStatus = getActualSpaceStatus(space);
+        const matchesStatus = filterStatus === 'all' || actualStatus === filterStatus;
         const matchesType = filterType === 'all' || space.type === filterType;
         const matchesPrice = applyPriceFilter(space);
         const matchesCapacity = applyCapacityFilter(space);
@@ -231,10 +272,30 @@ const OwnerSpacesPage = () => {
         );
     }
 
-    const handleToggleActive = async (spaceId, currentStatus) => {
-        const newStatus = currentStatus === 'Disabled' ? 'Available' : 'Disabled';
+    const handleToggleStatus = async (spaceId, currentStatus) => {
+        // Cycle through statuses: Available -> Maintenance -> Cleaning -> Available
+        const actualCurrentStatus = getActualSpaceStatus(spaces.find(s => s.id === spaceId));
+        let newStatus;
+        
+        switch (actualCurrentStatus) {
+            case 'Available':
+                newStatus = 'Maintenance';
+                break;
+            case 'Maintenance':
+                newStatus = 'Cleaning';
+                break;
+            case 'Cleaning':
+                newStatus = 'Available';
+                break;
+            case 'Booked':
+                // Cannot change status when space is booked
+                alert('Không thể thay đổi trạng thái khi không gian đang được sử dụng');
+                return;
+            default:
+                newStatus = 'Available';
+        }
+        
         try {
-            // Instead of using updateSpaceStatusAsync, we'll update through the API directly
             const response = await fetch(`/api/spaces/${spaceId}/status`, {
                 method: 'PUT',
                 headers: {
@@ -249,12 +310,193 @@ const OwnerSpacesPage = () => {
             }
         } catch (error) {
             console.error('Error toggling space status:', error);
+            alert('Có lỗi xảy ra khi cập nhật trạng thái không gian');
         }
     };
 
     const handleViewBookings = (spaceId) => {
         navigate(`/owner/spaces/${spaceId}/bookings`);
     };
+
+    // Function to format date in a readable way
+    const formatDate = (date) => {
+        if (!date) return 'N/A';
+        return new Date(date).toLocaleDateString('vi-VN', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    };
+
+    // Function to render space status badge using calculated status
+    const renderStatusBadge = (space) => {
+        const actualStatus = getActualSpaceStatus(space);
+        const statusConfig = SPACE_STATUSES[actualStatus] || SPACE_STATUSES.Available;
+        return (
+            <Badge bg={statusConfig.variant}>
+                {statusConfig.label}
+            </Badge>
+        );
+    };
+
+    // Function to render booking status notification
+    const renderBookingStatusNotification = (space) => {
+        // Priority order: current active booking > pending bookings > next upcoming booking
+        
+        // 1. Check for current active booking (CheckedIn status)
+        if (space.currentBooking) {
+            const booking = space.currentBooking;
+            if (booking.status === 'CheckedIn') {
+                return (
+                    <div className="alert alert-info py-1 px-2 mb-2 small">
+                        <i className="fas fa-user-clock me-1"></i>
+                        <strong>Đang sử dụng</strong> - Chờ check-out
+                    </div>
+                );
+            }
+            if (booking.status === 'Overdue') {
+                return (
+                    <div className="alert alert-danger py-1 px-2 mb-2 small">
+                        <i className="fas fa-exclamation-triangle me-1"></i>
+                        <strong>Quá hạn</strong> - Cần xử lý
+                    </div>
+                );
+            }
+        }
+
+        // 2. Check for pending bookings that need confirmation
+        if (space.pendingBookingsCount > 0) {
+            return (
+                <div className="alert alert-warning py-1 px-2 mb-2 small">
+                    <i className="fas fa-clock me-1"></i>
+                    <strong>Có {space.pendingBookingsCount} booking</strong> cần xác nhận
+                </div>
+            );
+        }
+
+        // 3. Check for next confirmed booking
+        if (space.nextBooking) {
+            const booking = space.nextBooking;
+            if (booking.status === 'Confirmed') {
+                return (
+                    <div className="alert alert-success py-1 px-2 mb-2 small">
+                        <i className="fas fa-calendar-check me-1"></i>
+                        <strong>Booking tiếp theo</strong> - Đã xác nhận
+                    </div>
+                );
+            }
+        }
+
+        // 4. No active bookings
+        return null;
+    };
+
+    const renderSpaceCard = (space) => (
+        <Card className="h-100 shadow-sm">
+            <Card.Img 
+                variant="top" 
+                src={getSpaceImageUrl(space)} 
+                style={{ height: '200px', objectFit: 'cover' }}
+            />
+            <Card.Body>
+                <Card.Title className="d-flex justify-content-between align-items-start">
+                    <span>{space.name}</span>
+                    {renderStatusBadge(space)}
+                </Card.Title>
+                
+                <div className="mb-2">
+                    <small className="text-muted d-block">
+                        <FaFilter className="me-1" /> {space.type}
+                    </small>
+                    <small className="text-muted d-block">
+                        <strong>Giá:</strong> {space.price?.toLocaleString('vi-VN')}đ/giờ
+                    </small>
+                </div>
+
+                {/* Booking Status Notification */}
+                {renderBookingStatusNotification(space)}
+
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                    <div className="d-flex align-items-center">
+                        <FaStar className="text-warning me-1" />
+                        <span>{space.rating || 0}/5</span>
+                        <small className="text-muted ms-1">({space.reviewCount || 0} đánh giá)</small>
+                    </div>
+                    {/* TODO: Implement view count feature */}
+                    {/* <small className="text-muted">
+                        {space.viewCount || 0} lượt xem
+                    </small> */}
+                </div>
+
+                <Card.Text className="small">{space.description}</Card.Text>
+            </Card.Body>
+            
+            <Card.Footer className="bg-transparent">
+                <div className="d-flex justify-content-between">
+                    <ButtonGroup size="sm">
+                        <Button
+                            variant="outline-primary"
+                            onClick={() => handleViewSpace(space)}
+                        >
+                            <FaEye className="me-1" /> Chi tiết
+                        </Button>
+                        <Button
+                            variant="outline-info"
+                            onClick={() => handleViewBookings(space.id)}
+                        >
+                            <FaCalendarAlt className="me-1" /> Lịch đặt
+                        </Button>
+                    </ButtonGroup>
+                    
+                    <ButtonGroup size="sm">
+                        <Button
+                            variant="outline-secondary"
+                            onClick={() => handleEditSpace(space)}
+                        >
+                            <FaEdit className="me-1" /> Sửa
+                        </Button>
+                        <Button
+                            variant={(() => {
+                                const status = getActualSpaceStatus(space);
+                                if (status === 'Booked') return 'outline-secondary';
+                                return 'outline-primary';
+                            })()}
+                            onClick={() => handleToggleStatus(space.id, space.status)}
+                            title={(() => {
+                                const status = getActualSpaceStatus(space);
+                                switch (status) {
+                                    case 'Available': return 'Chuyển sang: Bảo trì';
+                                    case 'Maintenance': return 'Chuyển sang: Dọn dẹp';
+                                    case 'Cleaning': return 'Chuyển sang: Trống';
+                                    case 'Booked': return 'Không thể thay đổi khi đang sử dụng';
+                                    default: return 'Thay đổi trạng thái';
+                                }
+                            })()}
+                            disabled={getActualSpaceStatus(space) === 'Booked'}
+                        >
+                            {(() => {
+                                const status = getActualSpaceStatus(space);
+                                switch (status) {
+                                    case 'Available': return '🔧'; // Maintenance next
+                                    case 'Maintenance': return '🧹'; // Cleaning next
+                                    case 'Cleaning': return '✅'; // Available next
+                                    case 'Booked': return '🔒'; // Locked
+                                    default: return '🔄';
+                                }
+                            })()}
+                        </Button>
+                        <Button
+                            variant="outline-danger"
+                            onClick={() => handleDeleteSpace(space.id)}
+                        >
+                            <FaTrash className="me-1" />
+                        </Button>
+                    </ButtonGroup>
+                </div>
+            </Card.Footer>
+        </Card>
+    );
 
     // Helper to get the display image (cover image or first image)
     const getSpaceImageUrl = (space) => {
@@ -287,116 +529,6 @@ const OwnerSpacesPage = () => {
         return space.imageUrls?.[0] || '/placeholder-space.jpg';
     };
 
-    // Function to format date in a readable way
-    const formatDate = (date) => {
-        if (!date) return 'N/A';
-        return new Date(date).toLocaleDateString('vi-VN', {
-            day: '2-digit',
-            month: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-    };
-
-    // Function to render space status badge
-    const renderStatusBadge = (status) => {
-        const statusConfig = SPACE_STATUSES[status] || SPACE_STATUSES.DISABLED;
-        return (
-            <Badge bg={statusConfig.variant}>
-                {statusConfig.label}
-            </Badge>
-        );
-    };
-
-    const renderSpaceCard = (space) => (
-        <Card className="h-100 shadow-sm">
-            <Card.Img 
-                variant="top" 
-                src={getSpaceImageUrl(space)} 
-                style={{ height: '200px', objectFit: 'cover' }}
-            />
-            <Card.Body>
-                <Card.Title className="d-flex justify-content-between align-items-start">
-                    <span>{space.name}</span>
-                    {renderStatusBadge(space.status)}
-                </Card.Title>
-                
-                <div className="mb-2">
-                    <small className="text-muted d-block">
-                        <FaFilter className="me-1" /> {space.type}
-                    </small>
-                    <small className="text-muted d-block">
-                        <strong>Giá:</strong> {space.price?.toLocaleString('vi-VN')}đ/giờ
-                    </small>
-                    {space.nextBooking && (
-                        <small className="text-primary d-block">
-                            <FaCalendarAlt className="me-1" />
-                            Đặt chỗ tiếp theo: {formatDate(space.nextBooking)}
-                        </small>
-                    )}
-                    {space.currentBooking && (
-                        <small className="text-success d-block">
-                            Đang sử dụng bởi: {space.currentBooking.customerName}
-                        </small>
-                    )}
-                </div>
-
-                <div className="d-flex justify-content-between align-items-center mb-2">
-                    <div className="d-flex align-items-center">
-                        <FaStar className="text-warning me-1" />
-                        <span>{space.rating || 0}/5</span>
-                        <small className="text-muted ms-1">({space.reviewCount || 0} đánh giá)</small>
-                    </div>
-                    <small className="text-muted">
-                        {space.viewCount || 0} lượt xem
-                    </small>
-                </div>
-
-                <Card.Text className="small">{space.description}</Card.Text>
-            </Card.Body>
-            
-            <Card.Footer className="bg-transparent">
-                <div className="d-flex justify-content-between">
-                    <ButtonGroup size="sm">
-                        <Button
-                            variant="outline-primary"
-                            onClick={() => handleViewSpace(space)}
-                        >
-                            <FaEye className="me-1" /> Chi tiết
-                        </Button>
-                        <Button
-                            variant="outline-info"
-                            onClick={() => handleViewBookings(space.id)}
-                        >
-                            <FaCalendarAlt className="me-1" /> Lịch đặt
-                        </Button>
-                    </ButtonGroup>
-                    
-                    <ButtonGroup size="sm">
-                        <Button
-                            variant="outline-secondary"
-                            onClick={() => handleEditSpace(space)}
-                        >
-                            <FaEdit className="me-1" /> Sửa
-                        </Button>
-                        <Button
-                            variant={space.status === 'Disabled' ? 'outline-success' : 'outline-warning'}
-                            onClick={() => handleToggleActive(space.id, space.status)}
-                        >
-                            {space.status === 'Disabled' ? <FaToggleOff /> : <FaToggleOn />}
-                        </Button>
-                        <Button
-                            variant="outline-danger"
-                            onClick={() => handleDeleteSpace(space.id)}
-                        >
-                            <FaTrash className="me-1" />
-                        </Button>
-                    </ButtonGroup>
-                </div>
-            </Card.Footer>
-        </Card>
-    );
-
     return (
         <Container className="py-4">
             {/* Statistics Section */}
@@ -405,7 +537,7 @@ const OwnerSpacesPage = () => {
                     <Col xs={12}>
                         <h5 className="mb-3">Tổng quan không gian</h5>
                     </Col>
-                    <Col xs={6} md={2}>
+                    <Col xs={6} lg={2}>
                         <div className="text-center">
                             <div className="bg-white rounded p-2">
                                 <h6>Tổng số</h6>
@@ -413,48 +545,84 @@ const OwnerSpacesPage = () => {
                             </div>
                         </div>
                     </Col>
-                    <Col xs={6} md={2}>
+                    <Col xs={6} lg={2}>
                         <div className="text-center">
                             <div className="bg-white rounded p-2">
-                                <h6>Đang hoạt động</h6>
-                                <h3 className="text-success">{statistics.active}</h3>
-                                <small className="text-muted">{(statistics.active / statistics.total * 100).toFixed(1)}%</small>
+                                <h6>Trống</h6>
+                                <h3 className="text-success">{statistics.available}</h3>
+                                <small className="text-muted">{statistics.total > 0 ? (statistics.available / statistics.total * 100).toFixed(1) : 0}%</small>
                             </div>
                         </div>
                     </Col>
-                    <Col xs={6} md={2}>
+                    <Col xs={6} lg={2}>
                         <div className="text-center">
                             <div className="bg-white rounded p-2">
-                                <h6>Đã đặt</h6>
+                                <h6>Đang sử dụng</h6>
                                 <h3 className="text-primary">{statistics.booked}</h3>
-                                <small className="text-muted">{(statistics.booked / statistics.total * 100).toFixed(1)}%</small>
+                                <small className="text-muted">{statistics.total > 0 ? (statistics.booked / statistics.total * 100).toFixed(1) : 0}%</small>
                             </div>
                         </div>
                     </Col>
-                    <Col xs={6} md={2}>
+                    <Col xs={6} lg={2}>
                         <div className="text-center">
                             <div className="bg-white rounded p-2">
                                 <h6>Bảo trì</h6>
                                 <h3 className="text-warning">{statistics.maintenance}</h3>
-                                <small className="text-muted">{(statistics.maintenance / statistics.total * 100).toFixed(1)}%</small>
+                                <small className="text-muted">{statistics.total > 0 ? (statistics.maintenance / statistics.total * 100).toFixed(1) : 0}%</small>
                             </div>
                         </div>
                     </Col>
-                    <Col xs={6} md={2}>
+                    <Col xs={6} lg={2}>
                         <div className="text-center">
                             <div className="bg-white rounded p-2">
-                                <h6>Đã ẩn</h6>
-                                <h3 className="text-secondary">{statistics.disabled}</h3>
-                                <small className="text-muted">{(statistics.disabled / statistics.total * 100).toFixed(1)}%</small>
+                                <h6>Đang dọn dẹp</h6>
+                                <h3 className="text-info">{statistics.cleaning}</h3>
+                                <small className="text-muted">{statistics.total > 0 ? (statistics.cleaning / statistics.total * 100).toFixed(1) : 0}%</small>
                             </div>
                         </div>
                     </Col>
                 </Row>
             </div>
 
+            {/* Booking Status Rule Explanation */}
+            {showBookingGuide && (
+                <Alert 
+                    variant="info" 
+                    className="mb-4" 
+                    dismissible 
+                    onClose={() => setShowBookingGuide(false)}
+                >
+                    <Alert.Heading className="h6 mb-2">
+                        <i className="fas fa-info-circle me-2"></i>
+                        Hướng dẫn đọc trạng thái booking
+                    </Alert.Heading>
+                    <div className="small">
+                        <strong>Thông báo trạng thái booking chỉ để theo dõi, không thể thao tác trực tiếp:</strong>
+                        <ul className="mb-0 mt-1">
+                            <li><span className="badge bg-info me-1">Đang sử dụng</span> - Khách đã check-in, đang sử dụng không gian</li>
+                            <li><span className="badge bg-danger me-1">Quá hạn</span> - Booking đã quá giờ check-out, cần xử lý</li>
+                            <li><span className="badge bg-warning me-1">Cần xác nhận</span> - Có booking chờ bạn xác nhận</li>
+                            <li><span className="badge bg-success me-1">Booking tiếp theo</span> - Có booking đã xác nhận sắp tới</li>
+                        </ul>
+                        <small className="text-muted">💡 Để quản lý booking, nhấn nút "Lịch đặt" trên từng không gian.</small>
+                    </div>
+                </Alert>
+            )}
+
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2>Quản lý không gian của tôi</h2>
                 <div className="d-flex gap-2">
+                    {!showBookingGuide && (
+                        <Button 
+                            variant="outline-info" 
+                            size="sm"
+                            onClick={() => setShowBookingGuide(true)}
+                            title="Hiện hướng dẫn trạng thái booking"
+                        >
+                            <i className="fas fa-question-circle me-1"></i>
+                            Hướng dẫn
+                        </Button>
+                    )}
                     <ButtonGroup>
                         <ToggleButton
                             type="radio"
@@ -482,6 +650,8 @@ const OwnerSpacesPage = () => {
                 </div>
             </div>
 
+
+
             {/* Enhanced Filters */}
             <div className="filters-section bg-light p-3 rounded mb-4">
                 <Row className="g-3">
@@ -503,11 +673,10 @@ const OwnerSpacesPage = () => {
                             onChange={(e) => setFilterStatus(e.target.value)}
                         >
                             <option value="all">Tất cả trạng thái</option>
-                            {Object.values(SPACE_STATUSES).map(status => (
-                                <option key={status.value} value={status.value}>
-                                    {status.label}
-                                </option>
-                            ))}
+                            <option value="Available">Trống</option>
+                            <option value="Booked">Đang sử dụng</option>
+                            <option value="Maintenance">Bảo trì</option>
+                            <option value="Cleaning">Đang dọn dẹp</option>
                         </Form.Select>
                     </Col>
                     <Col md={4}>
@@ -597,12 +766,12 @@ const OwnerSpacesPage = () => {
                                 >
                                     Đánh giá
                                 </Dropdown.Item>
-                                <Dropdown.Item 
+                                {/* <Dropdown.Item 
                                     active={sortBy === 'views'} 
                                     onClick={() => setSortBy('views')}
                                 >
                                     Lượt xem
-                                </Dropdown.Item>
+                                </Dropdown.Item> */}
                                 <Dropdown.Divider />
                                 <Dropdown.Item 
                                     onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}
@@ -690,11 +859,12 @@ const OwnerSpacesPage = () => {
                                 <th>ID</th>
                                 <th>Tên không gian</th>
                                 <th>Trạng thái</th>
+                                <th>Booking</th>
                                 <th>Loại</th>
                                 <th>Giá/giờ</th>
                                 <th>Sức chứa</th>
                                 <th>Đánh giá</th>
-                                <th>Lượt xem</th>
+                                {/* <th>Lượt xem</th> */}
                                 <th>Thao tác</th>
                             </tr>
                         </thead>
@@ -703,7 +873,12 @@ const OwnerSpacesPage = () => {
                                 <tr key={space.id}>
                                     <td>{space.id}</td>
                                     <td>{space.name}</td>
-                                    <td>{renderStatusBadge(space.status)}</td>
+                                    <td>{renderStatusBadge(space)}</td>
+                                    <td>
+                                        {renderBookingStatusNotification(space) || 
+                                            <small className="text-muted">Không có booking</small>
+                                        }
+                                    </td>
                                     <td>{space.type}</td>
                                     <td>{space.price?.toLocaleString('vi-VN')}đ</td>
                                     <td>{space.capacity}</td>
@@ -711,7 +886,7 @@ const OwnerSpacesPage = () => {
                                         <FaStar className="text-warning me-1" />
                                         {space.rating || 0}/5 ({space.reviewCount || 0})
                                     </td>
-                                    <td>{space.viewCount || 0}</td>
+                                    {/* <td>{space.viewCount || 0}</td> */}
                                     <td>
                                         <ButtonGroup size="sm">
                                             <Button
@@ -736,11 +911,34 @@ const OwnerSpacesPage = () => {
                                                 <FaEdit />
                                             </Button>
                                             <Button
-                                                variant={space.status === 'Disabled' ? 'outline-success' : 'outline-warning'}
-                                                onClick={() => handleToggleActive(space.id, space.status)}
-                                                title={space.status === 'Disabled' ? 'Kích hoạt' : 'Vô hiệu hóa'}
+                                                variant={(() => {
+                                                    const status = getActualSpaceStatus(space);
+                                                    if (status === 'Booked') return 'outline-secondary';
+                                                    return 'outline-primary';
+                                                })()}
+                                                onClick={() => handleToggleStatus(space.id, space.status)}
+                                                title={(() => {
+                                                    const status = getActualSpaceStatus(space);
+                                                    switch (status) {
+                                                        case 'Available': return 'Chuyển sang: Bảo trì';
+                                                        case 'Maintenance': return 'Chuyển sang: Dọn dẹp';
+                                                        case 'Cleaning': return 'Chuyển sang: Trống';
+                                                        case 'Booked': return 'Không thể thay đổi khi đang sử dụng';
+                                                        default: return 'Thay đổi trạng thái';
+                                                    }
+                                                })()}
+                                                disabled={getActualSpaceStatus(space) === 'Booked'}
                                             >
-                                                {space.status === 'Disabled' ? <FaToggleOff /> : <FaToggleOn />}
+                                                {(() => {
+                                                    const status = getActualSpaceStatus(space);
+                                                    switch (status) {
+                                                        case 'Available': return '🔧';
+                                                        case 'Maintenance': return '🧹';
+                                                        case 'Cleaning': return '✅';
+                                                        case 'Booked': return '🔒';
+                                                        default: return '🔄';
+                                                    }
+                                                })()}
                                             </Button>
                                             <Button
                                                 variant="outline-danger"

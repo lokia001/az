@@ -5,12 +5,34 @@ import { createSpaceAsync, updateSpaceAsync } from '../manageSpaceSlice';
 import { fetchSystemAmenities } from '../../systemItems/slices/systemAmenitiesSlice';
 import { fetchSystemSpaceServices } from '../../systemItems/slices/systemSpaceServicesSlice';
 import apiClient from '../../../services/apiClient';
+import '../styles/SpaceForm.css';
 
 function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
     const dispatch = useDispatch();
     
     const systemAmenities = useSelector(state => state.systemAmenities.amenities) || [];
     const systemServices = useSelector(state => state.systemSpaceServices.services) || [];
+    
+    // Helper function to convert TimeSpan format (HH:MM:SS) to HTML time input format (HH:MM)
+    const formatTimeSpanToInput = (timeSpan) => {
+        if (!timeSpan) return '';
+        // Handle both "HH:MM:SS" and "HH:MM" formats
+        const parts = timeSpan.split(':');
+        if (parts.length >= 2) {
+            return `${parts[0]}:${parts[1]}`;
+        }
+        return timeSpan;
+    };
+    
+    // Helper function to parse time string (HH:MM) to minutes for comparison
+    const parseTimeToMinutes = (timeString) => {
+        if (!timeString) return 0;
+        const parts = timeString.split(':');
+        if (parts.length >= 2) {
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+        }
+        return 0;
+    };
     
     const [formData, setFormData] = useState({
         name: initialData.name || '',
@@ -22,8 +44,8 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
         capacity: initialData.capacity || '',
         pricePerHour: initialData.pricePerHour || initialData.basePrice || '',
         pricePerDay: initialData.pricePerDay || '',
-        openTime: initialData.openTime || '',
-        closeTime: initialData.closeTime || '',
+        openTime: formatTimeSpanToInput(initialData.openTime) || '',
+        closeTime: formatTimeSpanToInput(initialData.closeTime) || '',
         accessInstructions: initialData.accessInstructions || '',
         houseRules: initialData.houseRules || '',
         minBookingDurationMinutes: initialData.minBookingDurationMinutes || 30,
@@ -199,15 +221,78 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
     
     const validateForm = () => {
         const errors = {};
-        if (!formData.name) errors.name = 'Tên không gian là bắt buộc';
-        if (!formData.address) errors.address = 'Địa chỉ là bắt buộc';
-        if (!formData.type) errors.type = 'Loại không gian là bắt buộc';
-        if (!formData.capacity || parseInt(formData.capacity) <= 0) errors.capacity = 'Sức chứa phải lớn hơn 0';
-        if (!formData.pricePerHour || parseFloat(formData.pricePerHour) <= 0) errors.pricePerHour = 'Giá theo giờ phải lớn hơn 0';
         
-        // Validate pricePerDay if provided
+        // Required field validations
+        if (!formData.name) {
+            errors.name = 'Tên không gian là bắt buộc';
+        } else if (formData.name.length < 3) {
+            errors.name = 'Tên không gian phải có ít nhất 3 ký tự';
+        } else if (formData.name.length > 200) {
+            errors.name = 'Tên không gian không được vượt quá 200 ký tự';
+        }
+        
+        if (!formData.address) {
+            errors.address = 'Địa chỉ là bắt buộc';
+        } else if (formData.address.length > 500) {
+            errors.address = 'Địa chỉ không được vượt quá 500 ký tự';
+        }
+        
+        if (!formData.type) {
+            errors.type = 'Loại không gian là bắt buộc';
+        }
+        
+        if (!formData.capacity || parseInt(formData.capacity) <= 0) {
+            errors.capacity = 'Sức chứa phải lớn hơn 0';
+        }
+        
+        if (!formData.pricePerHour || parseFloat(formData.pricePerHour) <= 0) {
+            errors.pricePerHour = 'Giá theo giờ phải lớn hơn 0';
+        }
+        
+        // Optional field validations
+        if (formData.description && formData.description.length > 2000) {
+            errors.description = 'Mô tả không được vượt quá 2000 ký tự';
+        }
+        
         if (formData.pricePerDay && parseFloat(formData.pricePerDay) <= 0) {
-            errors.pricePerDay = 'Giá theo ngày phải lớn hơn 0';
+            errors.pricePerDay = 'Giá theo ngày phải lớn hơn 0 nếu có';
+        }
+        
+        if (formData.latitude && (parseFloat(formData.latitude) < -90 || parseFloat(formData.latitude) > 90)) {
+            errors.latitude = 'Vĩ độ phải trong khoảng -90 đến 90';
+        }
+        
+        if (formData.longitude && (parseFloat(formData.longitude) < -180 || parseFloat(formData.longitude) > 180)) {
+            errors.longitude = 'Kinh độ phải trong khoảng -180 đến 180';
+        }
+        
+        if (formData.accessInstructions && formData.accessInstructions.length > 1000) {
+            errors.accessInstructions = 'Hướng dẫn truy cập không được vượt quá 1000 ký tự';
+        }
+        
+        if (formData.houseRules && formData.houseRules.length > 1000) {
+            errors.houseRules = 'Nội quy không được vượt quá 1000 ký tự';
+        }
+        
+        // Validate booking settings ranges
+        if (formData.minBookingDurationMinutes && (parseInt(formData.minBookingDurationMinutes) < 1 || parseInt(formData.minBookingDurationMinutes) > 1440)) {
+            errors.minBookingDurationMinutes = 'Thời gian đặt tối thiểu phải trong khoảng 1-1440 phút';
+        }
+        
+        if (formData.maxBookingDurationMinutes && (parseInt(formData.maxBookingDurationMinutes) < 1 || parseInt(formData.maxBookingDurationMinutes) > 10080)) {
+            errors.maxBookingDurationMinutes = 'Thời gian đặt tối đa phải trong khoảng 1-10080 phút';
+        }
+        
+        if (formData.cancellationNoticeHours && (parseInt(formData.cancellationNoticeHours) < 0 || parseInt(formData.cancellationNoticeHours) > 168)) {
+            errors.cancellationNoticeHours = 'Thời gian huỷ trước phải trong khoảng 0-168 giờ';
+        }
+        
+        if (formData.cleaningDurationMinutes && (parseInt(formData.cleaningDurationMinutes) < 0 || parseInt(formData.cleaningDurationMinutes) > 1440)) {
+            errors.cleaningDurationMinutes = 'Thời gian dọn dẹp phải trong khoảng 0-1440 phút';
+        }
+        
+        if (formData.bufferMinutes && (parseInt(formData.bufferMinutes) < 0 || parseInt(formData.bufferMinutes) > 1440)) {
+            errors.bufferMinutes = 'Thời gian đệm phải trong khoảng 0-1440 phút';
         }
         
         // Validate times if provided
@@ -216,6 +301,25 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
         }
         if (formData.closeTime && !formData.openTime) {
             errors.openTime = 'Thời gian mở cửa là bắt buộc nếu có thời gian đóng cửa';
+        }
+        
+        // Validate that open time is before close time (if both are provided)
+        // Special case: 00:00 as close time means 24-hour operation
+        if (formData.openTime && formData.closeTime) {
+            const openTimeMinutes = parseTimeToMinutes(formData.openTime);
+            const closeTimeMinutes = parseTimeToMinutes(formData.closeTime);
+            
+            // If close time is 00:00, it means 24-hour operation (valid)
+            // Otherwise, close time must be after open time
+            if (closeTimeMinutes !== 0 && openTimeMinutes >= closeTimeMinutes) {
+                errors.closeTime = 'Thời gian đóng cửa phải sau thời gian mở cửa (hoặc chọn 00:00 cho hoạt động 24/7)';
+            }
+        }
+        
+        // Validate min/max booking duration logic
+        if (formData.minBookingDurationMinutes && formData.maxBookingDurationMinutes && 
+            parseInt(formData.minBookingDurationMinutes) > parseInt(formData.maxBookingDurationMinutes)) {
+            errors.maxBookingDurationMinutes = 'Thời gian đặt tối đa phải lớn hơn hoặc bằng thời gian đặt tối thiểu';
         }
         
         setFormErrors(errors);
@@ -367,6 +471,19 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                 </Alert>
             )}
             
+            {/* Required Fields Information */}
+            <div className="alert alert-info mb-4">
+                <h6 className="mb-2"><i className="fas fa-info-circle me-2"></i>Thông tin bắt buộc</h6>
+                <p className="mb-1">Các trường có dấu <span className="text-danger">*</span> là bắt buộc:</p>
+                <ul className="mb-0 ps-3">
+                    <li><strong>Tên không gian</strong>: 3-200 ký tự</li>
+                    <li><strong>Địa chỉ</strong>: Tối đa 500 ký tự</li>
+                    <li><strong>Loại không gian</strong>: Chọn loại phù hợp</li>
+                    <li><strong>Sức chứa</strong>: Tối thiểu 1 người</li>
+                    <li><strong>Giá theo giờ</strong>: Tối thiểu 1 VND</li>
+                </ul>
+            </div>
+            
             <div className="mb-3">
                 <label className="form-label">Tên không gian <span className="text-danger">*</span></label>
                 <input 
@@ -376,8 +493,25 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                     value={formData.name}
                     onChange={handleChange}
                     autoComplete="off"
+                    placeholder="Nhập tên không gian (3-200 ký tự)"
+                    required
                 />
+                <small className="text-muted">Tên không gian phải có từ 3-200 ký tự</small>
                 {formErrors.name && <div className="invalid-feedback">{formErrors.name}</div>}
+            </div>
+            
+            <div className="mb-3">
+                <label className="form-label">Mô tả</label>
+                <textarea 
+                    className={`form-control ${formErrors.description ? 'is-invalid' : ''}`}
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows="3"
+                    placeholder="Mô tả chi tiết về không gian (tối đa 2000 ký tự)"
+                />
+                <small className="text-muted">Mô tả tối đa 2000 ký tự</small>
+                {formErrors.description && <div className="invalid-feedback">{formErrors.description}</div>}
             </div>
             
             <div className="mb-3">
@@ -389,8 +523,10 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                     value={formData.address}
                     onChange={handleChange}
                     autoComplete="off"
-                    placeholder="Nhập địa chỉ đầy đủ của không gian"
+                    placeholder="Nhập địa chỉ đầy đủ của không gian (tối đa 500 ký tự)"
+                    required
                 />
+                <small className="text-muted">Địa chỉ đầy đủ, tối đa 500 ký tự</small>
                 {formErrors.address && <div className="invalid-feedback">{formErrors.address}</div>}
             </div>
             
@@ -400,7 +536,7 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         <label className="form-label">Vĩ độ (Latitude)</label>
                         <input 
                             type="number"
-                            className="form-control"
+                            className={`form-control ${formErrors.latitude ? 'is-invalid' : ''}`}
                             name="latitude"
                             value={formData.latitude}
                             onChange={handleChange}
@@ -410,7 +546,8 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                             max="90"
                             placeholder="Ví dụ: 10.7756587"
                         />
-                        <small className="text-muted">Vĩ độ của địa điểm (-90 đến 90)</small>
+                        <small className="text-muted">Vĩ độ của địa điểm (-90 đến 90). Để trống nếu không biết</small>
+                        {formErrors.latitude && <div className="invalid-feedback">{formErrors.latitude}</div>}
                     </div>
                 </Col>
                 
@@ -419,7 +556,7 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         <label className="form-label">Kinh độ (Longitude)</label>
                         <input 
                             type="number"
-                            className="form-control"
+                            className={`form-control ${formErrors.longitude ? 'is-invalid' : ''}`}
                             name="longitude"
                             value={formData.longitude}
                             onChange={handleChange}
@@ -429,7 +566,8 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                             max="180"
                             placeholder="Ví dụ: 106.7004238"
                         />
-                        <small className="text-muted">Kinh độ của địa điểm (-180 đến 180)</small>
+                        <small className="text-muted">Kinh độ của địa điểm (-180 đến 180). Để trống nếu không biết</small>
+                        {formErrors.longitude && <div className="invalid-feedback">{formErrors.longitude}</div>}
                     </div>
                 </Col>
             </Row>
@@ -464,8 +602,9 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                             autoComplete="off"
                             min="1"
                             placeholder="Nhập số người tối đa"
+                            required
                         />
-                        <small className="text-muted">Số người tối đa có thể sử dụng không gian cùng lúc</small>
+                        <small className="text-muted">Số người tối đa có thể sử dụng không gian cùng lúc (tối thiểu 1 người)</small>
                         {formErrors.capacity && <div className="invalid-feedback">{formErrors.capacity}</div>}
                     </div>
                 </Col>
@@ -482,9 +621,12 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                             value={formData.pricePerHour}
                             onChange={handleChange}
                             autoComplete="off"
-                            min="0"
+                            min="1"
                             step="1000"
+                            placeholder="Ví dụ: 50000"
+                            required
                         />
+                        <small className="text-muted">Giá thuê theo giờ, tối thiểu 1 VND</small>
                         {formErrors.pricePerHour && <div className="invalid-feedback">{formErrors.pricePerHour}</div>}
                     </div>
                 </Col>
@@ -499,9 +641,11 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                             value={formData.pricePerDay}
                             onChange={handleChange}
                             autoComplete="off"
-                            min="0"
+                            min="1"
                             step="1000"
+                            placeholder="Ví dụ: 300000 (để trống nếu không có)"
                         />
+                        <small className="text-muted">Giá thuê theo ngày (tùy chọn), tối thiểu 1 VND nếu có</small>
                         {formErrors.pricePerDay && <div className="invalid-feedback">{formErrors.pricePerDay}</div>}
                     </div>
                 </Col>
@@ -521,59 +665,202 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
             <Row>
                 <Col md={6}>
                     <div className="mb-3">
-                        <label className="form-label">Giờ mở cửa</label>
-                        <input 
-                            type="time"
-                            className={`form-control ${formErrors.openTime ? 'is-invalid' : ''}`}
-                            name="openTime"
-                            value={formData.openTime || ''}
-                            onChange={handleChange}
-                            placeholder="07:00"
-                        />
-                        <small className="text-muted">Định dạng: HH:MM (24h)</small>
+                        <label className="form-label">
+                            <i className="bi bi-clock me-2 text-primary"></i>
+                            Giờ mở cửa
+                        </label>
+                        <div className="input-group time-input-group">
+                            <input 
+                                type="time"
+                                className={`form-control ${formErrors.openTime ? 'is-invalid' : ''}`}
+                                name="openTime"
+                                value={formData.openTime || ''}
+                                onChange={handleChange}
+                                placeholder="07:00"
+                                step="900" // 15-minute step (900 seconds)
+                                style={{ 
+                                    fontSize: '1.1rem',
+                                    letterSpacing: '0.5px',
+                                    textAlign: 'center'
+                                }}
+                                min="00:00"
+                                max="23:59"
+                            />
+                            <span className="input-group-text">
+                                <i className="bi bi-sunrise text-warning"></i>
+                            </span>
+                        </div>
+                        {/* Quick preset buttons for open time */}
+                        <div className="mt-2 time-preset-buttons">
+                            <small className="text-muted d-block mb-1">Nhanh:</small>
+                            <div className="btn-group btn-group-sm" role="group">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, openTime: '06:00' }))}
+                                >
+                                    6:00
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, openTime: '07:00' }))}
+                                >
+                                    7:00
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, openTime: '08:00' }))}
+                                >
+                                    8:00
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, openTime: '09:00' }))}
+                                >
+                                    9:00
+                                </button>
+                            </div>
+                        </div>
+                        <small className="text-muted mt-1 d-block">
+                            <i className="bi bi-info-circle me-1"></i>
+                            Giờ bắt đầu hoạt động (định dạng 24h). Để trống nếu luôn mở
+                        </small>
                         {formErrors.openTime && <div className="invalid-feedback">{formErrors.openTime}</div>}
                     </div>
                 </Col>
                 
                 <Col md={6}>
                     <div className="mb-3">
-                        <label className="form-label">Giờ đóng cửa</label>
-                        <input 
-                            type="time"
-                            className={`form-control ${formErrors.closeTime ? 'is-invalid' : ''}`}
-                            name="closeTime"
-                            value={formData.closeTime || ''}
-                            onChange={handleChange}
-                            placeholder="22:00"
-                        />
-                        <small className="text-muted">Định dạng: HH:MM (24h)</small>
+                        <label className="form-label">
+                            <i className="bi bi-clock-fill me-2 text-primary"></i>
+                            Giờ đóng cửa
+                        </label>
+                        <div className="input-group time-input-group">
+                            <input 
+                                type="time"
+                                className={`form-control ${formErrors.closeTime ? 'is-invalid' : ''}`}
+                                name="closeTime"
+                                value={formData.closeTime || ''}
+                                onChange={handleChange}
+                                placeholder="22:00"
+                                step="900" // 15-minute step (900 seconds)
+                                style={{ 
+                                    fontSize: '1.1rem',
+                                    letterSpacing: '0.5px',
+                                    textAlign: 'center'
+                                }}
+                                min="00:00"
+                                max="23:59"
+                            />
+                            <span className="input-group-text">
+                                <i className="bi bi-sunset text-orange"></i>
+                            </span>
+                        </div>
+                        {/* Quick preset buttons for close time */}
+                        <div className="mt-2 time-preset-buttons">
+                            <small className="text-muted d-block mb-1">Nhanh:</small>
+                            <div className="btn-group btn-group-sm" role="group">
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, closeTime: '18:00' }))}
+                                >
+                                    18:00
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, closeTime: '20:00' }))}
+                                >
+                                    20:00
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, closeTime: '22:00' }))}
+                                >
+                                    22:00
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn btn-outline-secondary"
+                                    onClick={() => setFormData(prev => ({ ...prev, closeTime: '00:00' }))}
+                                    title="Hoạt động 24/7"
+                                >
+                                    00:00 (24h)
+                                </button>
+                            </div>
+                        </div>
+                        <small className="text-muted mt-1 d-block">
+                            <i className="bi bi-info-circle me-1"></i>
+                            Giờ kết thúc hoạt động (định dạng 24h). Để trống nếu luôn mở. Chọn 00:00 cho hoạt động 24/7.
+                        </small>
                         {formErrors.closeTime && <div className="invalid-feedback">{formErrors.closeTime}</div>}
                     </div>
                 </Col>
             </Row>
             
+            {/* Time Range Preview */}
+            {formData.openTime && formData.closeTime && (
+                <Row className="mb-3">
+                    <Col>
+                        <div className="time-range-preview">
+                            <i className="bi bi-clock-history me-2"></i>
+                            <strong>Thời gian hoạt động:</strong> 
+                            {formData.closeTime === '00:00' ? (
+                                <span className="text-success ms-1">
+                                    {formData.openTime} - 24/7 (Hoạt động 24 giờ)
+                                </span>
+                            ) : (
+                                <span className="ms-1">
+                                    {formData.openTime} - {formData.closeTime}
+                                    {(() => {
+                                        const openMinutes = parseTimeToMinutes(formData.openTime);
+                                        const closeMinutes = parseTimeToMinutes(formData.closeTime);
+                                        const duration = closeMinutes - openMinutes;
+                                        if (duration > 0) {
+                                            const hours = Math.floor(duration / 60);
+                                            const minutes = duration % 60;
+                                            return ` (${hours}h${minutes > 0 ? ` ${minutes}m` : ''})`;
+                                        }
+                                        return '';
+                                    })()}
+                                </span>
+                            )}
+                        </div>
+                    </Col>
+                </Row>
+            )}
+            
             <div className="mb-3">
                 <label className="form-label">Hướng dẫn truy cập</label>
                 <textarea
-                    className="form-control"
+                    className={`form-control ${formErrors.accessInstructions ? 'is-invalid' : ''}`}
                     name="accessInstructions"
                     rows="2"
                     value={formData.accessInstructions}
                     onChange={handleChange}
-                    placeholder="Hướng dẫn cho khách hàng cách ra vào không gian"
-                ></textarea>
+                    placeholder="Hướng dẫn cho khách hàng cách ra vào không gian (tối đa 1000 ký tự)"
+                />
+                <small className="text-muted">Hướng dẫn chi tiết để khách hàng có thể truy cập không gian (tối đa 1000 ký tự)</small>
+                {formErrors.accessInstructions && <div className="invalid-feedback">{formErrors.accessInstructions}</div>}
             </div>
             
             <div className="mb-3">
                 <label className="form-label">Nội quy không gian</label>
                 <textarea
-                    className="form-control"
+                    className={`form-control ${formErrors.houseRules ? 'is-invalid' : ''}`}
                     name="houseRules"
                     rows="2"
                     value={formData.houseRules}
                     onChange={handleChange}
-                    placeholder="Các quy định của không gian dành cho khách hàng"
-                ></textarea>
+                    placeholder="Các quy tắc và điều kiện sử dụng không gian (tối đa 1000 ký tự)"
+                />
+                <small className="text-muted">Quy định sử dụng không gian cho khách hàng (tối đa 1000 ký tự)</small>
+                {formErrors.houseRules && <div className="invalid-feedback">{formErrors.houseRules}</div>}
             </div>
             
             <h5 className="mt-4 mb-3">Cài đặt đặt chỗ</h5>
@@ -583,14 +870,16 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         <label className="form-label">Thời gian đặt tối thiểu (phút)</label>
                         <input 
                             type="number"
-                            className="form-control"
+                            className={`form-control ${formErrors.minBookingDurationMinutes ? 'is-invalid' : ''}`}
                             name="minBookingDurationMinutes"
                             value={formData.minBookingDurationMinutes}
                             onChange={handleChange}
                             min="1"
                             max="1440"
+                            placeholder="30"
                         />
-                        <small className="text-muted">Thời gian đặt chỗ tối thiểu (mặc định: 30 phút)</small>
+                        <small className="text-muted">Thời gian đặt chỗ tối thiểu (1-1440 phút, mặc định: 30)</small>
+                        {formErrors.minBookingDurationMinutes && <div className="invalid-feedback">{formErrors.minBookingDurationMinutes}</div>}
                     </div>
                 </Col>
                 
@@ -599,14 +888,16 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         <label className="form-label">Thời gian đặt tối đa (phút)</label>
                         <input 
                             type="number"
-                            className="form-control"
+                            className={`form-control ${formErrors.maxBookingDurationMinutes ? 'is-invalid' : ''}`}
                             name="maxBookingDurationMinutes"
                             value={formData.maxBookingDurationMinutes}
                             onChange={handleChange}
                             min="1"
                             max="10080"
+                            placeholder="1440"
                         />
-                        <small className="text-muted">Thời gian đặt chỗ tối đa (mặc định: 1440 phút = 1 ngày)</small>
+                        <small className="text-muted">Thời gian đặt chỗ tối đa (1-10080 phút, mặc định: 1440 = 1 ngày)</small>
+                        {formErrors.maxBookingDurationMinutes && <div className="invalid-feedback">{formErrors.maxBookingDurationMinutes}</div>}
                     </div>
                 </Col>
                 
@@ -615,14 +906,16 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         <label className="form-label">Thời gian huỷ trước (giờ)</label>
                         <input 
                             type="number"
-                            className="form-control"
+                            className={`form-control ${formErrors.cancellationNoticeHours ? 'is-invalid' : ''}`}
                             name="cancellationNoticeHours"
                             value={formData.cancellationNoticeHours}
                             onChange={handleChange}
                             min="0"
                             max="168"
+                            placeholder="24"
                         />
-                        <small className="text-muted">Thời gian tối thiểu để huỷ đặt chỗ (mặc định: 24 giờ)</small>
+                        <small className="text-muted">Thời gian tối thiểu để huỷ đặt chỗ (0-168 giờ, mặc định: 24)</small>
+                        {formErrors.cancellationNoticeHours && <div className="invalid-feedback">{formErrors.cancellationNoticeHours}</div>}
                     </div>
                 </Col>
             </Row>
@@ -633,14 +926,16 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         <label className="form-label">Thời gian dọn dẹp (phút)</label>
                         <input 
                             type="number"
-                            className="form-control"
+                            className={`form-control ${formErrors.cleaningDurationMinutes ? 'is-invalid' : ''}`}
                             name="cleaningDurationMinutes"
                             value={formData.cleaningDurationMinutes}
                             onChange={handleChange}
                             min="0"
                             max="1440"
+                            placeholder="0"
                         />
-                        <small className="text-muted">Thời gian cần thiết để dọn dẹp giữa các lần đặt chỗ</small>
+                        <small className="text-muted">Thời gian cần để dọn dẹp giữa các lần đặt (0-1440 phút, mặc định: 0)</small>
+                        {formErrors.cleaningDurationMinutes && <div className="invalid-feedback">{formErrors.cleaningDurationMinutes}</div>}
                     </div>
                 </Col>
                 
@@ -649,16 +944,19 @@ function SpaceForm({ initialData = {}, onSubmit, onCancel }) {
                         <label className="form-label">Thời gian đệm (phút)</label>
                         <input 
                             type="number"
-                            className="form-control"
+                            className={`form-control ${formErrors.bufferMinutes ? 'is-invalid' : ''}`}
                             name="bufferMinutes"
                             value={formData.bufferMinutes}
                             onChange={handleChange}
                             min="0"
                             max="1440"
+                            placeholder="0"
                         />
-                        <small className="text-muted">Thời gian đệm giữa các lần đặt chỗ</small>
+                        <small className="text-muted">Thời gian đệm bổ sung giữa các lần đặt (0-1440 phút, mặc định: 0)</small>
+                        {formErrors.bufferMinutes && <div className="invalid-feedback">{formErrors.bufferMinutes}</div>}
                     </div>
-                </Col>            </Row>
+                </Col>
+            </Row>
             
             {/* Image Upload Section */}
             <div className="mb-4">
