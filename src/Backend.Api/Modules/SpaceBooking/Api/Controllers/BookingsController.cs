@@ -198,8 +198,9 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
 
 
 
-        // PUT api/bookings/{id}/status (Owner/SysAdmin cập nhật trạng thái chung)
+        // PUT/PATCH api/bookings/{id}/status (Owner/SysAdmin cập nhật trạng thái chung)
         [HttpPut("{id:guid}/status")]
+        [HttpPatch("{id:guid}/status")] // Support both PUT and PATCH methods
         [Authorize(Roles = "Owner,SysAdmin")] // Chỉ Owner của Space hoặc SysAdmin
         public async Task<IActionResult> UpdateBookingStatus(Guid id, [FromBody] UpdateBookingStatusRequest request)
         {

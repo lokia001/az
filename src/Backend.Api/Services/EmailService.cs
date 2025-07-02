@@ -100,5 +100,81 @@ namespace Backend.Api.Services.Shared
                 // Lỗi gửi email sẽ được ghi lại để admin kiểm tra.
             }
         }
+
+        public async Task SendBookingConfirmationEmailAsync(string toEmail, string customerName, string spaceName, 
+            string startTime, string endTime, string checkInTime, string ownerEmail, string bookingCode)
+        {
+            var smtpSettings = _configuration.GetSection("SmtpSettings");
+            var smtpHost = smtpSettings["Host"];
+            var smtpPort = int.Parse(smtpSettings["Port"] ?? "587");
+            var smtpUsername = smtpSettings["Username"];
+            var senderName = smtpSettings["SenderName"] ?? "Working Space Booking";
+
+            _logger.LogInformation("Sending booking confirmation email to {ToEmail} for booking {BookingCode}", toEmail, bookingCode);
+
+            if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUsername) || string.IsNullOrEmpty(_smtpPassword))
+            {
+                _logger.LogError("SMTP settings are not fully configured. Cannot send booking confirmation email.");
+                return;
+            }
+
+            try
+            {
+                var emailMessage = new MimeMessage();
+                emailMessage.From.Add(new MailboxAddress(senderName, smtpUsername));
+                emailMessage.To.Add(new MailboxAddress(customerName, toEmail));
+                emailMessage.Subject = $"Xác nhận đặt chỗ - {bookingCode}";
+
+                var bodyBuilder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <div style=""font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;"">
+                            <h2 style=""color: #28a745;"">🎉 Booking của bạn đã được xác nhận!</h2>
+                            
+                            <p>Xin chào <strong>{customerName}</strong>,</p>
+                            
+                            <p>Chúng tôi vui mừng thông báo rằng booking của bạn đã được chủ không gian xác nhận.</p>
+                            
+                            <div style=""background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;"">
+                                <h3 style=""margin-top: 0; color: #495057;"">📋 Thông tin booking</h3>
+                                <p><strong>Mã booking:</strong> {bookingCode}</p>
+                                <p><strong>Không gian:</strong> {spaceName}</p>
+                                <p><strong>Thời gian:</strong> {startTime} - {endTime}</p>
+                                <p><strong>⏰ Giờ check-in:</strong> <span style=""color: #dc3545; font-weight: bold;"">{checkInTime}</span></p>
+                            </div>
+                            
+                            <div style=""background-color: #e7f3ff; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;"">
+                                <h4 style=""margin-top: 0; color: #007bff;"">📞 Liên hệ hỗ trợ</h4>
+                                <p>Nếu bạn có thắc mắc hoặc cần hỗ trợ, vui lòng liên hệ trực tiếp với chủ không gian:</p>
+                                <p><strong>Email:</strong> <a href=""mailto:{ownerEmail}"">{ownerEmail}</a></p>
+                            </div>
+                            
+                            <div style=""margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;"">
+                                <p style=""color: #6c757d; font-size: 14px;"">
+                                    📌 <strong>Lưu ý:</strong> Vui lòng đến đúng giờ check-in và mang theo giấy tờ tùy thân nếu cần thiết.
+                                </p>
+                                <p style=""color: #6c757d; font-size: 14px;"">
+                                    Cảm ơn bạn đã sử dụng dịch vụ của chúng tôi!
+                                </p>
+                            </div>
+                        </div>"
+                };
+                emailMessage.Body = bodyBuilder.ToMessageBody();
+
+                using (var client = new SmtpClient())
+                {
+                    await client.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.StartTls);
+                    await client.AuthenticateAsync(smtpUsername, _smtpPassword);
+                    await client.SendAsync(emailMessage);
+                    await client.DisconnectAsync(true);
+                    
+                    _logger.LogInformation("Booking confirmation email successfully sent to {ToEmail} for booking {BookingCode}", toEmail, bookingCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send booking confirmation email to {ToEmail} for booking {BookingCode}", toEmail, bookingCode);
+            }
+        }
     }
 }

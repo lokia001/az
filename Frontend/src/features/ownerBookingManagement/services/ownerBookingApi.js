@@ -195,7 +195,53 @@ export const updateBookingStatusAPI = async (bookingId, status) => {
             );
         }
 
-        const response = await api.patch(`/api/bookings/${bookingId}/status`, { status });
+        // Debug: log the status parameter
+        console.log('updateBookingStatusAPI called with:', { bookingId, status, statusType: typeof status });
+
+        // Ensure status is a string
+        const statusString = String(status || '').trim();
+        
+        if (!statusString) {
+            return createErrorResponse(
+                'Trạng thái không hợp lệ.',
+                'validation'
+            );
+        }
+
+        // Convert frontend status to backend enum format
+        const statusMap = {
+            // Lowercase versions
+            'pending': 'Pending',
+            'confirmed': 'Confirmed', 
+            'cancelled': 'Cancelled',
+            'completed': 'Completed',
+            'checkedin': 'CheckedIn',
+            'overdue': 'Overdue',
+            'noshow': 'NoShow',
+            'abandoned': 'Abandoned',
+            'external': 'External',
+            'conflict': 'Conflict',
+            // Capitalized versions (from component clicks)
+            'Pending': 'Pending',
+            'Confirmed': 'Confirmed', 
+            'Cancelled': 'Cancelled',
+            'Completed': 'Completed',
+            'CheckedIn': 'CheckedIn',
+            'Overdue': 'Overdue',
+            'NoShow': 'NoShow',
+            'Abandoned': 'Abandoned',
+            'External': 'External',
+            'Conflict': 'Conflict'
+        };
+
+        const backendStatus = statusMap[statusString] || statusMap[statusString.toLowerCase()] || statusString;
+
+        console.log('Sending request with status:', backendStatus);
+
+        const response = await api.put(`/bookings/${bookingId}/status`, { 
+            NewStatus: backendStatus,
+            Notes: null // Optional notes field
+        });
         return response.data;
     } catch (error) {
         console.error('Status Update Error:', error);
@@ -221,7 +267,7 @@ export const getSpaceICalSettingsAPI = async (spaceId) => {
             );
         }
 
-        const response = await api.get(`/api/bookings/space/${spaceId}/ical-settings`);
+        const response = await api.get(`/bookings/space/${spaceId}/ical-settings`);
         return response.data;
     } catch (error) {
         console.error('iCal Settings Error:', error);
@@ -255,7 +301,7 @@ export const syncICalAPI = async (spaceId, settings) => {
             );
         }
 
-        const response = await api.post(`/api/bookings/space/${spaceId}/ical-sync`, settings);
+        const response = await api.post(`/bookings/space/${spaceId}/ical-sync`, settings);
         return response.data;
     } catch (error) {
         console.error('iCal Sync Error:', error);
@@ -289,7 +335,7 @@ export const checkBookingConflictsAPI = async (spaceId, booking) => {
             );
         }
 
-        const response = await api.post(`/api/bookings/space/${spaceId}/conflicts`, booking);
+        const response = await api.post(`/bookings/space/${spaceId}/conflicts`, booking);
         return response.data;
     } catch (error) {
         console.error('Conflict Check Error:', error);
@@ -372,7 +418,7 @@ export const updateSpaceICalSettingsAPI = async (spaceId, settings) => {
             );
         }
 
-        const response = await api.put(`/api/bookings/space/${spaceId}/ical-settings`, settings);
+        const response = await api.put(`/bookings/space/${spaceId}/ical-settings`, settings);
         return response.data;
     } catch (error) {
         console.error('iCal Settings Update Error:', error);

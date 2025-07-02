@@ -78,7 +78,7 @@ export const updateBookingAPI = async (bookingId, bookingData) => {
  */
 export const cancelBookingAPI = async (bookingId, cancellationData = {}) => {
     try {
-        const response = await api.patch(`/bookings/${bookingId}/cancel`, cancellationData);
+        const response = await api.put(`/bookings/${bookingId}/cancel`, cancellationData);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;
@@ -106,7 +106,7 @@ export const getBookingByIdAPI = async (bookingId) => {
  */
 export const confirmBookingAPI = async (bookingId) => {
     try {
-        const response = await api.patch(`/bookings/${bookingId}/confirm`);
+        const response = await api.put(`/bookings/${bookingId}/confirm`);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;
@@ -121,7 +121,7 @@ export const confirmBookingAPI = async (bookingId) => {
  */
 export const rejectBookingAPI = async (bookingId, rejectionData) => {
     try {
-        const response = await api.patch(`/bookings/${bookingId}/reject`, rejectionData);
+        const response = await api.put(`/bookings/${bookingId}/reject`, rejectionData);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

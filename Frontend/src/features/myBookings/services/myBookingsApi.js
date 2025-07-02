@@ -30,7 +30,7 @@ export const fetchMyBookingsAPI = async (filters = {}) => {
  */
 export const cancelMyBookingAPI = async (bookingId, cancellationData = {}) => {
     try {
-        const response = await api.patch(`/user/bookings/${bookingId}/cancel`, cancellationData);
+        const response = await api.put(`/user/bookings/${bookingId}/cancel`, cancellationData);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;
@@ -166,7 +166,7 @@ export const getBookingRemindersAPI = async () => {
  */
 export const markReminderAsReadAPI = async (reminderId) => {
     try {
-        const response = await api.patch(`/user/bookings/reminders/${reminderId}/read`);
+        const response = await api.put(`/user/bookings/reminders/${reminderId}/read`);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

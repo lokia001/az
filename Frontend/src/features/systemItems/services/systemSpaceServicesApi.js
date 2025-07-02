@@ -80,7 +80,7 @@ export const fetchSpaceServicesByCategoryAPI = async (category) => {
  */
 export const toggleSpaceServiceStatusAPI = async (serviceId) => {
     try {
-        const response = await apiClient.patch(`/api/admin/system/space-services/${serviceId}/toggle-status`);
+        const response = await apiClient.put(`/api/admin/system/space-services/${serviceId}/toggle-status`);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

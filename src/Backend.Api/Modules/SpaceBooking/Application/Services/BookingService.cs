@@ -15,6 +15,7 @@ using Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories;
 using Microsoft.EntityFrameworkCore; // Đảm bảo đã có dòng này
 
 using Backend.Api.Modules.UserRelated.Application.Contracts.Services; // Cần IUserService để lấy email user
+using Backend.Api.Services.Shared; // IEmailService
 
 
 public class BookingService : IBookingService
@@ -24,6 +25,7 @@ public class BookingService : IBookingService
     private readonly IMapper _mapper;
     private readonly AppDbContext _dbContext; // Unit of Work
     private readonly IUserService _userService; // Cần để lấy email user cho NotificationEmail
+    private readonly IEmailService _emailService; // For sending booking confirmation emails
     private readonly ILogger<BookingService> _logger;
     
     // Vietnam timezone for proper time validation
@@ -35,6 +37,7 @@ public class BookingService : IBookingService
         IMapper mapper,
         AppDbContext dbContext,
         IUserService userService,
+        IEmailService emailService,
         ILogger<BookingService> logger
         )
     {
@@ -43,6 +46,7 @@ public class BookingService : IBookingService
         _mapper = mapper;
         _dbContext = dbContext;
         _userService = userService;
+        _emailService = emailService;
         _logger = logger;
     }
     
@@ -550,6 +554,8 @@ public class BookingService : IBookingService
         // nên gọi các domain method tương ứng để có logic nghiệp vụ đầy đủ.
         // Phương thức này chủ yếu dùng để Owner/Admin xác nhận (Pending -> Confirmed) hoặc các điều chỉnh khác.
 
+        bool wasConfirmed = false; // Track if booking was confirmed to send email
+
         if (request.NewStatus == BookingStatus.Confirmed && booking.Status == BookingStatus.Pending)
         {
             // Update to confirmed status
@@ -559,6 +565,7 @@ public class BookingService : IBookingService
             booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
                 ? $"[Confirmed by {updaterUserId}]"
                 : $"{booking.NotesFromOwner}\n[Confirmed by {updaterUserId}]";
+            wasConfirmed = true;
         }
         else if (request.NewStatus == BookingStatus.Cancelled && (booking.Status == BookingStatus.Pending || booking.Status == BookingStatus.Confirmed))
         {
@@ -593,6 +600,61 @@ public class BookingService : IBookingService
 
         _logger.LogInformation("Status for BookingId: {BookingId} updated to {NewStatus} by UpdaterId: {UpdaterId}",
             bookingId, request.NewStatus, updaterUserId);
+
+        // Send email notification if booking was confirmed (Pending -> Confirmed)
+        if (wasConfirmed)
+        {
+            try
+            {
+                // Get user info for email
+                var user = await _userService.GetUserByIdAsync(booking.UserId);
+                if (user != null)
+                {
+                    // Determine notification email (use NotificationEmail if provided, otherwise fallback to user email)
+                    var notificationEmail = !string.IsNullOrWhiteSpace(booking.NotificationEmail) 
+                        ? booking.NotificationEmail 
+                        : user.Email;
+
+                    // Get owner email from space
+                    var ownerUser = await _userService.GetUserByIdAsync(booking.Space.OwnerId);
+                    var ownerEmail = ownerUser?.Email ?? "support@workingspace.com"; // Fallback email
+
+                    // Format dates for email
+                    var vietnamTime = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
+                    var startTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime, vietnamTime);
+                    var endTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(booking.EndTime, vietnamTime);
+
+                    var startTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm");
+                    var endTimeStr = endTimeLocal.ToString("dd/MM/yyyy HH:mm");
+                    var checkInTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm"); // Use StartTime as check-in time
+
+                    // Send confirmation email
+                    await _emailService.SendBookingConfirmationEmailAsync(
+                        toEmail: notificationEmail,
+                        customerName: user.FullName ?? user.Username,
+                        spaceName: booking.Space.Name,
+                        startTime: startTimeStr,
+                        endTime: endTimeStr,
+                        checkInTime: checkInTimeStr,
+                        ownerEmail: ownerEmail,
+                        bookingCode: booking.Id.ToString("N")[..8].ToUpper() // Use first 8 chars of GUID as booking code
+                    );
+
+                    _logger.LogInformation("Booking confirmation email sent to {Email} for booking {BookingId}", 
+                        notificationEmail, bookingId);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not find user {UserId} to send booking confirmation email for booking {BookingId}", 
+                        booking.UserId, bookingId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send booking confirmation email for booking {BookingId}", bookingId);
+                // Don't throw exception - email failure shouldn't affect booking confirmation
+            }
+        }
 
         // Lấy lại booking với thông tin Space để map SpaceName
         var updatedBookingWithDetails = await _bookingRepository.GetByIdAsync(booking.Id);

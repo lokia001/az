@@ -239,7 +239,7 @@ export const updateUserStatusAPI = async (userId, isActive) => {
             throw new Error('User ID is required');
         }
 
-        const response = await apiClient.patch(`/api/users/${userId}/status`, {
+        const response = await apiClient.put(`/api/users/${userId}/status`, {
             isActive: isActive
         });
 
