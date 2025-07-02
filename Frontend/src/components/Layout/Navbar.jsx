@@ -179,20 +179,23 @@ function Navbar() {
             case 'owner':
                 items = [
                     { path: '/profile', label: 'Profile' },
-                    { path: '/favorites', label: 'Favorites' }
+                    { path: '/favorites', label: 'Favorites' },
+                    { path: '/nearby-spaces', label: 'Nearby Spaces' }
                 ];
                 break;
             case 'sysadmin':
             case 'admin':
                 items = [
                     { path: '/profile', label: 'Profile' },
-                    { path: '/favorites', label: 'Favorites' }
+                    { path: '/favorites', label: 'Favorites' },
+                    { path: '/nearby-spaces', label: 'Nearby Spaces' }
                 ];
                 break;
             default: // User
                 items = [
                     { path: '/profile', label: 'Profile' },
                     { path: '/favorites', label: 'Favorites' },
+                    { path: '/nearby-spaces', label: 'Nearby Spaces' },
                     { path: '/owner-registration', label: 'Become Owner' }
                 ];
                 break;

@@ -515,5 +515,30 @@ export const updateOwnerProfile = async (profileData) => {
     }
 };
 
-// Export the axios instance for use in other services
+/**
+ * Find nearby spaces within a radius
+ * @param {Object} params - Search parameters
+ * @param {number} params.latitude - User's latitude
+ * @param {number} params.longitude - User's longitude  
+ * @param {number} params.maxDistanceKm - Maximum distance in km (default: 5)
+ * @param {number} params.maxResults - Maximum number of results (default: 20)
+ * @returns {Promise<Array>} Array of spaces with distance
+ */
+export const findNearbySpaces = async ({ latitude, longitude, maxDistanceKm = 5, maxResults = 20 }) => {
+    try {
+        const response = await api.get('/spaces/nearby', {
+            params: {
+                userLatitude: latitude,
+                userLongitude: longitude,
+                maxDistanceKm,
+                maxResults
+            }
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Error finding nearby spaces:', error);
+        throw error;
+    }
+};
+
 export default api;

@@ -55,6 +55,7 @@ import SystemSpaceServicesPage from '../features/systemItems/pages/SystemSpaceSe
 import AdminServicesAmenitiesPage from '../pages/AdminServicesAmenitiesPage';
 import ProfilePage from '../features/profile/pages/ProfilePage';
 import FavoriteSpacesPage from '../features/favoriteSpaces/pages/FavoriteSpacesPage';
+import NearbySpacesPage from '../features/nearbySpaces/pages/NearbySpacesPage';
 
 import OwnerSpacesPage from '../features/manageSpace/components/OwnerSpacesPage.jsx';
 // import CreateSpacePage from '../features/manageSpace/pages/CreateSpacePage.jsx';
@@ -163,6 +164,11 @@ const AppRouter = () => {
                     <Route path="/favorites" element={
                         <ProtectedRoute>
                             <FavoriteSpacesPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/nearby-spaces" element={
+                        <ProtectedRoute>
+                            <NearbySpacesPage />
                         </ProtectedRoute>
                     } />
                     {/* <Route path="/communities/search" element={<CommunitySearchPage />} /> */}
