@@ -9,9 +9,11 @@ using Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos; // Namespace 
 using Backend.Api.Modules.SpaceBooking.Application.Contracts.Infrastructure;
 using Backend.Api.Modules.SpaceBooking.Application.Contracts.Services;
 using Backend.Api.Modules.SpaceBooking.Domain.Entities;
+using Backend.Api.Modules.SpaceBooking.Domain.Enums;
 using Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories;
 using Backend.Api.SharedKernel.Dtos;
 using Backend.Api.Services; // << THÊM ĐỂ SỬ DỤNG CLOUDINARY SERVICE
+using Backend.Api.Utils; // << THÊM ĐỂ SỬ DỤNG LOCATIONHELPER
 
 // using Backend.Api.Modules.UserRelated.Application.Contracts.Services; // CHỈ THÊM NẾU CẦN CHO LOGIC NGHIỆP VỤ, KHÔNG PHẢI ĐỂ LÀM GIÀU DTO
 // using Backend.Api.Modules.UserRelated.Domain.Enums;
@@ -726,6 +728,76 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
                 criteria.PageSize,
                 totalCount
             );
+        }
+
+        public async Task<IEnumerable<SpaceWithDistanceDto>> FindNearbySpacesAsync(NearbySpaceSearchCriteria criteria)
+        {
+            try
+            {
+                _logger.LogInformation("Finding nearby spaces for location ({Lat}, {Lng}) within {Distance}km", 
+                    criteria.UserLatitude, criteria.UserLongitude, criteria.MaxDistanceKm);
+
+                // Lấy tất cả spaces có coordinates từ database
+                var spacesWithCoordinates = await _dbContext.Spaces
+                    .Include(s => s.SpaceImages)
+                    .Where(s => s.Latitude.HasValue && s.Longitude.HasValue && !s.IsDeleted)
+                    .ToListAsync();
+
+                var spacesWithDistance = new List<SpaceWithDistanceDto>();
+
+                foreach (var space in spacesWithCoordinates)
+                {
+                    // Tính khoảng cách bằng Haversine formula
+                    var distance = LocationHelper.CalculateDistanceKm(
+                        criteria.UserLatitude, criteria.UserLongitude,
+                        (double)space.Latitude!.Value, (double)space.Longitude!.Value);
+
+                    // Chỉ lấy những space trong bán kính
+                    if (distance <= criteria.MaxDistanceKm)
+                    {
+                        // Tìm cover image hoặc image đầu tiên
+                        var coverImage = space.SpaceImages?.FirstOrDefault(img => img.IsCoverImage) 
+                                        ?? space.SpaceImages?.FirstOrDefault();
+
+                        var spaceWithDistance = new SpaceWithDistanceDto
+                        {
+                            Id = space.Id,
+                            Name = space.Name,
+                            Address = space.Address,
+                            Description = space.Description,
+                            Latitude = space.Latitude.HasValue ? (double)space.Latitude.Value : null,
+                            Longitude = space.Longitude.HasValue ? (double)space.Longitude.Value : null,
+                            PricePerHour = space.PricePerHour,
+                            Type = space.Type.ToString(),
+                            Capacity = space.Capacity,
+                            DistanceKm = Math.Round(distance, 2),
+                            CoverImageUrl = coverImage?.ImageUrl,
+                            AverageRating = null, // Có thể tính từ reviews sau
+                            ReviewCount = 0, // Có thể tính từ reviews sau
+                            IsAvailable = !space.IsDeleted && space.Status == SpaceStatus.Available
+                        };
+
+                        spacesWithDistance.Add(spaceWithDistance);
+                    }
+                }
+
+                // Sắp xếp theo khoảng cách và giới hạn số lượng kết quả
+                var result = spacesWithDistance
+                    .OrderBy(s => s.DistanceKm)
+                    .Take(criteria.MaxResults)
+                    .ToList();
+
+                _logger.LogInformation("Found {Count} nearby spaces within {Distance}km", 
+                    result.Count, criteria.MaxDistanceKm);
+
+                return result;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error finding nearby spaces for location ({Lat}, {Lng})", 
+                    criteria.UserLatitude, criteria.UserLongitude);
+                throw;
+            }
         }
     }
 }

@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Threading.Tasks;
 using Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos;
 using Backend.Api.Modules.SpaceBooking.Application.Contracts.Services;
+using Backend.Api.Utils;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -376,6 +377,23 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             {
                 _logger.LogError(ex, "GetImagesForSpace: Error for Space {SpaceId} by User {UserId}", spaceId, userIdString);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving images for the space.");
+            }
+        }
+
+        // GET api/spaces/nearby (override route để public)
+        [HttpGet("~/api/spaces/nearby")]
+        [AllowAnonymous]
+        public async Task<IActionResult> FindNearbySpaces([FromQuery] NearbySpaceSearchCriteria criteria)
+        {
+            try
+            {
+                var result = await _spaceService.FindNearbySpacesAsync(criteria);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "FindNearbySpaces: Error finding nearby spaces");
+                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while finding nearby spaces.");
             }
         }
     }
