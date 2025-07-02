@@ -335,7 +335,6 @@ function SpaceDetailPage() {
 
     const breadcrumbItems = [
         { path: '/', label: 'Trang chủ' },
-        { path: `/search?city=${space?.city || 'unknown'}`, label: space?.city || 'Thành phố' },
         { path: `/spaces/${spaceIdOrSlug}`, label: space.name },
     ];
     
@@ -395,27 +394,52 @@ function SpaceDetailPage() {
                 <Row className="mb-4">
                     <Col md={8} className="mb-3 mb-md-0">
                         {mainImage && (
-                            <Image 
-                                src={mainImage} 
-                                alt={`Hình ảnh chính của ${space.name}`} 
-                                fluid 
-                                rounded 
-                                style={{ maxHeight: '500px', width: '100%', objectFit: 'cover' }} 
-                            />
+                            <div style={{ 
+                                height: '400px', 
+                                width: '100%', 
+                                overflow: 'hidden', 
+                                borderRadius: '0.375rem',
+                                cursor: 'pointer'
+                            }}>
+                                <Image 
+                                    src={mainImage} 
+                                    alt={`Hình ảnh chính của ${space.name}`} 
+                                    style={{ 
+                                        height: '100%', 
+                                        width: '100%', 
+                                        objectFit: 'cover',
+                                        objectPosition: 'center'
+                                    }} 
+                                />
+                            </div>
                         )}
                     </Col>
                     <Col md={4}>
                         <Row xs={2} className="g-2">
                             {space.spaceImages?.slice(0, 4).map((img, index) => (
                                 <Col key={img.id || index}>
-                                    <Image 
-                                        src={getImageUrl(space, space.spaceImages.indexOf(img), "150x100")} 
-                                        alt={`Thumbnail ${index + 1}`} 
-                                        fluid 
-                                        rounded 
-                                        onClick={() => setMainImage(getImageUrl(space, space.spaceImages.indexOf(img)))} 
-                                        style={{ cursor: 'pointer', height: '100px', objectFit: 'cover', width: '100%' }} 
-                                    />
+                                    <div style={{ 
+                                        height: '190px', 
+                                        width: '100%', 
+                                        overflow: 'hidden', 
+                                        borderRadius: '0.375rem',
+                                        cursor: 'pointer'
+                                    }}>
+                                        <Image 
+                                            src={getImageUrl(space, space.spaceImages.indexOf(img), "200x190")} 
+                                            alt={`Thumbnail ${index + 1}`} 
+                                            onClick={() => setMainImage(getImageUrl(space, space.spaceImages.indexOf(img)))} 
+                                            style={{ 
+                                                height: '100%', 
+                                                width: '100%', 
+                                                objectFit: 'cover',
+                                                objectPosition: 'center',
+                                                transition: 'transform 0.2s ease'
+                                            }}
+                                            onMouseEnter={(e) => e.target.style.transform = 'scale(1.05)'}
+                                            onMouseLeave={(e) => e.target.style.transform = 'scale(1)'}
+                                        />
+                                    </div>
                                 </Col>
                             ))}
                         </Row>
