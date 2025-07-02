@@ -88,8 +88,18 @@ const SpaceListItem = ({ space }) => {
     };
 
     const handleCardClick = (e) => {
-        // Prevent navigation if a button or link inside the card was clicked
-        if (e.target.closest('button') || e.target.closest('a')) {
+        // Prevent navigation if a button, link, or interactive element inside the card was clicked
+        if (e.target.closest('button') || 
+            e.target.closest('a') || 
+            e.target.closest('.btn') ||
+            e.target.closest('.favorite-btn') ||
+            e.target.closest('.favorite-button') ||
+            e.target.closest('[data-favorite-button]') ||
+            e.target.closest('[role="button"]') ||
+            e.target.closest('input') ||
+            e.target.closest('select') ||
+            e.target.closest('textarea')) {
+            e.stopPropagation();
             return;
         }
         navigate(detailLink);
@@ -129,11 +139,8 @@ const SpaceListItem = ({ space }) => {
                 <Col md={9}>
                     <Card.Body className="d-flex flex-column h-100"> {/* Flex column for spacing */}
                         <div>
-                            <Card.Title as="h5" className="mb-1"
-                            >
-                                <Link to={detailLink} className="text-decoration-none text-dark stretched-link"></Link>
+                            <Card.Title as="h5" className="mb-1">
                                 {space.name || 'Không gian chưa đặt tên'}
-
                             </Card.Title>
                             <p className="text-muted small mb-2">{space.address || 'Chưa có địa chỉ'}</p>
                         </div>
@@ -162,6 +169,7 @@ const SpaceListItem = ({ space }) => {
                                     spaceId={space.id} 
                                     size="sm"
                                     showCount={false}
+                                    className="favorite-btn"
                                 />
                                 <Button as={Link} to={detailLink} variant="outline-primary" size="sm">
                                     Xem chi tiết

@@ -38,8 +38,10 @@ const FavoriteButton = ({
     }, [dispatch, spaceId, isAuthenticated]);
 
     const handleToggleFavorite = async (e) => {
+        // Prevent event bubbling to parent elements
         e.preventDefault();
         e.stopPropagation();
+        e.nativeEvent.stopImmediatePropagation();
 
         if (!isAuthenticated) {
             // Could show login modal or redirect to login
@@ -92,9 +94,10 @@ const FavoriteButton = ({
             size={size}
             onClick={handleToggleFavorite}
             disabled={isLoading}
-            className={className}
+            className={`favorite-button ${className}`}
             style={style}
             title={isFavorited ? 'Bỏ lưu' : 'Lưu không gian'}
+            data-favorite-button="true"
         >
             {isLoading ? (
                 <Spinner size="sm" animation="border" />
