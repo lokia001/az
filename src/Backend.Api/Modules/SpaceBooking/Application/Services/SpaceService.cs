@@ -846,5 +846,53 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
                 throw;
             }
         }
+
+        public async Task<SpaceDto?> UpdateSpaceStatusAsync(Guid spaceId, UpdateSpaceStatusRequest request, Guid updaterUserId)
+        {
+            _logger.LogInformation("Updating status for Space {SpaceId} to {NewStatus} by User {UserId}", 
+                spaceId, request.Status, updaterUserId);
+
+            // 1. Find the space
+            var space = await _spaceRepository.GetByIdAsync(spaceId);
+            if (space == null)
+            {
+                _logger.LogWarning("Space {SpaceId} not found for status update.", spaceId);
+                return null;
+            }
+
+            // 2. Check authorization - only space owner or SysAdmin can update status
+            if (space.OwnerId != updaterUserId /* && !await _userService.UserHasRoleAsync(updaterUserId, UserRole.SysAdmin) */)
+            {
+                _logger.LogWarning("User {UserId} is not authorized to update status for Space {SpaceId} (Owner: {OwnerId})", 
+                    updaterUserId, spaceId, space.OwnerId);
+                throw new UnauthorizedAccessException("User is not authorized to update this space's status.");
+            }
+
+            // 3. Validate status transition - prevent setting to Booked manually
+            // The Booked status should be managed automatically by the booking system
+            if (request.Status == SpaceStatus.Booked)
+            {
+                _logger.LogWarning("Attempt to manually set Space {SpaceId} status to Booked by User {UserId}", 
+                    spaceId, updaterUserId);
+                throw new InvalidOperationException("Cannot manually set space status to 'Booked'. This status is managed automatically by the booking system.");
+            }
+
+            // 4. Update the status
+            var oldStatus = space.Status;
+            space.Status = request.Status;
+            space.UpdatedAt = DateTime.UtcNow;
+            space.LastEditedByUserId = updaterUserId;
+
+            // 5. Save changes
+            _spaceRepository.Update(space);
+            await _dbContext.SaveChangesAsync();
+
+            _logger.LogInformation("Space {SpaceId} status updated from {OldStatus} to {NewStatus} by User {UserId}", 
+                spaceId, oldStatus, request.Status, updaterUserId);
+
+            // 6. Return the updated space with details
+            var updatedSpaceWithDetails = await _spaceRepository.GetByIdWithDetailsAsync(space.Id);
+            return _mapper.Map<SpaceDto>(updatedSpaceWithDetails);
+        }
     }
 }

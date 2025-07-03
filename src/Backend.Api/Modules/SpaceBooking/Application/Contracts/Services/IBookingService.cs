@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos;
 using Backend.Api.Modules.SpaceBooking.Domain.Enums;
+using Backend.Api.Modules.SpaceBooking.Domain.Entities;
 
 namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Services
 {
@@ -21,5 +22,6 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Services
         Task<BookingDto?> CheckOutAsync(Guid bookingId, CheckOutRequest request, Guid staffUserId); // Truyền DTO
         Task<BookingDto?> MarkAsNoShowAsync(Guid bookingId, Guid markerUserId);
         Task<bool> IsSpaceAvailableAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null); // Bỏ comment
+        Task<int> CheckAndMarkOverdueBookingsAsync(IEnumerable<Booking> bookings); // Method for background service
     }
 }

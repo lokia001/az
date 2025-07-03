@@ -1,8 +1,9 @@
-import React from 'react';
-import { Modal, Button, Row, Col, Badge, Stack } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { Modal, Button, Row, Col, Stack, Form, Spinner } from 'react-bootstrap';
 import { useTranslation } from 'react-i18next';
 import { formatDate, formatCurrency } from '../../utils/formatters';
 import { formatVietnameseDateTime } from '../../utils/timeUtils';
+import apiClient from '../../services/apiClient';
 
 const DetailSection = ({ title, children }) => (
   <div className="mb-4">
@@ -13,6 +14,12 @@ const DetailSection = ({ title, children }) => (
 
 const BookingStatusBadge = ({ status }) => {
   const { t } = useTranslation();
+  // Review form state
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [rating, setRating] = useState(5);
+  const [commentText, setCommentText] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [reviewSubmitted, setReviewSubmitted] = useState(false);
   
   const statusConfig = {
     Pending: { variant: 'warning', label: t('bookingStatus.pending') },
@@ -52,6 +59,25 @@ const BookingDetailModal = ({ booking, show, onHide }) => {
     }
   };
 
+  // Submit review to backend
+  const handleReviewSubmit = async () => {
+    setSubmitting(true);
+    try {
+      await apiClient.post(
+        `/api/bookings/${booking.id}/reviews`,
+        { spaceId: booking.spaceId, rating, commentText }
+      );
+      setReviewSubmitted(true);
+      setShowReviewForm(false);
+      // Optionally show success message
+    } catch (error) {
+      console.error('Review submit error:', error);
+      alert(t('myBookings.review.error') || 'Failed to submit review');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   if (!booking) return null;
 
   return (
@@ -66,7 +92,7 @@ const BookingDetailModal = ({ booking, show, onHide }) => {
         <Modal.Title>{t('myBookings.details.title')}</Modal.Title>
       </Modal.Header>
 
-      <Modal.Body>
+        <Modal.Body>
         <Stack gap={4}>
           <div className="d-flex justify-content-between align-items-start">
             <div>
@@ -230,17 +256,41 @@ const BookingDetailModal = ({ booking, show, onHide }) => {
       </Modal.Body>
 
       <Modal.Footer>
-        <div className="d-flex gap-2">
+        <div className="d-flex flex-column gap-3">
           {booking.status === 'Pending' && (
             <Button variant="danger" onClick={handleCancel}>
               {t('myBookings.actions.cancel')}
             </Button>
           )}
-          
-          {booking.canReview && (
-            <Button variant="primary" onClick={() => {/* Handle review */}}>
+          {booking.canReview && !reviewSubmitted && !showReviewForm && (
+            <Button variant="primary" onClick={() => setShowReviewForm(true)}>
               {t('myBookings.actions.review')}
             </Button>
+          )}
+          {showReviewForm && (
+            <Form onSubmit={e => { e.preventDefault(); handleReviewSubmit(); }}>
+              <Form.Group controlId="rating" className="mb-2">
+                <Form.Label>{t('myBookings.review.rating')}</Form.Label>
+                <Form.Select value={rating} onChange={e => setRating(Number(e.target.value))}>
+                  {[1,2,3,4,5].map(val => (
+                    <option key={val} value={val}>{val} ⭐</option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+              <Form.Group controlId="commentText" className="mb-2">
+                <Form.Label>{t('myBookings.review.comment')}</Form.Label>
+                <Form.Control as="textarea" rows={3} value={commentText}
+                  onChange={e => setCommentText(e.target.value)} />
+              </Form.Group>
+              <div className="d-flex gap-2">
+                <Button type="submit" variant="success" disabled={submitting}>
+                  {submitting ? <Spinner animation="border" size="sm" /> : t('myBookings.actions.submitReview')}
+                </Button>
+                <Button variant="secondary" onClick={() => setShowReviewForm(false)} disabled={submitting}>
+                  {t('common.cancel')}
+                </Button>
+              </div>
+            </Form>
           )}
           
           {booking.status === 'Confirmed' && (

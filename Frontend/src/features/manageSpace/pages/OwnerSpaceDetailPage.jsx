@@ -17,7 +17,8 @@ import {
     Tab,
     Table,
     ButtonGroup,
-    Form
+    Form,
+    Dropdown
 } from 'react-bootstrap';
 import { 
     FaEdit, 
@@ -35,6 +36,7 @@ import {
     FaEye
 } from 'react-icons/fa';
 import { deleteSpaceAsync } from '../manageSpaceSlice';
+import SpaceForm from '../components/SpaceForm';
 import * as api from '../../../services/api';
 
 // Space status configuration matching OwnerSpacesPage
@@ -54,6 +56,7 @@ const OwnerSpaceDetailPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [showEditModal, setShowEditModal] = useState(false);
     const [refreshTrigger, setRefreshTrigger] = useState(0);
     
     // Get current user
@@ -110,7 +113,17 @@ const OwnerSpaceDetailPage = () => {
     */
 
     const handleEditSpace = () => {
-        navigate(`/owner/manage-spaces/edit/${space.id}`);
+        setShowEditModal(true);
+    };
+
+    const handleFormSubmit = async () => {
+        // Close modal and refresh data
+        setShowEditModal(false);
+        setRefreshTrigger(prev => prev + 1);
+    };
+
+    const handleCloseEditModal = () => {
+        setShowEditModal(false);
     };
 
     const handleDeleteSpace = async () => {
@@ -122,42 +135,39 @@ const OwnerSpaceDetailPage = () => {
         }
     };
 
-    const handleToggleStatus = async () => {
-        // Cycle through statuses: Available -> Maintenance -> Cleaning -> Available
-        const actualCurrentStatus = getActualSpaceStatus(space);
-        let newStatus;
+    const handleToggleStatus = async (newStatus) => {
+        if (!newStatus) return;
         
-        switch (actualCurrentStatus) {
-            case 'Available':
-                newStatus = 'Maintenance';
-                break;
-            case 'Maintenance':
-                newStatus = 'Cleaning';
-                break;
-            case 'Cleaning':
-                newStatus = 'Available';
-                break;
-            case 'Booked':
-                // Cannot change status when space is booked
-                alert('Không thể thay đổi trạng thái khi không gian đang được sử dụng');
-                return;
-            default:
-                newStatus = 'Available';
+        const actualCurrentStatus = getActualSpaceStatus(space);
+        
+        // Warning when manually setting to Booked status
+        if (newStatus === 'Booked') {
+            const confirmed = window.confirm(
+                'Cảnh báo: Bạn đang chuyển trạng thái thành "Đang sử dụng" thủ công. ' +
+                'Thông thường trạng thái này được quản lý tự động bởi hệ thống booking. ' +
+                'Bạn có chắc chắn muốn tiếp tục?'
+            );
+            if (!confirmed) return;
+        }
+        
+        // Don't change if it's the same status
+        if (newStatus === actualCurrentStatus) {
+            alert('Không gian đã ở trạng thái này rồi.');
+            return;
         }
         
         try {
-            const response = await fetch(`/api/spaces/${space.id}/status`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-            if (response.ok) {
-                setRefreshTrigger(prev => prev + 1);
-            } else {
-                throw new Error('Failed to update status');
-            }
+            console.log('Updating space status from', actualCurrentStatus, 'to', newStatus);
+            
+            // Use the regular space update API with complete space data but only change status
+            const updatedSpace = {
+                ...space,
+                status: newStatus
+            };
+            
+            await api.updateSpace(space.id, updatedSpace);
+            console.log('Status update successful');
+            setRefreshTrigger(prev => prev + 1);
         } catch (error) {
             console.error('Error toggling space status:', error);
             alert('Có lỗi xảy ra khi cập nhật trạng thái không gian');
@@ -166,12 +176,40 @@ const OwnerSpaceDetailPage = () => {
 
     const getStatusConfig = (status) => {
         const configs = {
-            Available: { label: 'Hoạt động', variant: 'success' },
+            Available: { label: 'Trống', variant: 'success' },
             Booked: { label: 'Đang sử dụng', variant: 'primary' },
             Maintenance: { label: 'Bảo trì', variant: 'warning' },
             Cleaning: { label: 'Đang dọn dẹp', variant: 'info' }
         };
         return configs[status] || configs.Available;
+    };
+
+    const getNextStatus = (currentStatus) => {
+        switch (currentStatus) {
+            case 'Available':
+                return { label: 'Bảo trì', variant: 'warning' };
+            case 'Maintenance':
+                return { label: 'Đang dọn dẹp', variant: 'info' };
+            case 'Cleaning':
+                return { label: 'Trống', variant: 'success' };
+            case 'Booked':
+                return { label: 'Bảo trì', variant: 'warning' };
+            default:
+                return { label: 'Trống', variant: 'success' };
+        }
+    };
+
+    const getAvailableStatuses = (currentStatus) => {
+        // Return all possible statuses
+        const allStatuses = [
+            { value: 'Available', label: 'Trống', variant: 'success' },
+            { value: 'Booked', label: 'Đang sử dụng', variant: 'primary' },
+            { value: 'Maintenance', label: 'Bảo trì', variant: 'warning' },
+            { value: 'Cleaning', label: 'Đang dọn dẹp', variant: 'info' }
+        ];
+        
+        // Filter out the current status
+        return allStatuses.filter(status => status.value !== currentStatus);
     };
 
     const getSpaceImageUrl = (space, index = 0) => {
@@ -264,13 +302,13 @@ const OwnerSpaceDetailPage = () => {
                     <p className="text-muted mb-0">ID: {space.id}</p>
                 </div>
                 <div className="d-flex gap-2">
-                    <Button 
+                    {/* <Button 
                         variant="outline-info"
                         onClick={() => navigate(`/spaces/${space.id}`)}
                         title="Xem như khách hàng"
                     >
                         <FaEye className="me-1" /> Xem trước
-                    </Button>
+                    </Button> */}
                     <Button 
                         variant="outline-secondary"
                         onClick={() => navigate('/owner/manage-spaces')}
@@ -300,16 +338,31 @@ const OwnerSpaceDetailPage = () => {
                                     >
                                         <FaCalendarAlt className="me-1" /> Quản lý booking
                                     </Button>
-                                    <Button 
-                                        variant={space.status === 'Disabled' ? 'success' : 'warning'}
-                                        onClick={handleToggleStatus}
-                                    >
-                                        {space.status === 'Disabled' ? (
-                                            <><FaToggleOff className="me-1" /> Kích hoạt</>
-                                        ) : (
-                                            <><FaToggleOn className="me-1" /> Vô hiệu hóa</>
-                                        )}
-                                    </Button>
+                                    <Dropdown>
+                                        <Dropdown.Toggle variant="secondary" id="status-dropdown">
+                                            <FaToggleOn className="me-1" /> Chuyển trạng thái
+                                        </Dropdown.Toggle>
+                                        <Dropdown.Menu>
+                                            {getAvailableStatuses(actualStatus).map((status) => (
+                                                <Dropdown.Item 
+                                                    key={status.value}
+                                                    onClick={() => handleToggleStatus(status.value)}
+                                                >
+                                                    <Badge bg={status.variant} className="me-2">
+                                                        {status.label}
+                                                    </Badge>
+                                                    Chuyển sang {status.label}
+                                                </Dropdown.Item>
+                                            ))}
+                                            {getAvailableStatuses(actualStatus).length === 0 && (
+                                                <Dropdown.Item disabled>
+                                                    <small className="text-muted">
+                                                        Không có trạng thái khác để chuyển
+                                                    </small>
+                                                </Dropdown.Item>
+                                            )}
+                                        </Dropdown.Menu>
+                                    </Dropdown>
                                     <Button 
                                         variant="danger"
                                         onClick={() => setShowDeleteModal(true)}
@@ -567,195 +620,32 @@ const OwnerSpaceDetailPage = () => {
                                     )}
                                 </Card.Body>
                             </Card>
-
-                            <Card>
-                                <Card.Body>
-                                    <h5 className="card-title">Tiện ích & Dịch vụ</h5>
-                                    
-                                    <Row>
-                                        <Col md={6}>
-                                            <h6>Tiện ích hệ thống:</h6>
-                                            {space.systemAmenities?.length > 0 ? (
-                                                <ul className="list-unstyled">
-                                                    {space.systemAmenities.map((amenity, index) => (
-                                                        <li key={index}>
-                                                            <span className="badge bg-primary me-2">Hệ thống</span>
-                                                            ✓ {amenity.name || amenity}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : (
-                                                <p className="text-muted">Chưa có tiện ích hệ thống nào</p>
-                                            )}
-                                        </Col>
-                                        
-                                        <Col md={6}>
-                                            <h6>Tiện ích tùy chỉnh:</h6>
-                                            {space.customAmenities?.length > 0 ? (
-                                                <ul className="list-unstyled">
-                                                    {space.customAmenities.map((amenity, index) => (
-                                                        <li key={index}>
-                                                            <span className="badge bg-success me-2">Tùy chỉnh</span>
-                                                            ✓ {amenity.name || amenity}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            ) : (
-                                                <p className="text-muted">Chưa có tiện ích tùy chỉnh nào</p>
-                                            )}
-                                        </Col>
-                                    </Row>
-                                    
-                                    {space.selectedSystemAmenityIds?.length > 0 && (
-                                        <Row className="mt-3">
-                                            <Col md={12}>
-                                                <h6>ID tiện ích đã chọn:</h6>
-                                                <p className="small text-muted">
-                                                    {space.selectedSystemAmenityIds.join(', ')}
-                                                </p>
-                                            </Col>
-                                        </Row>
-                                    )}
-                                    
-                                    {space.selectedSystemServices?.length > 0 && (
-                                        <Row className="mt-3">
-                                            <Col md={12}>
-                                                <h6>Dịch vụ hệ thống:</h6>
-                                                <ul className="list-unstyled">
-                                                    {space.selectedSystemServices.map((service, index) => (
-                                                        <li key={index}>
-                                                            <span className="badge bg-info me-2">Dịch vụ</span>
-                                                            ✓ {service.name || service} 
-                                                            {service.price && (
-                                                                <small className="text-muted ms-2">
-                                                                    ({service.price.toLocaleString('vi-VN')}đ)
-                                                                </small>
-                                                            )}
-                                                        </li>
-                                                    ))}
-                                                </ul>
-                                            </Col>
-                                        </Row>
-                                    )}
-                                </Card.Body>
-                            </Card>
                         </Col>
                     </Row>
                 </Tab>
-
-                <Tab eventKey="bookings" title="Tình trạng booking">
-                    <Card>
-                        <Card.Body>
-                            <h5 className="card-title">Thống kê booking</h5>
-                            <Row className="mb-4">
-                                <Col md={3}>
-                                    <div className="text-center p-3 bg-light rounded">
-                                        <h4 className="text-primary">{space.totalBookings || 0}</h4>
-                                        <small>Tổng booking</small>
-                                    </div>
-                                </Col>
-                                <Col md={3}>
-                                    <div className="text-center p-3 bg-light rounded">
-                                        <h4 className="text-warning">{space.pendingBookingsCount || 0}</h4>
-                                        <small>Chờ xác nhận</small>
-                                    </div>
-                                </Col>
-                                <Col md={3}>
-                                    <div className="text-center p-3 bg-light rounded">
-                                        <h4 className="text-success">{space.confirmedBookingsCount || 0}</h4>
-                                        <small>Đã xác nhận</small>
-                                    </div>
-                                </Col>
-                                <Col md={3}>
-                                    <div className="text-center p-3 bg-light rounded">
-                                        <h4 className="text-info">{space.totalRevenue?.toLocaleString('vi-VN') || 0}đ</h4>
-                                        <small>Doanh thu</small>
-                                    </div>
-                                </Col>
-                            </Row>
-                            
-                            <Row className="mb-4">
-                                <Col md={12}>
-                                    <h6>Trạng thái booking hiện tại:</h6>
-                                    <Table bordered size="sm">
-                                        <tbody>
-                                            <tr>
-                                                <td><strong>Booking hiện tại:</strong></td>
-                                                <td>
-                                                    {space.currentBooking ? (
-                                                        <span>
-                                                            <Badge bg="info">
-                                                                {space.currentBooking.status || 'N/A'}
-                                                            </Badge>
-                                                            <small className="ms-2">
-                                                                ID: {space.currentBooking.id || 'N/A'}
-                                                            </small>
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted">Không có</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Booking tiếp theo:</strong></td>
-                                                <td>
-                                                    {space.nextBooking ? (
-                                                        <span>
-                                                            <Badge bg="success">
-                                                                {space.nextBooking.status || 'N/A'}
-                                                            </Badge>
-                                                            <small className="ms-2">
-                                                                ID: {space.nextBooking.id || 'N/A'}
-                                                            </small>
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-muted">Không có</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Số booking hủy:</strong></td>
-                                                <td>{space.cancelledBookingsCount || 0}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Số booking hoàn thành:</strong></td>
-                                                <td>{space.completedBookingsCount || 0}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Tỷ lệ đặt chỗ thành công:</strong></td>
-                                                <td>
-                                                    {space.totalBookings > 0 
-                                                        ? `${((space.completedBookingsCount || 0) / space.totalBookings * 100).toFixed(1)}%`
-                                                        : 'N/A'
-                                                    }
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Lượt xem:</strong></td>
-                                                <td>{space.viewCount || 0}</td>
-                                            </tr>
-                                            <tr>
-                                                <td><strong>Lượt yêu thích:</strong></td>
-                                                <td>{space.favoriteCount || 0}</td>
-                                            </tr>
-                                        </tbody>
-                                    </Table>
-                                </Col>
-                            </Row>
-                            
-                            <div className="mt-4 text-center">
-                                <Button 
-                                    variant="primary"
-                                    onClick={() => navigate(`/owner/spaces/${space.id}/bookings`)}
-                                >
-                                    <FaCalendarAlt className="me-1" />
-                                    Xem chi tiết booking
-                                </Button>
-                            </div>
-                        </Card.Body>
-                    </Card>
-                </Tab>
             </Tabs>
+
+            {/* Edit Space Modal */}
+            {showEditModal && space && (
+                <Modal
+                    show={showEditModal}
+                    onHide={handleCloseEditModal}
+                    size="lg"
+                    backdrop="static"
+                    keyboard={false}
+                >
+                    <Modal.Header closeButton>
+                        <Modal.Title>Chỉnh sửa không gian</Modal.Title>
+                    </Modal.Header>
+                    <Modal.Body>
+                        <SpaceForm 
+                            initialData={space}
+                            onSubmit={handleFormSubmit}
+                            onCancel={handleCloseEditModal}
+                        />
+                    </Modal.Body>
+                </Modal>
+            )}
 
             {/* Delete Confirmation Modal */}
             <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>

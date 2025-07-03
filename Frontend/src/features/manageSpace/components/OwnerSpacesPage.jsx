@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Container, Row, Col, Card, Button, Form, InputGroup, Modal, Badge, Spinner, Alert, ToggleButton, Dropdown, ButtonGroup, Table, Pagination } from 'react-bootstrap';
 import { FaSearch, FaPlus, FaEdit, FaTrash, FaFilter, FaEye, FaCalendarAlt, FaStar, FaToggleOn, FaToggleOff, FaList, FaTh } from 'react-icons/fa';
 import { fetchSpaces, selectManageSpaces, selectManageSpaceLoading, selectManageSpaceError, deleteSpaceAsync } from '../manageSpaceSlice';
+import * as api from '../../../services/api';
 import SpaceForm from './SpaceForm';
 import SpaceDetails from './SpaceDetails';
 import '../styles/OwnerSpacesPage.css';
@@ -272,42 +273,45 @@ const OwnerSpacesPage = () => {
         );
     }
 
-    const handleToggleStatus = async (spaceId, currentStatus) => {
-        // Cycle through statuses: Available -> Maintenance -> Cleaning -> Available
-        const actualCurrentStatus = getActualSpaceStatus(spaces.find(s => s.id === spaceId));
-        let newStatus;
+    const handleToggleStatus = async (spaceId, newStatus) => {
+        if (!newStatus) return;
         
-        switch (actualCurrentStatus) {
-            case 'Available':
-                newStatus = 'Maintenance';
-                break;
-            case 'Maintenance':
-                newStatus = 'Cleaning';
-                break;
-            case 'Cleaning':
-                newStatus = 'Available';
-                break;
-            case 'Booked':
-                // Cannot change status when space is booked
-                alert('Không thể thay đổi trạng thái khi không gian đang được sử dụng');
-                return;
-            default:
-                newStatus = 'Available';
+        const targetSpace = spaces.find(s => s.id === spaceId);
+        if (!targetSpace) {
+            alert('Không tìm thấy không gian để cập nhật');
+            return;
+        }
+        
+        const actualCurrentStatus = getActualSpaceStatus(targetSpace);
+        
+        // Warning when manually setting to Booked status
+        if (newStatus === 'Booked') {
+            const confirmed = window.confirm(
+                'Cảnh báo: Bạn đang chuyển trạng thái thành "Đang sử dụng" thủ công. ' +
+                'Thông thường trạng thái này được quản lý tự động bởi hệ thống booking. ' +
+                'Bạn có chắc chắn muốn tiếp tục?'
+            );
+            if (!confirmed) return;
+        }
+        
+        // Don't change if it's the same status
+        if (newStatus === actualCurrentStatus) {
+            alert('Không gian đã ở trạng thái này rồi.');
+            return;
         }
         
         try {
-            const response = await fetch(`/api/spaces/${spaceId}/status`, {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ status: newStatus })
-            });
-            if (response.ok) {
-                setRefreshTrigger(prev => prev + 1);
-            } else {
-                throw new Error('Failed to update status');
-            }
+            console.log('Updating space status for space ID:', spaceId, 'from', actualCurrentStatus, 'to', newStatus);
+            
+            // Use the regular space update API with complete space data but only change status
+            const updatedSpace = {
+                ...targetSpace,
+                status: newStatus
+            };
+            
+            await api.updateSpace(spaceId, updatedSpace);
+            console.log('Status update successful');
+            setRefreshTrigger(prev => prev + 1);
         } catch (error) {
             console.error('Error toggling space status:', error);
             alert('Có lỗi xảy ra khi cập nhật trạng thái không gian');
@@ -461,36 +465,45 @@ const OwnerSpacesPage = () => {
                         >
                             <FaEdit className="me-1" /> Sửa
                         </Button>
-                        <Button
-                            variant={(() => {
-                                const status = getActualSpaceStatus(space);
-                                if (status === 'Booked') return 'outline-secondary';
-                                return 'outline-primary';
-                            })()}
-                            onClick={() => handleToggleStatus(space.id, space.status)}
-                            title={(() => {
-                                const status = getActualSpaceStatus(space);
-                                switch (status) {
-                                    case 'Available': return 'Chuyển sang: Bảo trì';
-                                    case 'Maintenance': return 'Chuyển sang: Dọn dẹp';
-                                    case 'Cleaning': return 'Chuyển sang: Trống';
-                                    case 'Booked': return 'Không thể thay đổi khi đang sử dụng';
-                                    default: return 'Thay đổi trạng thái';
-                                }
-                            })()}
-                            disabled={getActualSpaceStatus(space) === 'Booked'}
-                        >
-                            {(() => {
-                                const status = getActualSpaceStatus(space);
-                                switch (status) {
-                                    case 'Available': return '🔧'; // Maintenance next
-                                    case 'Maintenance': return '🧹'; // Cleaning next
-                                    case 'Cleaning': return '✅'; // Available next
-                                    case 'Booked': return '🔒'; // Locked
-                                    default: return '🔄';
-                                }
-                            })()}
-                        </Button>
+                        <Dropdown>
+                            <Dropdown.Toggle 
+                                variant="outline-primary" 
+                                size="sm"
+                                disabled={getActualSpaceStatus(space) === 'Booked'}
+                            >
+                                <FaToggleOn className="me-1" />
+                                {(() => {
+                                    const status = getActualSpaceStatus(space);
+                                    switch (status) {
+                                        case 'Available': return '✅';
+                                        case 'Maintenance': return '🔧';
+                                        case 'Cleaning': return '🧹';
+                                        case 'Booked': return '🔒';
+                                        default: return '🔄';
+                                    }
+                                })()}
+                            </Dropdown.Toggle>
+                            <Dropdown.Menu>
+                                {getAvailableStatuses(getActualSpaceStatus(space)).map((status) => (
+                                    <Dropdown.Item 
+                                        key={status.value}
+                                        onClick={() => handleToggleStatus(space.id, status.value)}
+                                    >
+                                        <Badge bg={status.variant} className="me-2">
+                                            {status.label}
+                                        </Badge>
+                                        Chuyển sang {status.label}
+                                    </Dropdown.Item>
+                                ))}
+                                {getAvailableStatuses(getActualSpaceStatus(space)).length === 0 && (
+                                    <Dropdown.Item disabled>
+                                        <small className="text-muted">
+                                            Không có trạng thái khác để chuyển
+                                        </small>
+                                    </Dropdown.Item>
+                                )}
+                            </Dropdown.Menu>
+                        </Dropdown>
                         <Button
                             variant="outline-danger"
                             onClick={() => handleDeleteSpace(space.id)}
@@ -532,6 +545,19 @@ const OwnerSpacesPage = () => {
         }
         // Fallback to legacy imageUrls or placeholder
         return space.imageUrls?.[0] || '/placeholder-space.jpg';
+    };
+
+    const getAvailableStatuses = (currentStatus) => {
+        // Return all possible statuses
+        const allStatuses = [
+            { value: 'Available', label: 'Trống', variant: 'success' },
+            { value: 'Booked', label: 'Đang sử dụng', variant: 'primary' },
+            { value: 'Maintenance', label: 'Bảo trì', variant: 'warning' },
+            { value: 'Cleaning', label: 'Đang dọn dẹp', variant: 'info' }
+        ];
+        
+        // Filter out the current status
+        return allStatuses.filter(status => status.value !== currentStatus);
     };
 
     return (
@@ -589,30 +615,7 @@ const OwnerSpacesPage = () => {
                 </Row>
             </div>
 
-            {/* Booking Status Rule Explanation */}
-            {showBookingGuide && (
-                <Alert 
-                    variant="info" 
-                    className="mb-4" 
-                    dismissible 
-                    onClose={() => setShowBookingGuide(false)}
-                >
-                    <Alert.Heading className="h6 mb-2">
-                        <i className="fas fa-info-circle me-2"></i>
-                        Hướng dẫn đọc trạng thái booking
-                    </Alert.Heading>
-                    <div className="small">
-                        <strong>Thông báo trạng thái booking chỉ để theo dõi, không thể thao tác trực tiếp:</strong>
-                        <ul className="mb-0 mt-1">
-                            <li><span className="badge bg-info me-1">Đang sử dụng</span> - Khách đã check-in, đang sử dụng không gian</li>
-                            <li><span className="badge bg-danger me-1">Quá hạn</span> - Booking đã quá giờ check-out, cần xử lý</li>
-                            <li><span className="badge bg-warning me-1">Cần xác nhận</span> - Có booking chờ bạn xác nhận</li>
-                            <li><span className="badge bg-success me-1">Booking tiếp theo</span> - Có booking đã xác nhận sắp tới</li>
-                        </ul>
-                        <small className="text-muted">💡 Để quản lý booking, nhấn nút "Lịch đặt" trên từng không gian.</small>
-                    </div>
-                </Alert>
-            )}
+  
 
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <h2>Quản lý không gian của tôi</h2>
@@ -915,36 +918,47 @@ const OwnerSpacesPage = () => {
                                             >
                                                 <FaEdit />
                                             </Button>
-                                            <Button
-                                                variant={(() => {
-                                                    const status = getActualSpaceStatus(space);
-                                                    if (status === 'Booked') return 'outline-secondary';
-                                                    return 'outline-primary';
-                                                })()}
-                                                onClick={() => handleToggleStatus(space.id, space.status)}
-                                                title={(() => {
-                                                    const status = getActualSpaceStatus(space);
-                                                    switch (status) {
-                                                        case 'Available': return 'Chuyển sang: Bảo trì';
-                                                        case 'Maintenance': return 'Chuyển sang: Dọn dẹp';
-                                                        case 'Cleaning': return 'Chuyển sang: Trống';
-                                                        case 'Booked': return 'Không thể thay đổi khi đang sử dụng';
-                                                        default: return 'Thay đổi trạng thái';
-                                                    }
-                                                })()}
-                                                disabled={getActualSpaceStatus(space) === 'Booked'}
-                                            >
-                                                {(() => {
-                                                    const status = getActualSpaceStatus(space);
-                                                    switch (status) {
-                                                        case 'Available': return '🔧';
-                                                        case 'Maintenance': return '🧹';
-                                                        case 'Cleaning': return '✅';
-                                                        case 'Booked': return '🔒';
-                                                        default: return '🔄';
-                                                    }
-                                                })()}
-                                            </Button>
+                                            <Dropdown>
+                                                <Dropdown.Toggle 
+                                                    variant="outline-primary" 
+                                                    size="sm"
+                                                    disabled={getActualSpaceStatus(space) === 'Booked'}
+                                                >
+                                                    {(() => {
+                                                        const status = getActualSpaceStatus(space);
+                                                        switch (status) {
+                                                            case 'Available': return '✅';
+                                                            case 'Maintenance': return '🔧';
+                                                            case 'Cleaning': return '🧹';
+                                                            case 'Booked': return '🔒';
+                                                            default: return '🔄';
+                                                        }
+                                                    })()}
+                                                </Dropdown.Toggle>
+                                                <Dropdown.Menu>
+                                                    {getAvailableStatuses(getActualSpaceStatus(space)).map((status) => (
+                                                        <Dropdown.Item 
+                                                            key={status.value}
+                                                            onClick={() => handleToggleStatus(space.id, status.value)}
+                                                        >
+                                                            <Badge bg={status.variant} className="me-2">
+                                                                {status.label}
+                                                            </Badge>
+                                                            Chuyển sang {status.label}
+                                                        </Dropdown.Item>
+                                                    ))}
+                                                    {getActualSpaceStatus(space) === 'Booked' && (
+                                                        <>
+                                                            <Dropdown.Divider />
+                                                            <Dropdown.Item disabled>
+                                                                <small className="text-muted">
+                                                                    Không gian đang được sử dụng
+                                                                </small>
+                                                            </Dropdown.Item>
+                                                        </>
+                                                    )}
+                                                </Dropdown.Menu>
+                                            </Dropdown>
                                             <Button
                                                 variant="outline-danger"
                                                 onClick={() => handleDeleteSpace(space.id)}

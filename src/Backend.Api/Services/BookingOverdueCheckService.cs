@@ -2,7 +2,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Backend.Api.Modules.SpaceBooking.Application.Services;
+using Backend.Api.Modules.SpaceBooking.Application.Contracts.Services;
 using Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Repositories;
 using Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories;
 using System.Linq;
@@ -54,7 +54,7 @@ namespace Backend.Api.Services
             {
                 using var scope = _serviceProvider.CreateScope();
                 var bookingRepository = scope.ServiceProvider.GetRequiredService<IBookingRepository>();
-                var bookingService = scope.ServiceProvider.GetRequiredService<BookingService>();
+                var bookingService = scope.ServiceProvider.GetRequiredService<IBookingService>();
 
                 // Get all active bookings (not in final states)
                 var activeBookings = await bookingRepository.GetActiveBookingsAsync();

@@ -174,32 +174,20 @@ function Navbar() {
         const userRole = currentUser?.role?.toLowerCase();
         let items = [];
 
-        // Tất cả các role đều có Profile và Logout, chỉ khác nhau ở text hiển thị
+        // Only 'user' role shows bookings/favorites/nearby; others see only profile
         switch (userRole) {
-            case 'owner':
-                items = [
-                    { path: '/profile', label: 'Profile' },
-                    { path: '/my-bookings', label: 'My Bookings' },
-                    { path: '/favorites', label: 'Favorites' },
-                    { path: '/nearby-spaces', label: 'Nearby Spaces' }
-                ];
-                break;
-            case 'sysadmin':
-            case 'admin':
-                items = [
-                    { path: '/profile', label: 'Profile' },
-                    { path: '/my-bookings', label: 'My Bookings' },
-                    { path: '/favorites', label: 'Favorites' },
-                    { path: '/nearby-spaces', label: 'Nearby Spaces' }
-                ];
-                break;
-            default: // User
+            case 'user':
                 items = [
                     { path: '/profile', label: 'Profile' },
                     { path: '/my-bookings', label: 'My Bookings' },
                     { path: '/favorites', label: 'Favorites' },
                     { path: '/nearby-spaces', label: 'Nearby Spaces' },
                     { path: '/owner-registration', label: 'Become Owner' }
+                ];
+                break;
+            default:
+                items = [
+                    { path: '/profile', label: 'Profile' }
                 ];
                 break;
         }

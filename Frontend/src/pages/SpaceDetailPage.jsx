@@ -98,6 +98,12 @@ function SpaceDetailPage() {
     const currentUser = useSelector(state => state.auth.user);
     const isOwner = currentUser?.roles?.includes('Owner') || currentUser?.roles?.includes('SysAdmin');
     const isOwnerOfThisSpace = isOwner && space && currentUser && space.ownerId === currentUser.id;
+    
+    // Check if user can book - exclude Owner, SysAdmin, and Guest roles
+    const canBook = currentUser && 
+        !currentUser.roles?.includes('Owner') && 
+        !currentUser.roles?.includes('SysAdmin') && 
+        !currentUser.roles?.includes('Guest');
 
     const [mainImage, setMainImage] = useState(null);
     const [activeTabKey, setActiveTabKey] = useState(SECTIONS[0].id);
@@ -739,47 +745,57 @@ function SpaceDetailPage() {
                                         />
                                     </div>
                                     
-                                    <div className="d-grid gap-2 mt-4">
-                                        <Button 
-                                            variant="warning" 
-                                            size="lg" 
-                                            onClick={handleOpenBookingModal}
-                                            className="d-flex align-items-center justify-content-center"
-                                        >
-                                            <i className="bi bi-calendar-check me-2"></i>
-                                            ĐẶT NGAY / KIỂM TRA LỊCH
-                                        </Button>
-                                        <Button 
-                                            variant="outline-primary" 
-                                            size="lg"
-                                            className="d-flex align-items-center justify-content-center"
-                                            onClick={() => navigate(`/spaces/${spaceIdOrSlug}/calendar`)}
-                                        >
-                                            <i className="bi bi-calendar-week me-2"></i>
-                                            XEM LỊCH ĐẶT CHỖ
-                                        </Button>
-                                        <Button 
-                                            variant="outline-secondary" 
-                                            size="lg"
-                                            className="d-flex align-items-center justify-content-center"
-                                            onClick={() => {
-                                                if (!currentUser) {
-                                                    navigate('/login', { 
-                                                        state: { 
-                                                            from: `/spaces/${spaceIdOrSlug}`,
-                                                            message: 'Vui lòng đăng nhập để liên hệ với chủ không gian.' 
-                                                        } 
-                                                    });
-                                                    return;
-                                                }
-                                                // If user is logged in, show contact form or redirect to message page
-                                                navigate(`/messages/new?recipient=${space.ownerId}&spaceName=${encodeURIComponent(space.name)}`);
-                                            }}
-                                        >
-                                            <i className="bi bi-chat-dots me-2"></i>
-                                            LIÊN HỆ CHỦ KHÔNG GIAN
-                                        </Button>
-                                    </div>
+                                    {/* Conditional rendering of booking buttons based on user role */}
+                                    {canBook ? (
+                                        <div className="d-grid gap-2 mt-4">
+                                            <Button 
+                                                variant="warning" 
+                                                size="lg" 
+                                                onClick={handleOpenBookingModal}
+                                                className="d-flex align-items-center justify-content-center"
+                                            >
+                                                <i className="bi bi-calendar-check me-2"></i>
+                                                ĐẶT NGAY / KIỂM TRA LỊCH
+                                            </Button>
+                                            <Button 
+                                                variant="outline-primary" 
+                                                size="lg"
+                                                className="d-flex align-items-center justify-content-center"
+                                                onClick={() => navigate(`/spaces/${spaceIdOrSlug}/calendar`)}
+                                            >
+                                                <i className="bi bi-calendar-week me-2"></i>
+                                                XEM LỊCH ĐẶT CHỖ
+                                            </Button>
+                                            <Button 
+                                                variant="outline-secondary" 
+                                                size="lg"
+                                                className="d-flex align-items-center justify-content-center"
+                                                onClick={() => {
+                                                    if (!currentUser) {
+                                                        navigate('/login', { 
+                                                            state: { 
+                                                                from: `/spaces/${spaceIdOrSlug}`,
+                                                                message: 'Vui lòng đăng nhập để liên hệ với chủ không gian.' 
+                                                            } 
+                                                        });
+                                                        return;
+                                                    }
+                                                    // If user is logged in, show contact form or redirect to message page
+                                                    navigate(`/messages/new?recipient=${space.ownerId}&spaceName=${encodeURIComponent(space.name)}`);
+                                                }}
+                                            >
+                                                <i className="bi bi-chat-dots me-2"></i>
+                                                LIÊN HỆ CHỦ KHÔNG GIAN
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="mt-4">
+                                            <Alert variant="info" className="text-center">
+                                                <i className="bi bi-info-circle me-2"></i>
+                                                Chức năng đặt chỗ không khả dụng cho vai trò của bạn.
+                                            </Alert>
+                                        </div>
+                                    )}
                                 </Card.Body>
                             </Card>
                         </div>

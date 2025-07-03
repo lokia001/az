@@ -73,7 +73,7 @@ const Sidebar = () => {
 
     return (
         <aside className="sidebar" style={styles.sidebar}>
-            <div style={styles.sidebarHeader}><div style={styles.logo}><Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}><span>CoworkingHub</span></Link></div></div>
+            {/* <div style={styles.sidebarHeader}><div style={styles.logo}><Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}><span>CoworkingHub</span></Link></div></div> */}
             <div style={styles.searchBar}>
                 <input 
                     type="text" 
@@ -117,16 +117,6 @@ const Sidebar = () => {
                             }}
                         >
                             <span>🏠</span> Khám phá CĐ
-                        </NavLink>
-                    </li>
-                    <li style={styles.navItem}>
-                        <NavLink 
-                            to="/searchPage" 
-                            style={({ isActive }) => ({ 
-                                ...styles.navLink, 
-                                ...(isActive ? styles.activeNavLink : {}) 
-                            })}>
-                            <span>🧭</span> Khám phá Không gian
                         </NavLink>
                     </li>
                 </ul>

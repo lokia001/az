@@ -525,7 +525,7 @@ function PostDetailPage() {
                                 {/* Add other reaction buttons here (Haha, Wow, Sad, Angry) following the same pattern */}
                             </div>
                             <div className="text-muted small">
-                                Lượt xem: {post.viewCount || 0}
+                                {/* Lượt xem: {post.viewCount || 0} */}
                                 {/* Display total likes and loves if counts are available and non-zero */}
                                 {likesCount > 0 && <span className="ms-2">· {likesCount} lượt thích</span>}
                                 {lovesCount > 0 && <span className="ms-2">· {lovesCount} lượt yêu thích</span>}

@@ -12,6 +12,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Services
     {
         Task<SpaceDto> CreateSpaceAsync(CreateSpaceRequest request, Guid creatorUserId);
         Task<SpaceDto?> UpdateSpaceAsync(Guid spaceId, UpdateSpaceRequest request, Guid editorUserId);
+        Task<SpaceDto?> UpdateSpaceStatusAsync(Guid spaceId, UpdateSpaceStatusRequest request, Guid updaterUserId);
         Task<bool> DeleteSpaceAsync(Guid spaceId, Guid deleterUserId);
         Task<IEnumerable<SpaceDto>> GetSpacesByOwnerAsync(Guid ownerId);
         Task<SpaceImageDto> AddImageToSpaceAsync(Guid spaceId, UploadSpaceImageRequest request, Guid uploaderUserId);

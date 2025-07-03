@@ -558,4 +558,25 @@ export const searchUsers = async (query) => {
     }
 };
 
+export const updateSpaceStatus = async (spaceId, status) => {
+    try {
+        console.log("updateSpaceStatus called with ID:", spaceId, "and status:", status);
+        
+        const url = `/owner/spaces/${spaceId}/status`;
+        console.log("Request URL:", url);
+        
+        const response = await api.put(url, { status: status });
+        console.log("updateSpaceStatus response:", response.data);
+        return response.data;
+    } catch (error) {
+        console.error("Error updating space status:", error);
+        
+        if (error.response) {
+            console.error("Response status:", error.response.status);
+            console.error("Response data:", error.response.data);
+        }
+        throw error;
+    }
+};
+
 export default api;

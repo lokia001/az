@@ -206,7 +206,7 @@ const CommunityExplorer = () => {
             <Col>
               <h2 className="mb-3">Khám phá Cộng đồng</h2>
               <Form onSubmit={handleSearch}>
-                <Row>
+                {/* <Row>
                   <Col md={6} className="mb-2">
                     <InputGroup>
                       <Form.Control
@@ -220,7 +220,7 @@ const CommunityExplorer = () => {
                       </Button>
                     </InputGroup>
                   </Col>
-                </Row>
+                </Row> */}
               </Form>
 
               {searchStatus === 'loading' && (

@@ -396,5 +396,48 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while finding nearby spaces.");
             }
         }
+
+        // PUT api/owner/spaces/{id}/status
+        [HttpPut("{id:guid}/status")]
+        [Authorize(Roles = "Owner,SysAdmin")]
+        public async Task<IActionResult> UpdateSpaceStatus(Guid id, [FromBody] UpdateSpaceStatusRequest request)
+        {
+            var updaterUserIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(updaterUserIdString, out var updaterUserId))
+            {
+                return Unauthorized(new { message = "Invalid user identifier in token." });
+            }
+
+            try
+            {
+                var updatedSpaceDto = await _spaceService.UpdateSpaceStatusAsync(id, request, updaterUserId);
+                if (updatedSpaceDto == null)
+                {
+                    return NotFound(new { message = $"Space with ID {id} not found for status update." });
+                }
+                return Ok(updatedSpaceDto);
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("UpdateSpaceStatus: Unauthorized attempt for Space {SpaceId} by User {UserId}. Message: {Message}", 
+                    id, updaterUserIdString, ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogInformation("UpdateSpaceStatus: Invalid operation for Space {SpaceId}. Message: {Message}", id, ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogInformation("UpdateSpaceStatus: Argument exception for Space {SpaceId}. Message: {Message}", id, ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateSpaceStatus: Unexpected error for Space {SpaceId} by User {UserId}.", id, updaterUserIdString);
+                return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred while updating the space status.");
+            }
+        }
     }
 }

@@ -164,4 +164,11 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos
 
         public SpaceSummaryDto() { } // Constructor không tham số
     }
+
+    // DTO for updating space status
+    public class UpdateSpaceStatusRequest
+    {
+        [Required]
+        public SpaceStatus Status { get; set; }
+    }
 }
