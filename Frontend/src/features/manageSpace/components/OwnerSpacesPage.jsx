@@ -355,7 +355,7 @@ const OwnerSpacesPage = () => {
                     </div>
                 );
             }
-            if (booking.status === 'Overdue') {
+            if (booking.status === 'OverduePending' || booking.status === 'OverdueConfirmed' || booking.status === 'OverdueCheckedIn') {
                 return (
                     <div className="alert alert-danger py-1 px-2 mb-2 small">
                         <i className="fas fa-exclamation-triangle me-1"></i>

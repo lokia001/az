@@ -30,8 +30,9 @@ import {
 import { selectCurrentUser } from '../auth/slices/authSlice';
 import { formatVietnameseDateTime } from '../../utils/timeUtils';
 import { getOwnerSpaces } from '../../services/api';
-import { getStatusText } from './services/ownerBookingApi';
+import { getStatusText, fetchOwnerBookingsAPI } from './services/ownerBookingApi';
 import AddOwnerBookingModal from './components/AddOwnerBookingModal';
+import ConflictAlert from './components/ConflictAlert';
 
 const OwnerBookingManagement = () => {
     const { spaceId } = useParams(); // << LẤY spaceId từ URL
@@ -55,6 +56,10 @@ const OwnerBookingManagement = () => {
     const [ownerSpaces, setOwnerSpaces] = useState([]);
     const [loadingSpaces, setLoadingSpaces] = useState(true);
     const [spacesError, setSpacesError] = useState(null);
+    
+    // State cho global conflict detection
+    const [allOwnerBookings, setAllOwnerBookings] = useState([]);
+    const [loadingAllBookings, setLoadingAllBookings] = useState(false);
     
     // Redux state
     const currentUser = useSelector(selectCurrentUser);
@@ -109,6 +114,51 @@ const OwnerBookingManagement = () => {
         dispatch(fetchOwnerBookings());
     }, [dispatch]);
 
+    // Fetch all bookings for global conflict detection
+    useEffect(() => {
+        const fetchAllOwnerBookings = async () => {
+            if (!currentUser?.id || loadingSpaces || ownerSpaces.length === 0) {
+                return;
+            }
+            
+            try {
+                setLoadingAllBookings(true);
+                const allBookings = [];
+                
+                // Fetch bookings for all owner spaces
+                for (const space of ownerSpaces) {
+                    try {
+                        const spaceBookings = await fetchOwnerBookingsAPI({
+                            spaceId: space.id,
+                            status: '', // All statuses
+                            pageNumber: 1,
+                            pageSize: 1000 // Large number to get all bookings
+                        });
+                        
+                        // Add space info to each booking for grouping
+                        const bookingsWithSpace = spaceBookings.data.map(booking => ({
+                            ...booking,
+                            spaceName: space.name,
+                            spaceId: space.id
+                        }));
+                        
+                        allBookings.push(...bookingsWithSpace);
+                    } catch (error) {
+                        console.error(`Failed to fetch bookings for space ${space.name}:`, error);
+                    }
+                }
+                
+                setAllOwnerBookings(allBookings);
+            } catch (error) {
+                console.error('Failed to fetch all owner bookings:', error);
+            } finally {
+                setLoadingAllBookings(false);
+            }
+        };
+        
+        fetchAllOwnerBookings();
+    }, [currentUser?.id, ownerSpaces, bookings, loadingSpaces]); // Re-fetch when bookings change and not loading
+
     // Handle modal closing after successful booking creation
     useEffect(() => {
         if (createStatus === 'succeeded' && showAddBookingModal) {
@@ -151,6 +201,10 @@ const OwnerBookingManagement = () => {
         }
     };
 
+    const handleConflictResolution = async (bookingId, action) => {
+        await handleStatusUpdate(bookingId, action);
+    };
+
     const handleExport = async () => {
         try {
             const blob = await dispatch(exportOwnerBookings()).unwrap();
@@ -183,13 +237,16 @@ const OwnerBookingManagement = () => {
             case 'Pending': variant = 'warning'; break;
             case 'Confirmed': variant = 'success'; break;
             case 'CheckedIn': variant = 'primary'; break;
+            case 'Checkout': variant = 'info'; break;
             case 'Completed': variant = 'info'; break;
-            case 'Overdue': variant = 'danger'; break;
+            case 'OverduePending': variant = 'danger'; break;
+            case 'OverdueCheckin': variant = 'danger'; break;
+            case 'OverdueCheckout': variant = 'danger'; break;
             case 'NoShow': variant = 'dark'; break;
             case 'Cancelled': variant = 'danger'; break;
-            case 'Abandoned': variant = 'secondary'; break;
+            case 'Abandoned': variant = 'warning'; break;
             case 'External': variant = 'light'; break;
-            case 'Conflict': variant = 'warning'; break;
+            case 'Conflict': variant = 'danger'; break;
             default: variant = 'secondary';
         }
         
@@ -335,6 +392,24 @@ const OwnerBookingManagement = () => {
                     </>
                 )}
                 
+                {/* Conflict status actions */}
+                {booking.status === 'Conflict' && (
+                    <>
+                        <Dropdown.Item 
+                            onClick={() => handleStatusUpdate(booking.id, 'Confirmed')}
+                            className="text-success"
+                        >
+                            ✓ Xác nhận (sẽ hủy booking xung đột khác)
+                        </Dropdown.Item>
+                        <Dropdown.Item 
+                            onClick={() => handleStatusUpdate(booking.id, 'Cancelled')}
+                            className="text-danger"
+                        >
+                            ✗ Hủy booking này
+                        </Dropdown.Item>
+                    </>
+                )}
+                
                 {/* Confirmed status actions */}
                 {booking.status === 'Confirmed' && (
                     <>
@@ -356,20 +431,36 @@ const OwnerBookingManagement = () => {
                         <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Completed')}>
                             ✅ Check-out & Hoàn thành
                         </Dropdown.Item>
-                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Overdue')}>
-                            ⏰ Đánh dấu quá hạn
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Cancelled')}>
+                            🚫 Hủy đặt chỗ
+                        </Dropdown.Item>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Abandoned')}>
+                            🚨 Đánh dấu bỏ cuộc (sự cố)
                         </Dropdown.Item>
                     </>
                 )}
                 
                 {/* Overdue status actions */}
-                {booking.status === 'Overdue' && (
+                {(booking.status === 'OverduePending' || booking.status === 'OverdueCheckin' || booking.status === 'OverdueCheckout') && (
                     <>
                         <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Completed')}>
                             ✅ Hoàn thành (muộn)
                         </Dropdown.Item>
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Cancelled')}>
+                            🚫 Hủy đặt chỗ
+                        </Dropdown.Item>
                         <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Abandoned')}>
                             🏃 Đánh dấu bỏ trốn
+                        </Dropdown.Item>
+                    </>
+                )}
+                
+                {/* General Cancel and Abandon actions for active bookings */}
+                {['Pending', 'Confirmed'].includes(booking.status) && (
+                    <>
+                        <Dropdown.Divider />
+                        <Dropdown.Item onClick={() => handleStatusUpdate(booking.id, 'Abandoned')}>
+                            🚨 Đánh dấu bỏ cuộc (sự cố khẩn cấp)
                         </Dropdown.Item>
                     </>
                 )}
@@ -463,6 +554,63 @@ const OwnerBookingManagement = () => {
         return <Pagination className="justify-content-center mt-3">{items}</Pagination>;
     };
 
+    // Fetch all bookings from all owner's spaces for global conflict detection
+    const fetchAllOwnerBookings = async () => {
+        if (!currentUser?.id || ownerSpaces.length === 0) return;
+        
+        try {
+            setLoadingAllBookings(true);
+            const allBookingsPromises = ownerSpaces.map(async (space) => {
+                try {
+                    const response = await fetch(`/api/bookings/space/${space.id}`, {
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    if (response.ok) {
+                        const spaceBookings = await response.json();
+                        // Add spaceName to each booking for display
+                        return spaceBookings.map(booking => ({
+                            ...booking,
+                            spaceName: space.name
+                        }));
+                    }
+                    return [];
+                } catch (error) {
+                    console.error(`Failed to fetch bookings for space ${space.id}:`, error);
+                    return [];
+                }
+            });
+            
+            const allBookingsArrays = await Promise.all(allBookingsPromises);
+            const flatBookings = allBookingsArrays.flat();
+            setAllOwnerBookings(flatBookings);
+        } catch (error) {
+            console.error('Failed to fetch all owner bookings:', error);
+        } finally {
+            setLoadingAllBookings(false);
+        }
+    };
+
+    // Fetch all bookings when spaces are loaded
+    useEffect(() => {
+        if (ownerSpaces.length > 0) {
+            fetchAllOwnerBookings();
+        }
+    }, [ownerSpaces, currentUser?.id]);
+
+    // Refetch all bookings when current space bookings change (indicating updates)
+    useEffect(() => {
+        if (ownerSpaces.length > 0 && bookings) {
+            fetchAllOwnerBookings();
+        }
+    }, [bookings]);
+
+    useEffect(() => {
+        fetchAllOwnerBookings();
+    }, [ownerSpaces, currentUser?.id]);
+
     if (status === 'loading' && !bookings.length) {
         return (
             <Container className="py-4">
@@ -484,6 +632,13 @@ const OwnerBookingManagement = () => {
                     {error}
                 </Alert>
             )}
+
+            {/* Conflict Alert - hiển thị cảnh báo xung đột booking global */}
+            <ConflictAlert 
+                bookings={allOwnerBookings} 
+                onResolveConflict={handleConflictResolution}
+                loading={loadingAllBookings}
+            />
 
             {/* Show loading state when spaces are loading */}
             {loadingSpaces ? (

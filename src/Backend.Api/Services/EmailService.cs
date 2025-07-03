@@ -176,5 +176,103 @@ namespace Backend.Api.Services.Shared
                 _logger.LogError(ex, "Failed to send booking confirmation email to {ToEmail} for booking {BookingCode}", toEmail, bookingCode);
             }
         }
+        
+        public async Task SendBookingCancellationEmailAsync(string toEmail, string customerName, string spaceName,
+            string startTime, string endTime, string cancellationReason, string ownerEmail, string bookingCode, string? timeline = null)
+        {
+            var smtpSettings = _configuration.GetSection("SmtpSettings");
+            var smtpHost = smtpSettings["Host"];
+            var smtpPort = int.Parse(smtpSettings["Port"] ?? "587");
+            var smtpUsername = smtpSettings["Username"];
+            var senderName = smtpSettings["SenderName"] ?? "Working Space Booking";
+
+            _logger.LogInformation("Sending booking cancellation email to {ToEmail} for booking {BookingCode}", toEmail, bookingCode);
+
+            if (string.IsNullOrEmpty(smtpHost) || string.IsNullOrEmpty(smtpUsername) || string.IsNullOrEmpty(_smtpPassword))
+            {
+                _logger.LogError("SMTP settings are not fully configured. Cannot send booking cancellation email.");
+                return;
+            }
+
+            try
+            {
+                var emailMessage = new MimeMessage();
+                emailMessage.From.Add(new MailboxAddress(senderName, smtpUsername));
+                emailMessage.To.Add(new MailboxAddress(customerName, toEmail));
+                emailMessage.Subject = $"Thông báo hủy booking - {bookingCode}";
+
+                // Create timeline HTML if provided
+                var timelineHtml = "";
+                if (!string.IsNullOrEmpty(timeline))
+                {
+                    timelineHtml = $@"
+                        <div style=""background-color: #f8f9fa; padding: 15px; border-radius: 8px; margin: 20px 0;"">
+                            <h4 style=""margin-top: 0; color: #495057;"">📅 Lịch trình thời gian (giờ Việt Nam, 24h)</h4>
+                            <div style=""font-family: monospace; font-size: 14px; line-height: 1.5;"">
+                                {timeline}
+                            </div>
+                            <p style=""font-size: 12px; color: #6c757d; margin-top: 10px;"">
+                                <span style=""color: #28a745;"">● Xanh:</span> Thời gian có thể đặt &nbsp;&nbsp;
+                                <span style=""color: #dc3545;"">● Đỏ:</span> Thời gian đã có booking khác
+                            </p>
+                        </div>";
+                }
+
+                var bodyBuilder = new BodyBuilder
+                {
+                    HtmlBody = $@"
+                        <div style=""font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;"">
+                            <h2 style=""color: #dc3545;"">❌ Booking của bạn đã bị hủy</h2>
+                            
+                            <p>Xin chào <strong>{customerName}</strong>,</p>
+                            
+                            <p>Chúng tôi rất tiếc phải thông báo rằng booking của bạn đã bị hủy do xung đột thời gian.</p>
+                            
+                            <div style=""background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;"">
+                                <h3 style=""margin-top: 0; color: #495057;"">📋 Thông tin booking đã hủy</h3>
+                                <p><strong>Mã booking:</strong> {bookingCode}</p>
+                                <p><strong>Không gian:</strong> {spaceName}</p>
+                                <p><strong>Thời gian:</strong> {startTime} - {endTime}</p>
+                                <p><strong>Lý do hủy:</strong> <span style=""color: #dc3545;"">{cancellationReason}</span></p>
+                            </div>
+                            
+                            {timelineHtml}
+                            
+                            <div style=""background-color: #fff3cd; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107;"">
+                                <h4 style=""margin-top: 0; color: #856404;"">💡 Làm thế nào để tránh xung đột?</h4>
+                                <p>Xung đột thời gian xảy ra khi có nhiều booking được tạo cùng lúc cho cùng một thời điểm. Chủ không gian sẽ xác nhận booking đầu tiên và các booking còn lại sẽ tự động bị hủy.</p>
+                                <p><strong>Gợi ý:</strong> Hãy thử đặt lại với thời gian khác hoặc liên hệ trực tiếp với chủ không gian.</p>
+                            </div>
+                            
+                            <div style=""background-color: #e7f3ff; padding: 15px; border-radius: 8px; border-left: 4px solid #007bff;"">
+                                <h4 style=""margin-top: 0; color: #007bff;"">📞 Liên hệ hỗ trợ</h4>
+                                <p>Nếu bạn có thắc mắc hoặc cần hỗ trợ đặt lại booking, vui lòng liên hệ trực tiếp với chủ không gian:</p>
+                                <p><strong>Email:</strong> <a href=""mailto:{ownerEmail}"">{ownerEmail}</a></p>
+                            </div>
+                            
+                            <div style=""margin-top: 30px; padding-top: 20px; border-top: 1px solid #dee2e6;"">
+                                <p style=""color: #6c757d; font-size: 14px;"">
+                                    Chúng tôi rất xin lỗi vì sự bất tiện này và hy vọng được phục vụ bạn trong tương lai.
+                                </p>
+                            </div>
+                        </div>"
+                };
+                emailMessage.Body = bodyBuilder.ToMessageBody();
+
+                using (var client = new SmtpClient())
+                {
+                    await client.ConnectAsync(smtpHost, smtpPort, SecureSocketOptions.StartTls);
+                    await client.AuthenticateAsync(smtpUsername, _smtpPassword);
+                    await client.SendAsync(emailMessage);
+                    await client.DisconnectAsync(true);
+                    
+                    _logger.LogInformation("Booking cancellation email successfully sent to {ToEmail} for booking {BookingCode}", toEmail, bookingCode);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send booking cancellation email to {ToEmail} for booking {BookingCode}", toEmail, bookingCode);
+            }
+        }
     }
 }

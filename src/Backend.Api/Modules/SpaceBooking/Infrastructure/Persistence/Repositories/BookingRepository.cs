@@ -71,6 +71,22 @@ namespace Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Repositori
                          .ToListAsync();
         }
 
+        public async Task<IEnumerable<Booking>> GetActiveBookingsAsync()
+        {
+            // Get bookings that are not in final states (only Completed, Cancelled, NoShow, Abandoned are final)
+            var finalStatuses = new[] 
+            { 
+                Domain.Enums.BookingStatus.Completed, 
+                Domain.Enums.BookingStatus.Cancelled, 
+                Domain.Enums.BookingStatus.NoShow, 
+                Domain.Enums.BookingStatus.Abandoned
+            };
+
+            return await GetBaseQuery()
+                         .Where(b => !b.IsDeleted && !finalStatuses.Contains(b.Status))
+                         .ToListAsync();
+        }
+
         public async Task<bool> HasOverlappingBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null)
         {
             var overlappingBooking = await GetOverlappingBookingAsync(spaceId, startTime, endTime, excludeBookingId);

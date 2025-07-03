@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Text;
 using AutoMapper;
 using Backend.Api.Data; // AppDbContext
 using Backend.Api.Modules.SpaceBooking.Application.Contracts.Dtos;
@@ -158,6 +159,89 @@ public class BookingService : IBookingService
         return !isOverlapping;
     }
 
+    /// <summary>
+    /// Validate space availability rules without checking for conflicts (time overlap)
+    /// Used for creating bookings that will be checked for conflicts later
+    /// </summary>
+    public async Task<bool> IsSpaceAvailableForBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime)
+    {
+        if (startTime >= endTime)
+        {
+            return false;
+        }
+        if (startTime < DateTime.UtcNow.AddMinutes(-5)) // Cho phép sai số 5 phút
+        {
+            _logger.LogWarning("Availability check failed: Start time cannot be significantly in the past.");
+            return false;
+        }
+
+        var space = await _spaceRepository.GetByIdAsync(spaceId);
+        if (space == null)
+        {
+            _logger.LogWarning("Availability check failed: Space {SpaceId} not found.", spaceId);
+            return false;
+        }
+        if (space.Status != SpaceStatus.Available)
+        {
+            _logger.LogWarning("Availability check failed: Space {SpaceId} is not available (Status: {SpaceStatus}).", spaceId, space.Status);
+            return false;
+        }
+
+        // Convert UTC times to Vietnam local time for operating hours validation
+        var localStartTime = ConvertToVietnamTime(startTime);
+        var localEndTime = ConvertToVietnamTime(endTime);
+
+        _logger.LogInformation("Converted times - Local start: {LocalStart}, Local end: {LocalEnd}", 
+            localStartTime, localEndTime);
+
+        if (space.OpenTime.HasValue && localStartTime.TimeOfDay < space.OpenTime.Value)
+        {
+            _logger.LogWarning("Availability check failed: Booking starts before space open time for SpaceId: {SpaceId}. Local start time: {LocalStartTime}, Open time: {OpenTime}", 
+                spaceId, localStartTime.TimeOfDay, space.OpenTime.Value);
+            return false;
+        }
+        if (space.CloseTime.HasValue)
+        {
+            var effectiveEndTimeForCheck = localEndTime;
+            // Nếu booking kết thúc đúng 00:00, coi như là cuối ngày hôm trước cho việc so sánh với CloseTime
+            if (localEndTime.TimeOfDay == TimeSpan.Zero && localEndTime.Date > localStartTime.Date)
+            {
+                effectiveEndTimeForCheck = localEndTime.AddTicks(-1); // Lùi lại 1 tick để nó là ngày hôm trước
+            }
+
+            if (effectiveEndTimeForCheck.Date > localStartTime.Date && space.CloseTime.Value.Hours != 23 && space.CloseTime.Value.Minutes != 59) // Booking qua ngày và space không phải 24/7 (gần đúng)
+            {
+                // Cần logic chính xác hơn nếu CloseTime là 00:00 (nghĩa là 24h)
+                if (space.CloseTime.Value < effectiveEndTimeForCheck.TimeOfDay && space.CloseTime.Value != TimeSpan.Zero)
+                { // Nếu giờ đóng cửa < giờ kết thúc hiệu quả của ngày cuối cùng VÀ giờ đóng cửa không phải là 00:00 (24h)
+                    _logger.LogWarning("Availability check failed: Overnight booking part ends after space close time for SpaceId: {SpaceId}. Local end time: {LocalEndTime}, Close time: {CloseTime}", 
+                        spaceId, effectiveEndTimeForCheck.TimeOfDay, space.CloseTime.Value);
+                    return false;
+                }
+            }
+            else if (effectiveEndTimeForCheck.TimeOfDay > space.CloseTime.Value && space.CloseTime.Value != TimeSpan.Zero) // Cùng ngày, kết thúc sau giờ đóng cửa
+            {
+                _logger.LogWarning("Availability check failed: Booking ends after space close time for SpaceId: {SpaceId}. Local end time: {LocalEndTime}, Close time: {CloseTime}", 
+                    spaceId, effectiveEndTimeForCheck.TimeOfDay, space.CloseTime.Value);
+                return false;
+            }
+        }
+
+        var durationMinutes = (int)(endTime - startTime).TotalMinutes;
+        if (durationMinutes < space.MinBookingDurationMinutes)
+        {
+            _logger.LogWarning("Availability check failed: Duration {DurationMinutes}m is less than MinBookingDuration {MinDuration}m for SpaceId: {SpaceId}.", durationMinutes, space.MinBookingDurationMinutes, spaceId);
+            return false;
+        }
+        if (space.MaxBookingDurationMinutes > 0 && durationMinutes > space.MaxBookingDurationMinutes)
+        {
+            _logger.LogWarning("Availability check failed: Duration {DurationMinutes}m is greater than MaxBookingDuration {MaxDuration}m for SpaceId: {SpaceId}.", durationMinutes, space.MaxBookingDurationMinutes, spaceId);
+            return false;
+        }
+
+        return true; // No conflict checking - just space rules validation
+    }
+
 
     public async Task<BookingDto> CreateBookingAsync(CreateBookingRequest request, Guid userId)
     {
@@ -181,10 +265,10 @@ public class BookingService : IBookingService
             throw new InvalidOperationException($"Space '{space.Name}' is not available for booking (Status: {space.Status}).");
         }
 
-        // Kiểm tra lịch trống và các ràng buộc
-        if (!await IsSpaceAvailableAsync(request.SpaceId, request.StartTime, request.EndTime))
+        // Kiểm tra lịch trống và các ràng buộc (không check conflict)
+        if (!await IsSpaceAvailableForBookingAsync(request.SpaceId, request.StartTime, request.EndTime))
         {
-            throw new InvalidOperationException($"The requested time slot for space '{space.Name}' is not available or does not meet booking criteria.");
+            throw new InvalidOperationException($"The requested time slot for space '{space.Name}' does not meet booking criteria (time, duration, operating hours).");
         }
 
         // Tính toán TotalPrice
@@ -249,6 +333,23 @@ public class BookingService : IBookingService
 
         await _bookingRepository.AddAsync(booking);
         await _dbContext.SaveChangesAsync();
+
+        // Check for conflicts with this new booking and mark conflicts if any exist
+        try
+        {
+            var spaceBookings = await _bookingRepository.GetBySpaceIdAsync(booking.SpaceId);
+            var conflictCount = await CheckAndMarkConflictBookingsAsync(spaceBookings);
+            if (conflictCount > 0)
+            {
+                _logger.LogInformation("New booking {BookingId} creation resulted in {ConflictCount} conflicts being detected and marked", 
+                    booking.Id, conflictCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check conflicts after creating booking {BookingId}", booking.Id);
+            // Don't fail the booking creation, just log the error
+        }
 
 
         // Lấy lại booking với thông tin Space để map SpaceName
@@ -372,6 +473,18 @@ public class BookingService : IBookingService
 
         // BookingRepository.GetBySpaceIdAsync nên Include(b => b.Space)
         var bookings = await _bookingRepository.GetBySpaceIdAsync(spaceId);
+        
+        // Check and update overdue status for all bookings before mapping
+        await CheckAndMarkOverdueBookingsAsync(bookings);
+        
+        // Check for conflicts and mark them automatically
+        var conflictCount = await CheckAndMarkConflictBookingsAsync(bookings);
+        if (conflictCount > 0)
+        {
+            _logger.LogInformation("Automatically detected and marked {ConflictCount} conflict bookings for space {SpaceId}", 
+                conflictCount, spaceId);
+        }
+        
         var bookingDtos = _mapper.Map<IEnumerable<BookingDto>>(bookings).ToList();
         
         // Enrich booking DTOs with user information and email fallback
@@ -581,37 +694,72 @@ public class BookingService : IBookingService
         switch (booking.Status)
         {
             case BookingStatus.Pending:
-                if (request.NewStatus != BookingStatus.Confirmed && request.NewStatus != BookingStatus.Cancelled)
+                if (request.NewStatus != BookingStatus.Confirmed && 
+                    request.NewStatus != BookingStatus.Cancelled)
                     errorMessage = $"Cannot change status from Pending to {request.NewStatus}. Allowed: Confirmed, Cancelled.";
                 break;
             case BookingStatus.Confirmed:
                 if (request.NewStatus != BookingStatus.CheckedIn && 
                     request.NewStatus != BookingStatus.Cancelled && 
                     request.NewStatus != BookingStatus.NoShow &&
-                    request.NewStatus != BookingStatus.Completed) // Allow direct completion
-                    errorMessage = $"Cannot change status from Confirmed to {request.NewStatus}. Allowed: CheckedIn, Cancelled, NoShow, Completed.";
+                    request.NewStatus != BookingStatus.Completed &&
+                    request.NewStatus != BookingStatus.Abandoned) // Allow manual abandon for emergencies
+                    errorMessage = $"Cannot change status from Confirmed to {request.NewStatus}. Allowed: CheckedIn, Cancelled, NoShow, Completed, Abandoned.";
                 break;
             case BookingStatus.CheckedIn:
-                if (request.NewStatus != BookingStatus.Completed && 
-                    request.NewStatus != BookingStatus.Overdue &&
-                    request.NewStatus != BookingStatus.Cancelled) // Allow cancellation even after check-in
-                    errorMessage = $"Cannot change status from CheckedIn to {request.NewStatus}. Allowed: Completed, Overdue, Cancelled.";
+                if (request.NewStatus != BookingStatus.Checkout &&
+                    request.NewStatus != BookingStatus.Completed && 
+                    request.NewStatus != BookingStatus.Cancelled &&
+                    request.NewStatus != BookingStatus.Abandoned) // Allow manual abandon for emergencies
+                    errorMessage = $"Cannot change status from CheckedIn to {request.NewStatus}. Allowed: Checkout, Completed, Cancelled, Abandoned. Note: Overdue states are set automatically.";
                 break;
-            case BookingStatus.Overdue:
+            case BookingStatus.Checkout:
                 if (request.NewStatus != BookingStatus.Completed && 
-                    request.NewStatus != BookingStatus.Abandoned)
-                    errorMessage = $"Cannot change status from Overdue to {request.NewStatus}. Allowed: Completed, Abandoned.";
+                    request.NewStatus != BookingStatus.Cancelled &&
+                    request.NewStatus != BookingStatus.Abandoned) // Allow manual abandon for emergencies
+                    errorMessage = $"Cannot change status from Checkout to {request.NewStatus}. Allowed: Completed, Cancelled, Abandoned.";
+                break;
+            case BookingStatus.OverduePending:
+                if (request.NewStatus != BookingStatus.Confirmed &&
+                    request.NewStatus != BookingStatus.CheckedIn &&
+                    request.NewStatus != BookingStatus.Cancelled) // Allow skip to CheckedIn
+                    errorMessage = $"Cannot change status from OverduePending to {request.NewStatus}. Allowed: Confirmed, CheckedIn, Cancelled.";
+                break;
+            case BookingStatus.OverdueCheckin:
+                if (request.NewStatus != BookingStatus.CheckedIn &&
+                    request.NewStatus != BookingStatus.NoShow &&
+                    request.NewStatus != BookingStatus.Cancelled) // Allow cancellation even when overdue
+                    errorMessage = $"Cannot change status from OverdueCheckin to {request.NewStatus}. Allowed: CheckedIn, NoShow, Cancelled.";
+                break;
+            case BookingStatus.OverdueCheckout:
+                if (request.NewStatus != BookingStatus.Checkout &&
+                    request.NewStatus != BookingStatus.Abandoned &&
+                    request.NewStatus != BookingStatus.Cancelled) // Allow cancellation even when overdue
+                    errorMessage = $"Cannot change status from OverdueCheckout to {request.NewStatus}. Allowed: Checkout, Abandoned, Cancelled.";
                 break;
             case BookingStatus.Completed:
             case BookingStatus.Cancelled:
             case BookingStatus.NoShow:
+                // These are final states - but allow manual abandon in special cases
+                if (request.NewStatus == BookingStatus.Abandoned)
+                {
+                    // Allow transition to Abandoned for administrative purposes
+                    break;
+                }
+                errorMessage = $"Booking with status {booking.Status} is in a final state and generally cannot be updated. Only Abandoned status is allowed for administrative purposes.";
+                break;
             case BookingStatus.Abandoned:
-                // These are final states - generally should not be changed
-                errorMessage = $"Booking with status {booking.Status} is in a final state and cannot be updated.";
+                errorMessage = $"Booking with status {booking.Status} is final and cannot be updated.";
                 break;
             case BookingStatus.External:
-            case BookingStatus.Conflict:
                 errorMessage = $"Booking with status {booking.Status} requires special handling and cannot be updated via this method.";
+                break;
+            case BookingStatus.Conflict:
+                // Allow specific transitions from Conflict status for resolution
+                if (request.NewStatus != BookingStatus.Confirmed && request.NewStatus != BookingStatus.Cancelled)
+                {
+                    errorMessage = $"Booking with status {booking.Status} can only be resolved to Confirmed or Cancelled status.";
+                }
                 break;
         }
 
@@ -633,10 +781,22 @@ public class BookingService : IBookingService
                 wasConfirmed = true;
                 break;
                 
+            case BookingStatus.Confirmed when booking.Status == BookingStatus.Conflict:
+                booking.Status = BookingStatus.Confirmed;
+                statusUpdateReason = "Conflict resolved - confirmed by owner";
+                wasConfirmed = true;
+                break;
+                
             case BookingStatus.Cancelled:
                 booking.Status = BookingStatus.Cancelled;
-                booking.CancellationReason = request.Notes ?? "Cancelled by administrator";
+                booking.CancellationReason = request.Notes ?? "Cancelled by owner";
                 statusUpdateReason = "Cancelled by owner";
+                break;
+                
+            case BookingStatus.Abandoned:
+                booking.Status = BookingStatus.Abandoned;
+                booking.CancellationReason = request.Notes ?? "Abandoned due to emergency/technical issues";
+                statusUpdateReason = "Marked as abandoned by owner";
                 break;
                 
             case BookingStatus.CheckedIn when booking.Status == BookingStatus.Confirmed:
@@ -644,6 +804,32 @@ public class BookingService : IBookingService
                 booking.ActualCheckIn = DateTime.UtcNow;
                 booking.CheckedInByUserId = updaterUserId;
                 statusUpdateReason = "Checked in by owner";
+                break;
+                
+            case BookingStatus.CheckedIn when (booking.Status == BookingStatus.OverduePending || booking.Status == BookingStatus.OverdueCheckin):
+                booking.Status = BookingStatus.CheckedIn;
+                booking.ActualCheckIn = DateTime.UtcNow;
+                booking.CheckedInByUserId = updaterUserId;
+                statusUpdateReason = "Late check-in by owner";
+                break;
+                
+            case BookingStatus.Checkout when booking.Status == BookingStatus.CheckedIn:
+                booking.Status = BookingStatus.Checkout;
+                booking.ActualCheckOut = DateTime.UtcNow;
+                booking.CheckedOutByUserId = updaterUserId;
+                statusUpdateReason = "Checked out by owner";
+                break;
+                
+            case BookingStatus.Checkout when booking.Status == BookingStatus.OverdueCheckout:
+                booking.Status = BookingStatus.Checkout;
+                booking.ActualCheckOut = DateTime.UtcNow;
+                booking.CheckedOutByUserId = updaterUserId;
+                statusUpdateReason = "Late check-out by owner";
+                break;
+                
+            case BookingStatus.Completed when booking.Status == BookingStatus.Checkout:
+                booking.Status = BookingStatus.Completed;
+                statusUpdateReason = "Completed by owner";
                 break;
                 
             case BookingStatus.Completed:
@@ -659,16 +845,6 @@ public class BookingService : IBookingService
             case BookingStatus.NoShow when booking.Status == BookingStatus.Confirmed:
                 booking.Status = BookingStatus.NoShow;
                 statusUpdateReason = "Marked as no-show by owner";
-                break;
-                
-            case BookingStatus.Overdue when booking.Status == BookingStatus.CheckedIn:
-                booking.Status = BookingStatus.Overdue;
-                statusUpdateReason = "Marked as overdue by owner";
-                break;
-                
-            case BookingStatus.Abandoned when booking.Status == BookingStatus.Overdue:
-                booking.Status = BookingStatus.Abandoned;
-                statusUpdateReason = "Marked as abandoned by owner";
                 break;
                 
             default:
@@ -702,6 +878,26 @@ public class BookingService : IBookingService
 
         _logger.LogInformation("Status for BookingId: {BookingId} updated to {NewStatus} by UpdaterId: {UpdaterId}",
             bookingId, request.NewStatus, updaterUserId);
+
+        // Auto-cancel conflicting bookings if this booking was confirmed
+        List<Guid> cancelledBookingIds = new List<Guid>();
+        if (wasConfirmed)
+        {
+            try 
+            {
+                cancelledBookingIds = await AutoCancelConflictingBookingsAsync(booking);
+                if (cancelledBookingIds.Any())
+                {
+                    _logger.LogInformation("Auto-cancelled {Count} conflicting bookings when confirming booking {BookingId}", 
+                        cancelledBookingIds.Count, bookingId);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-cancel conflicting bookings for confirmed booking {BookingId}", bookingId);
+                // Don't fail the main operation, just log the error
+            }
+        }
 
         // Send email notification if booking was confirmed (Pending -> Confirmed)
         if (wasConfirmed)
@@ -977,10 +1173,10 @@ public class BookingService : IBookingService
             }
         }
 
-        // Check space availability
-        if (!await IsSpaceAvailableAsync(request.SpaceId, request.StartTime, request.EndTime))
+        // Check space availability (không check conflict)
+        if (!await IsSpaceAvailableForBookingAsync(request.SpaceId, request.StartTime, request.EndTime))
         {
-            throw new InvalidOperationException($"The requested time slot for space '{space.Name}' is not available or does not meet booking criteria.");
+            throw new InvalidOperationException($"The requested time slot for space '{space.Name}' does not meet booking criteria (time, duration, operating hours).");
         }
 
         // Calculate total price
@@ -1037,6 +1233,23 @@ public class BookingService : IBookingService
         await _dbContext.SaveChangesAsync();
 
         _logger.LogInformation("Owner booking created successfully. BookingId: {BookingId}, Status: {Status}", booking.Id, booking.Status);
+
+        // Check for conflicts with this new booking and mark conflicts if any exist
+        try
+        {
+            var spaceBookings = await _bookingRepository.GetBySpaceIdAsync(booking.SpaceId);
+            var conflictCount = await CheckAndMarkConflictBookingsAsync(spaceBookings);
+            if (conflictCount > 0)
+            {
+                _logger.LogInformation("New owner booking {BookingId} creation resulted in {ConflictCount} conflicts being detected and marked", 
+                    booking.Id, conflictCount);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to check conflicts after creating owner booking {BookingId}", booking.Id);
+            // Don't fail the booking creation, just log the error
+        }
 
         // Send booking confirmation email to customer
         try
@@ -1114,5 +1327,397 @@ public class BookingService : IBookingService
         }
 
         return _mapper.Map<BookingDto>(createdBookingWithDetails);
+    }
+
+    /// <summary>
+    /// Generate a simple timeline showing available and conflicted time slots for email
+    /// </summary>
+    private async Task<string> GenerateTimelineForEmailAsync(Booking cancelledBooking)
+    {
+        try
+        {
+            // Get booking date in Vietnam time
+            var bookingDate = ConvertToVietnamTime(cancelledBooking.StartTime).Date;
+            var dayStart = new DateTime(bookingDate.Year, bookingDate.Month, bookingDate.Day, 0, 0, 0, DateTimeKind.Unspecified);
+            var dayEnd = dayStart.AddDays(1).AddTicks(-1);
+            
+            // Convert to UTC for database query
+            var utcDayStart = TimeZoneInfo.ConvertTimeToUtc(dayStart, VietnamTimeZone);
+            var utcDayEnd = TimeZoneInfo.ConvertTimeToUtc(dayEnd, VietnamTimeZone);
+            
+            // Get all bookings for the same space on the same day
+            var spaceBookings = await _bookingRepository.GetBySpaceIdAsync(cancelledBooking.SpaceId);
+            var activeBookings = spaceBookings.Where(b => 
+                b.Status != BookingStatus.Cancelled && 
+                b.Status != BookingStatus.NoShow && 
+                b.Status != BookingStatus.Abandoned &&
+                b.Id != cancelledBooking.Id && // Exclude the cancelled booking itself
+                b.StartTime >= utcDayStart && b.StartTime < utcDayEnd // Filter by day
+            ).OrderBy(b => b.StartTime).ToList();
+
+            var timeline = new StringBuilder();
+            timeline.AppendLine($"Ngày {bookingDate:dd/MM/yyyy}:");
+            timeline.AppendLine();
+
+            // Generate hourly timeline from 6 AM to 11 PM
+            for (int hour = 6; hour <= 23; hour++)
+            {
+                var hourStart = new DateTime(bookingDate.Year, bookingDate.Month, bookingDate.Day, hour, 0, 0);
+                var hourEnd = hourStart.AddHours(1);
+                
+                // Convert to UTC for comparison
+                var utcHourStart = TimeZoneInfo.ConvertTimeToUtc(hourStart, VietnamTimeZone);
+                var utcHourEnd = TimeZoneInfo.ConvertTimeToUtc(hourEnd, VietnamTimeZone);
+                
+                // Check if this hour overlaps with any active booking
+                bool hasConflict = activeBookings.Any(b => 
+                    b.StartTime < utcHourEnd && b.EndTime > utcHourStart);
+                
+                // Check if cancelled booking was in this time slot
+                bool wasCancelledBookingHere = cancelledBooking.StartTime < utcHourEnd && 
+                                             cancelledBooking.EndTime > utcHourStart;
+                
+                var timeStr = $"{hour:D2}:00";
+                var status = hasConflict ? "🔴" : "🟢";
+                var statusText = hasConflict ? "Đã đặt" : "Trống";
+                
+                if (wasCancelledBookingHere)
+                {
+                    statusText += " (booking bị hủy)";
+                }
+                
+                timeline.AppendLine($"{timeStr} {status} {statusText}");
+            }
+
+            return timeline.ToString();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to generate timeline for cancelled booking {BookingId}", cancelledBooking.Id);
+            return ""; // Return empty string if generation fails
+        }
+    }
+
+    /// <summary>
+    /// Check and update booking status to Overdue if conditions are met
+    /// </summary>
+    /// <param name="booking">The booking to check</param>
+    /// <returns>True if status was updated to Overdue</returns>
+    private bool CheckAndMarkOverdue(Booking booking)
+    {
+        var now = DateTime.UtcNow;
+        var vietnamNow = ConvertToVietnamTime(now);
+        
+        // Check for test bookings (no StartTime/EndTime) and auto-cancel them
+        if (booking.StartTime == DateTime.MinValue || booking.EndTime == DateTime.MinValue || 
+            booking.StartTime == default(DateTime) || booking.EndTime == default(DateTime))
+        {
+            booking.Status = BookingStatus.Cancelled;
+            booking.UpdatedAt = now;
+            booking.CancellationReason = "Auto-cancelled: Test booking without valid time range";
+            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+                ? "[Auto-cancelled: Test booking without valid time range]"
+                : $"{booking.NotesFromOwner}\n[Auto-cancelled: Test booking without valid time range]";
+            
+            _logger.LogInformation("Booking {BookingId} automatically cancelled: Test booking without valid time range", 
+                booking.Id);
+            
+            return true;
+        }
+        
+        var localStartTime = ConvertToVietnamTime(booking.StartTime);
+        var localEndTime = ConvertToVietnamTime(booking.EndTime);
+        
+        bool shouldMarkOverdue = false;
+        string overdueReason = "";
+
+        switch (booking.Status)
+        {
+            case BookingStatus.Pending:
+                // If booking is still pending but end time has passed, mark as overdue
+                if (vietnamNow > localEndTime)
+                {
+                    shouldMarkOverdue = true;
+                    booking.Status = BookingStatus.OverduePending;
+                    overdueReason = "Pending quá hạn - Booking expired without confirmation";
+                }
+                break;
+                
+            case BookingStatus.Confirmed:
+                // If confirmed but start time has passed significantly (e.g., 30 minutes) without check-in
+                if (vietnamNow > localStartTime.AddMinutes(30))
+                {
+                    shouldMarkOverdue = true;
+                    booking.Status = BookingStatus.OverdueCheckin;
+                    overdueReason = "Confirmed quá hạn - No-show: Failed to check-in within 30 minutes of start time";
+                }
+                break;
+                
+            case BookingStatus.CheckedIn:
+                // If checked in but end time has passed significantly (e.g., 15 minutes) without check-out
+                if (vietnamNow > localEndTime.AddMinutes(15))
+                {
+                    shouldMarkOverdue = true;
+                    booking.Status = BookingStatus.OverdueCheckout;
+                    overdueReason = "CheckedIn quá hạn - Overstayed: Failed to check-out within 15 minutes of end time";
+                }
+                break;
+        }
+
+        if (shouldMarkOverdue)
+        {
+            booking.UpdatedAt = now;
+            booking.NotesFromOwner = string.IsNullOrWhiteSpace(booking.NotesFromOwner)
+                ? $"[Auto-marked as overdue: {overdueReason}]"
+                : $"{booking.NotesFromOwner}\n[Auto-marked as overdue: {overdueReason}]";
+            
+            _logger.LogInformation("Booking {BookingId} automatically marked as overdue: {Reason}", 
+                booking.Id, overdueReason);
+            
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Check and update booking status to Overdue for multiple bookings
+    /// </summary>
+    /// <param name="bookings">List of bookings to check</param>
+    /// <returns>Number of bookings marked as overdue</returns>
+    public async Task<int> CheckAndMarkOverdueBookingsAsync(IEnumerable<Booking> bookings)
+    {
+        int overdueCount = 0;
+        var bookingsToUpdate = new List<Booking>();
+
+        foreach (var booking in bookings)
+        {
+            if (CheckAndMarkOverdue(booking))
+            {
+                bookingsToUpdate.Add(booking);
+                overdueCount++;
+            }
+        }
+
+        if (bookingsToUpdate.Any())
+        {
+            foreach (var booking in bookingsToUpdate)
+            {
+                _bookingRepository.Update(booking);
+            }
+            await _dbContext.SaveChangesAsync();
+            
+            _logger.LogInformation("Automatically marked {Count} bookings as overdue", overdueCount);
+        }
+
+        return overdueCount;
+    }
+
+    /// <summary>
+    /// Check for conflicts and mark pending bookings as conflict if they overlap with confirmed bookings
+    /// </summary>
+    /// <param name="bookings">List of bookings to check for conflicts</param>
+    /// <returns>Number of bookings marked as conflict</returns>
+    public async Task<int> CheckAndMarkConflictBookingsAsync(IEnumerable<Booking> bookings)
+    {
+        int conflictCount = 0;
+        var bookingsToUpdate = new List<Booking>();
+        var bookingsList = bookings.ToList();
+
+        // Get pending bookings that might have conflicts
+        var pendingBookings = bookingsList.Where(b => b.Status == BookingStatus.Pending).ToList();
+        
+        foreach (var pendingBooking in pendingBookings)
+        {
+            // Check if this pending booking conflicts with any confirmed/active bookings
+            var conflictingBookings = bookingsList.Where(b => 
+                b.Id != pendingBooking.Id && 
+                b.SpaceId == pendingBooking.SpaceId &&
+                (b.Status == BookingStatus.Confirmed || 
+                 b.Status == BookingStatus.CheckedIn || 
+                 b.Status == BookingStatus.Checkout ||
+                 b.Status == BookingStatus.OverdueCheckin ||
+                 b.Status == BookingStatus.OverdueCheckout) &&
+                DoBookingsOverlap(pendingBooking, b)
+            ).ToList();
+
+            if (conflictingBookings.Any())
+            {
+                pendingBooking.Status = BookingStatus.Conflict;
+                pendingBooking.UpdatedAt = DateTime.UtcNow;
+                
+                // Add conflict details to notes
+                var conflictDetails = string.Join(", ", conflictingBookings.Select(cb => 
+                    $"ID:{cb.Id.ToString("N")[..8]} ({ConvertToVietnamTime(cb.StartTime):dd/MM/yyyy HH:mm}-{ConvertToVietnamTime(cb.EndTime):HH:mm})"));
+                
+                var conflictNote = $"[Auto-marked as conflict: Overlaps with {conflictingBookings.Count} booking(s) - {conflictDetails}]";
+                pendingBooking.NotesFromOwner = string.IsNullOrWhiteSpace(pendingBooking.NotesFromOwner)
+                    ? conflictNote
+                    : $"{pendingBooking.NotesFromOwner}\n{conflictNote}";
+                
+                bookingsToUpdate.Add(pendingBooking);
+                conflictCount++;
+                
+                _logger.LogInformation("Booking {BookingId} marked as conflict due to overlap with {ConflictCount} other bookings", 
+                    pendingBooking.Id, conflictingBookings.Count);
+            }
+        }
+
+        if (bookingsToUpdate.Any())
+        {
+            foreach (var booking in bookingsToUpdate)
+            {
+                _bookingRepository.Update(booking);
+            }
+            await _dbContext.SaveChangesAsync();
+            
+            _logger.LogInformation("Automatically marked {Count} bookings as conflict", conflictCount);
+        }
+
+        return conflictCount;
+    }
+
+    /// <summary>
+    /// Check if two bookings overlap in time (considering buffer and cleaning time)
+    /// </summary>
+    private bool DoBookingsOverlap(Booking booking1, Booking booking2)
+    {
+        // For conflict detection, we need to consider buffer and cleaning time
+        // Get the space details if we need buffer/cleaning info, for now use simple overlap
+        var start1 = booking1.StartTime;
+        var end1 = booking1.EndTime;
+        var start2 = booking2.StartTime;
+        var end2 = booking2.EndTime;
+
+        // Simple overlap check: booking1 starts before booking2 ends AND booking2 starts before booking1 ends
+        return start1 < end2 && start2 < end1;
+    }
+
+    /// <summary>
+    /// Auto-cancel conflicting bookings when owner confirms a conflict booking
+    /// </summary>
+    /// <param name="confirmedBooking">The booking that was confirmed</param>
+    /// <returns>List of cancelled booking IDs</returns>
+    public async Task<List<Guid>> AutoCancelConflictingBookingsAsync(Booking confirmedBooking)
+    {
+        var cancelledBookingIds = new List<Guid>();
+        
+        // Get all bookings for the same space
+        var spaceBookings = await _bookingRepository.GetBySpaceIdAsync(confirmedBooking.SpaceId);
+        
+        // Find bookings that conflict with the confirmed booking
+        var conflictingBookings = spaceBookings.Where(b => 
+            b.Id != confirmedBooking.Id && 
+            (b.Status == BookingStatus.Pending || 
+             b.Status == BookingStatus.Conflict ||
+             b.Status == BookingStatus.Confirmed ||
+             b.Status == BookingStatus.CheckedIn ||
+             b.Status == BookingStatus.Checkout) &&
+            DoBookingsOverlap(confirmedBooking, b)
+        ).ToList();
+
+        foreach (var conflictingBooking in conflictingBookings)
+        {
+            conflictingBooking.Status = BookingStatus.Cancelled;
+            conflictingBooking.UpdatedAt = DateTime.UtcNow;
+            conflictingBooking.CancellationReason = "Auto-cancelled due to time conflict with confirmed booking";
+            
+            var cancelNote = $"[Auto-cancelled: Conflicts with confirmed booking {confirmedBooking.Id.ToString("N")[..8]}]";
+            conflictingBooking.NotesFromOwner = string.IsNullOrWhiteSpace(conflictingBooking.NotesFromOwner)
+                ? cancelNote
+                : $"{conflictingBooking.NotesFromOwner}\n{cancelNote}";
+            
+            _bookingRepository.Update(conflictingBooking);
+            cancelledBookingIds.Add(conflictingBooking.Id);
+            
+            _logger.LogInformation("Auto-cancelled booking {BookingId} due to conflict with confirmed booking {ConfirmedBookingId}", 
+                conflictingBooking.Id, confirmedBooking.Id);
+        }
+
+        if (cancelledBookingIds.Any())
+        {
+            await _dbContext.SaveChangesAsync();
+            
+            // Send cancellation emails to affected users
+            await SendCancellationEmailsAsync(conflictingBookings);
+        }
+
+        return cancelledBookingIds;
+    }
+
+    /// <summary>
+    /// Send cancellation emails to users whose bookings were cancelled due to conflicts
+    /// </summary>
+    private async Task SendCancellationEmailsAsync(List<Booking> cancelledBookings)
+    {
+        foreach (var booking in cancelledBookings)
+        {
+            try
+            {
+                string? notificationEmail = null;
+                string? customerName = null;
+
+                if (booking.UserId.HasValue)
+                {
+                    // Get user info for email
+                    var user = await _userService.GetUserByIdAsync(booking.UserId.Value);
+                    if (user != null)
+                    {
+                        customerName = user.FullName ?? user.Username;
+                        notificationEmail = !string.IsNullOrWhiteSpace(booking.NotificationEmail) 
+                            ? booking.NotificationEmail 
+                            : user.Email;
+                    }
+                }
+                else
+                {
+                    // Guest booking
+                    customerName = booking.GuestName;
+                    notificationEmail = booking.NotificationEmail ?? booking.GuestEmail;
+                }
+
+                if (!string.IsNullOrWhiteSpace(notificationEmail) && !string.IsNullOrWhiteSpace(customerName) && booking.Space != null)
+                {
+                    // Get owner email from space
+                    var ownerUser = await _userService.GetUserByIdAsync(booking.Space.OwnerId);
+                    var ownerEmail = ownerUser?.Email ?? "support@workingspace.com";
+
+                    // Format dates for email
+                    var startTimeLocal = ConvertToVietnamTime(booking.StartTime);
+                    var endTimeLocal = ConvertToVietnamTime(booking.EndTime);
+                    var startTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm");
+                    var endTimeStr = endTimeLocal.ToString("dd/MM/yyyy HH:mm");
+
+                    // Generate timeline for this booking
+                    var timeline = await GenerateTimelineForEmailAsync(booking);
+
+                    // Send cancellation email
+                    await _emailService.SendBookingCancellationEmailAsync(
+                        notificationEmail,
+                        customerName,
+                        booking.Space?.Name ?? "Unknown Space",
+                        startTimeStr,
+                        endTimeStr,
+                        booking.CancellationReason ?? "Conflict with another booking",
+                        ownerEmail,
+                        booking.Id.ToString("N")[..8].ToUpper(),
+                        timeline
+                    );
+
+                    _logger.LogInformation("Sent cancellation email to {Email} for booking {BookingId}", 
+                        notificationEmail, booking.Id);
+                }
+                else
+                {
+                    _logger.LogWarning("Could not send cancellation email for booking {BookingId} - missing email or customer name", 
+                        booking.Id);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to send cancellation email for booking {BookingId}", booking.Id);
+                // Don't fail the entire operation, just log the error
+            }
+        }
     }
 }

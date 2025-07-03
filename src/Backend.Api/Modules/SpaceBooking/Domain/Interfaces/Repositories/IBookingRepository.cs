@@ -15,6 +15,7 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories
         Task<IEnumerable<Booking>> GetByUserIdAsync(Guid userId);
         Task<IEnumerable<Booking>> GetBySpaceIdAsync(Guid spaceId);
         Task<IEnumerable<Booking>> GetUpcomingBookingsBySpaceIdAsync(Guid spaceId, DateTime fromDate);
+        Task<IEnumerable<Booking>> GetActiveBookingsAsync(); // Get bookings that are not in final states
         Task<bool> HasOverlappingBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null);
         Task<Booking?> GetOverlappingBookingAsync(Guid spaceId, DateTime startTime, DateTime endTime, Guid? excludeBookingId = null);
         Task AddAsync(Booking booking);

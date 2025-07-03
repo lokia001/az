@@ -11,8 +11,11 @@ export const getStatusText = (status) => {
         'Pending': 'Chờ xác nhận',
         'Confirmed': 'Đã xác nhận',
         'CheckedIn': 'Đã check-in',
+        'Checkout': 'Đã checkout',
         'Completed': 'Hoàn thành',
-        'Overdue': 'Quá hạn',
+        'OverduePending': 'Pending quá hạn',
+        'OverdueCheckin': 'Checkin quá hạn',
+        'OverdueCheckout': 'Checkout quá hạn',
         'NoShow': 'Không đến',
         'Cancelled': 'Đã hủy',
         'Abandoned': 'Bỏ trốn',
@@ -26,7 +29,6 @@ export const getStatusText = (status) => {
         'no-show': 'Không đến',
         'in-progress': 'Đang sử dụng',
         'checkedIn': 'Đã check-in',
-        'overdue': 'Quá hạn',
         'noShow': 'Không đến',
         'abandoned': 'Bỏ trốn'
     };
@@ -254,22 +256,28 @@ export const updateBookingStatusAPI = async (bookingId, status) => {
             'cancelled': 'Cancelled',
             'completed': 'Completed',
             'checkedin': 'CheckedIn',
-            'overdue': 'Overdue',
+            'checkout': 'Checkout',
             'noshow': 'NoShow',
             'abandoned': 'Abandoned',
             'external': 'External',
             'conflict': 'Conflict',
+            'overduepending': 'OverduePending',
+            'overduecheckin': 'OverdueCheckin',
+            'overduecheckout': 'OverdueCheckout',
             // Capitalized versions (from component clicks)
             'Pending': 'Pending',
             'Confirmed': 'Confirmed', 
             'Cancelled': 'Cancelled',
             'Completed': 'Completed',
             'CheckedIn': 'CheckedIn',
-            'Overdue': 'Overdue',
+            'Checkout': 'Checkout',
             'NoShow': 'NoShow',
             'Abandoned': 'Abandoned',
             'External': 'External',
-            'Conflict': 'Conflict'
+            'Conflict': 'Conflict',
+            'OverduePending': 'OverduePending',
+            'OverdueCheckin': 'OverdueCheckin',
+            'OverdueCheckout': 'OverdueCheckout'
         };
 
         const backendStatus = statusMap[statusString] || statusMap[statusString.toLowerCase()] || statusString;

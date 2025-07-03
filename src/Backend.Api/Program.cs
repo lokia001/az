@@ -64,6 +64,9 @@ builder.Services.AddScoped<DatabaseInitializer>();
 builder.Services.AddEngagementModule();
 builder.Services.AddChatbotModule(configuration);
 
+// Register background services
+builder.Services.AddHostedService<BookingOverdueCheckService>();
+
 
 // Configure Kestrel to use non-privileged ports and avoid permission issues
 builder.WebHost.ConfigureKestrel(serverOptions =>
