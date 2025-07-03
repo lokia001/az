@@ -10,6 +10,7 @@ import { Calendar2, Grid, List, Download, Gear, Plus } from 'react-bootstrap-ico
 import { useTranslation } from 'react-i18next';
 import DatePicker from 'react-datepicker';
 import 'react-datepicker/dist/react-datepicker.css';
+import './OwnerBookingManagement.css'; // Import CSS for styling
 import { 
     fetchOwnerBookings,
     updateBookingStatus,
@@ -28,7 +29,7 @@ import {
     selectOwnerBookingCreateError
 } from './slices/ownerBookingSlice';
 import { selectCurrentUser } from '../auth/slices/authSlice';
-import { formatVietnameseDateTime } from '../../utils/timeUtils';
+import { formatVietnameseDateTime, formatVietnameseDateTime24h, formatVietnameseSmartTime } from '../../utils/timeUtils';
 import { getOwnerSpaces } from '../../services/api';
 import { getStatusText, fetchOwnerBookingsAPI } from './services/ownerBookingApi';
 import AddOwnerBookingModal from './components/AddOwnerBookingModal';
@@ -49,7 +50,7 @@ const OwnerBookingManagement = () => {
     };
     
     const dispatch = useDispatch();
-    const [viewMode, setViewMode] = useState('list');
+    const [viewMode, setViewMode] = useState('cards'); // Mặc định là card view
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showAddBookingModal, setShowAddBookingModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
@@ -260,38 +261,45 @@ const OwnerBookingManagement = () => {
     const renderStats = () => null;
 
     const renderToolbar = () => (
-        <Stack direction="horizontal" gap={3} className="mb-4">
-            <Button 
-                variant="primary" 
-                size="sm"
-                onClick={() => setShowAddBookingModal(true)}
-                disabled={!filters.spaceId || loadingSpaces}
-            >
-                <Plus className="me-1" /> Thêm đặt chỗ
-            </Button>
-            <div className="vr" />
-            <Button variant="outline-secondary" size="sm" 
-                onClick={() => setViewMode('list')}
-                active={viewMode === 'list'}>
-                <List className="me-1" /> Danh sách
-            </Button>
-            <Button variant="outline-secondary" size="sm" 
-                onClick={() => setViewMode('calendar')}
-                active={viewMode === 'calendar'}>
-                <Calendar2 className="me-1" /> Lịch
-            </Button>
-            <div className="ms-auto" />
-            <Button variant="outline-success" size="sm" onClick={handleExport}>
-                <Download className="me-1" /> Xuất Excel
-            </Button>
-            <Button variant="outline-secondary" size="sm">
-                <Gear className="me-1" /> Cài đặt
-            </Button>
-        </Stack>
+        <div className="toolbar-section">
+            <Stack direction="horizontal" gap={3}>
+                <Button 
+                    variant="primary" 
+                    size="sm"
+                    onClick={() => setShowAddBookingModal(true)}
+                    disabled={!filters.spaceId || loadingSpaces}
+                >
+                    <Plus className="me-1" /> Thêm đặt chỗ
+                </Button>
+                <div className="vr" />
+                <div className="view-mode-toggle">
+                    <Button variant={viewMode === 'cards' ? 'primary' : 'outline-secondary'} size="sm" 
+                        onClick={() => setViewMode('cards')}>
+                        <Grid className="me-1" /> Thẻ
+                    </Button>
+                    <Button variant={viewMode === 'table' ? 'primary' : 'outline-secondary'} size="sm" 
+                        onClick={() => setViewMode('table')}>
+                        <List className="me-1" /> Bảng
+                    </Button>
+                    <Button variant={viewMode === 'calendar' ? 'primary' : 'outline-secondary'} size="sm" 
+                        onClick={() => setViewMode('calendar')}>
+                        <Calendar2 className="me-1" /> Lịch
+                    </Button>
+                </div>
+                <div className="ms-auto" />
+                <Button variant="outline-success" size="sm" onClick={handleExport}>
+                    <Download className="me-1" /> Xuất Excel
+                </Button>
+                <Button variant="outline-secondary" size="sm">
+                    <Gear className="me-1" /> Cài đặt
+                </Button>
+            </Stack>
+        </div>
     );
 
     const renderFilters = () => (
-        <Row className="mb-4 g-3">
+        <div className="filters-section">
+            <Row className="g-3">
             {/* Space selector */}
             <Col md={3}>
                 <Form.Group>
@@ -365,6 +373,7 @@ const OwnerBookingManagement = () => {
                 </Form.Group>
             </Col>
         </Row>
+        </div>
     );
 
     const renderBookingActions = (booking) => (
@@ -478,6 +487,126 @@ const OwnerBookingManagement = () => {
         </Dropdown>
     );
 
+    const renderBookingsCards = () => {
+        if (status === 'loading') {
+            return (
+                <div className="loading-state">
+                    <Spinner animation="border" role="status">
+                        <span className="visually-hidden">Đang tải...</span>
+                    </Spinner>
+                    <div className="mt-2">Đang tải danh sách đặt chỗ...</div>
+                </div>
+            );
+        }
+
+        if (!Array.isArray(bookings) || !bookings.length) {
+            return (
+                <div className="empty-state">
+                    <div className="mb-3">
+                        <i className="fas fa-calendar-times fa-3x text-muted"></i>
+                    </div>
+                    <h5 className="text-muted">Chưa có đặt chỗ nào</h5>
+                    <p className="text-muted">Danh sách đặt chỗ sẽ hiển thị ở đây khi có khách hàng đặt chỗ.</p>
+                </div>
+            );
+        }
+
+        return (
+            <Row className="g-3">
+                {bookings.map((booking) => (
+                    <Col key={booking.id} xs={12} md={6} xl={4}>
+                        <Card className={`owner-booking-card h-100 ${booking.status === 'Conflict' ? 'conflict' : ''}`}>
+                            <Card.Body>
+                                {/* Header với status badge */}
+                                <div className="d-flex justify-content-between align-items-start mb-3">
+                                    <div>
+                                        <h6 className="card-title mb-1">
+                                            <i className="fas fa-user me-2"></i>
+                                            {booking.customerName || 'Khách hàng'}
+                                        </h6>
+                                        <small className="text-muted">
+                                            ID: {booking.id.substr(0, 8)}...
+                                        </small>
+                                    </div>
+                                    <div className="booking-status-badge">
+                                        {renderStatusBadge(booking.status)}
+                                    </div>
+                                </div>
+
+                                {/* Thông tin space */}
+                                <div className="mb-3">
+                                    <div className="d-flex align-items-center mb-2">
+                                        <i className="fas fa-building me-2 text-primary"></i>
+                                        <strong>{booking.spaceName}</strong>
+                                    </div>
+                                </div>
+
+                                {/* Thời gian */}
+                                <div className="booking-time-info mb-3">
+                                    <div className="d-flex align-items-center mb-2">
+                                        <i className="fas fa-clock me-2 text-success"></i>
+                                        <div className="flex-grow-1">
+                                            <div className="booking-time-smart">
+                                                {formatVietnameseSmartTime(booking.startTime)}
+                                            </div>
+                                            <div className="booking-time-end">
+                                                đến {formatVietnameseDateTime24h(booking.endTime)}
+                                            </div>
+                                            <div className="booking-time-duration">
+                                                <i className="fas fa-hourglass-half me-1"></i>
+                                                {booking.duration} giờ
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Email thông báo */}
+                                <div className="mb-3">
+                                    <div className="d-flex align-items-center">
+                                        <i className="fas fa-envelope me-2 text-info"></i>
+                                        <div className="flex-grow-1">
+                                            <div className="text-muted small">Email thông báo:</div>
+                                            <div className="small" title={booking.notificationEmail || 'Sử dụng email đăng ký'}>
+                                                {booking.notificationEmail || <em className="text-secondary">Email đăng ký</em>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Giá tiền */}
+                                <div className="mb-3">
+                                    <div className="d-flex align-items-center justify-content-between">
+                                        <span className="text-muted">Tổng tiền:</span>
+                                        <span className="booking-price">
+                                            {booking.totalPrice?.toLocaleString()} ₫
+                                        </span>
+                                    </div>
+                                </div>
+
+                                {/* Actions */}
+                                <div className="booking-actions d-flex mt-auto">
+                                    <Button
+                                        variant="outline-primary"
+                                        size="sm"
+                                        onClick={() => {
+                                            setSelectedBooking(booking);
+                                            setShowDetailModal(true);
+                                        }}
+                                        className="flex-grow-1 me-2"
+                                    >
+                                        <i className="fas fa-eye me-1"></i>
+                                        Chi tiết
+                                    </Button>
+                                    {renderBookingActions(booking)}
+                                </div>
+                            </Card.Body>
+                        </Card>
+                    </Col>
+                ))}
+            </Row>
+        );
+    };
+
     const renderBookingsTable = () => (
         <div className="table-responsive">
             <Table striped bordered hover>
@@ -497,7 +626,7 @@ const OwnerBookingManagement = () => {
                 </thead>
                 <tbody>
                     {Array.isArray(bookings) && bookings.map((booking) => (
-                        <tr key={booking.id}>
+                        <tr key={booking.id} className={booking.status === 'Conflict' ? 'conflict-row' : ''}>
                             <td>{booking.id}</td>
                             <td>{booking.customerName}</td>
                             <td>
@@ -508,8 +637,8 @@ const OwnerBookingManagement = () => {
                                 </div>
                             </td>
                             <td>{booking.spaceName}</td>
-                            <td>{formatVietnameseDateTime(booking.startTime)}</td>
-                            <td>{formatVietnameseDateTime(booking.endTime)}</td>
+                            <td>{formatVietnameseDateTime24h(booking.startTime)}</td>
+                            <td>{formatVietnameseDateTime24h(booking.endTime)}</td>
                             <td>{booking.duration} giờ</td>
                             <td>{booking.totalPrice?.toLocaleString()} ₫</td>
                             <td>{renderStatusBadge(booking.status)}</td>
@@ -551,7 +680,7 @@ const OwnerBookingManagement = () => {
                 </Pagination.Item>
             );
         }
-        return <Pagination className="justify-content-center mt-3">{items}</Pagination>;
+        return <Pagination className="justify-content-center">{items}</Pagination>;
     };
 
     // Fetch all bookings from all owner's spaces for global conflict detection
@@ -661,7 +790,13 @@ const OwnerBookingManagement = () => {
                     {renderStats()}
                     {renderToolbar()}
                     {renderFilters()}
-                    {viewMode === 'list' ? renderBookingsTable() : <div>Chế độ lịch sẽ có sớm...</div>}
+                    {viewMode === 'cards' && renderBookingsCards()}
+                    {viewMode === 'table' && renderBookingsTable()}
+                    {viewMode === 'calendar' && <div className="text-center py-5">
+                        <i className="fas fa-calendar fa-3x text-muted mb-3"></i>
+                        <h5 className="text-muted">Chế độ lịch đang phát triển</h5>
+                        <p className="text-muted">Tính năng xem lịch sẽ có trong phiên bản tới.</p>
+                    </div>}
                     {renderPagination()}
                 </>
             )}
@@ -696,10 +831,10 @@ const OwnerBookingManagement = () => {
                             </Row>
                             <Row className="mb-3">
                                 <Col md={6}>
-                                    <strong>Thời gian bắt đầu:</strong> {new Date(selectedBooking.startTime).toLocaleString()}
+                                    <strong>Thời gian bắt đầu:</strong> {formatVietnameseDateTime24h(selectedBooking.startTime)}
                                 </Col>
                                 <Col md={6}>
-                                    <strong>Thời gian kết thúc:</strong> {new Date(selectedBooking.endTime).toLocaleString()}
+                                    <strong>Thời gian kết thúc:</strong> {formatVietnameseDateTime24h(selectedBooking.endTime)}
                                 </Col>
                             </Row>
                             <Row className="mb-3">

@@ -1,0 +1,217 @@
+/* Owner Booking Management Styles */
+
+.owner-booking-card {
+    transition: all 0.3s ease;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.owner-booking-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+}
+
+.owner-booking-card.conflict {
+    border-left: 4px solid #dc3545;
+    animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+    0% { border-left-color: #dc3545; }
+    50% { border-left-color: #ff6b7a; }
+    100% { border-left-color: #dc3545; }
+}
+
+.owner-booking-card .card-body {
+    padding: 1.25rem;
+}
+
+.booking-status-badge {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.8rem;
+    border-radius: 20px;
+    font-weight: 600;
+}
+
+.booking-time-info {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 8px;
+    padding: 0.75rem;
+    margin-bottom: 1rem;
+}
+
+.booking-time-smart {
+    color: #28a745;
+    font-weight: 600;
+}
+
+.booking-time-end {
+    color: #6c757d;
+    font-size: 0.9rem;
+}
+
+.booking-time-duration {
+    color: #007bff;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.booking-price {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #28a745;
+}
+
+.booking-actions {
+    gap: 0.5rem;
+}
+
+.booking-actions .btn {
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.empty-state {
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.empty-state i {
+    font-size: 3rem;
+    color: #6c757d;
+    margin-bottom: 1rem;
+}
+
+.loading-state {
+    padding: 3rem 1rem;
+    text-align: center;
+}
+
+.view-mode-toggle {
+    background: #f8f9fa;
+    border-radius: 8px;
+    padding: 0.25rem;
+}
+
+.view-mode-toggle .btn {
+    border-radius: 6px;
+    border: none;
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    margin: 0 0.125rem;
+}
+
+.view-mode-toggle .btn.active {
+    background: #007bff;
+    color: white;
+    box-shadow: 0 2px 4px rgba(0, 123, 255, 0.3);
+}
+
+/* Mobile responsiveness */
+@media (max-width: 768px) {
+    .owner-booking-card .card-body {
+        padding: 1rem;
+    }
+    
+    .booking-actions {
+        flex-direction: column;
+    }
+    
+    .booking-actions .btn {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .booking-actions .dropdown {
+        width: 100%;
+    }
+    
+    .booking-actions .dropdown .btn {
+        width: 100%;
+    }
+}
+
+/* Table responsive improvements */
+.table-responsive {
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.table th {
+    background: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+    color: #495057;
+    font-size: 0.875rem;
+}
+
+.table td {
+    vertical-align: middle;
+    font-size: 0.875rem;
+}
+
+/* Conflict highlighting */
+.table tbody tr.conflict-row {
+    background-color: #fff5f5;
+    border-left: 4px solid #dc3545;
+}
+
+.table tbody tr.conflict-row:hover {
+    background-color: #ffebee;
+}
+
+/* Status badge improvements */
+.badge {
+    font-size: 0.7rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 12px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Filter section styling */
+.filters-section {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e9ecef;
+}
+
+/* Toolbar styling */
+.toolbar-section {
+    background: white;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.5rem;
+    border: 1px solid #e9ecef;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+}
+
+.toolbar-section .btn {
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+/* Pagination styling */
+.pagination {
+    margin-top: 2rem;
+}
+
+.pagination .page-link {
+    border-radius: 8px;
+    margin: 0 0.125rem;
+    border: 1px solid #dee2e6;
+    color: #495057;
+}
+
+.pagination .page-item.active .page-link {
+    background: #007bff;
+    border-color: #007bff;
+}
+
+.pagination .page-link:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+}

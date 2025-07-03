@@ -153,6 +153,87 @@ export const formatVietnameseDateTime = (dateInput) => {
 };
 
 /**
+ * Format date time to Vietnamese 24-hour format (clear format for booking management)
+ * @param {string|Date} dateInput - Date string or Date object
+ * @returns {string} Formatted datetime string with 24-hour format
+ */
+export const formatVietnameseDateTime24h = (dateInput) => {
+    if (!dateInput) return '';
+    
+    try {
+        // Handle UTC time string without Z suffix
+        let dateString = dateInput;
+        if (typeof dateInput === 'string' && !dateInput.includes('Z') && !dateInput.includes('+')) {
+            dateString = dateInput + 'Z';
+        }
+        
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        
+        // Convert to Vietnam timezone
+        const vietnamTime = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
+        
+        // Format to dd/MM/yyyy HH:mm
+        const day = vietnamTime.getDate().toString().padStart(2, '0');
+        const month = (vietnamTime.getMonth() + 1).toString().padStart(2, '0');
+        const year = vietnamTime.getFullYear();
+        const hours = vietnamTime.getHours().toString().padStart(2, '0');
+        const minutes = vietnamTime.getMinutes().toString().padStart(2, '0');
+        
+        return `${day}/${month}/${year} ${hours}:${minutes}`;
+    } catch (error) {
+        console.error('Error formatting datetime:', error);
+        return '';
+    }
+};
+
+/**
+ * Format date time to Vietnamese short format for cards (just time if today, date+time if not today)
+ * @param {string|Date} dateInput - Date string or Date object
+ * @returns {string} Formatted datetime string
+ */
+export const formatVietnameseSmartTime = (dateInput) => {
+    if (!dateInput) return '';
+    
+    try {
+        let dateString = dateInput;
+        if (typeof dateInput === 'string' && !dateInput.includes('Z') && !dateInput.includes('+')) {
+            dateString = dateInput + 'Z';
+        }
+        
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        
+        const vietnamTime = new Date(date.toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
+        const now = new Date();
+        const vietnamNow = new Date(now.toLocaleString("en-US", {timeZone: "Asia/Ho_Chi_Minh"}));
+        
+        const isToday = vietnamTime.toDateString() === vietnamNow.toDateString();
+        const isTomorrow = vietnamTime.toDateString() === new Date(vietnamNow.getTime() + 24 * 60 * 60 * 1000).toDateString();
+        const isYesterday = vietnamTime.toDateString() === new Date(vietnamNow.getTime() - 24 * 60 * 60 * 1000).toDateString();
+        
+        const hours = vietnamTime.getHours().toString().padStart(2, '0');
+        const minutes = vietnamTime.getMinutes().toString().padStart(2, '0');
+        const timeStr = `${hours}:${minutes}`;
+        
+        if (isToday) {
+            return `Hôm nay ${timeStr}`;
+        } else if (isTomorrow) {
+            return `Ngày mai ${timeStr}`;
+        } else if (isYesterday) {
+            return `Hôm qua ${timeStr}`;
+        } else {
+            const day = vietnamTime.getDate().toString().padStart(2, '0');
+            const month = (vietnamTime.getMonth() + 1).toString().padStart(2, '0');
+            return `${day}/${month} ${timeStr}`;
+        }
+    } catch (error) {
+        console.error('Error formatting smart time:', error);
+        return '';
+    }
+};
+
+/**
  * Check if a date is today
  * @param {string|Date} dateInput - Date string or Date object
  * @returns {boolean} True if date is today
@@ -193,6 +274,8 @@ export default {
     formatVietnameseTime,
     formatVietnameseDate,
     formatVietnameseDateTime,
+    formatVietnameseDateTime24h,
+    formatVietnameseSmartTime,
     isToday,
     isYesterday
 };
