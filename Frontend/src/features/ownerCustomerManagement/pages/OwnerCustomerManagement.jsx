@@ -188,7 +188,16 @@ const OwnerCustomerManagement = () => {
                         {customers.length > 0 ? (
                             customers.map(customer => (
                                 <tr key={customer.id}>
-                                    <td>{customer.name}</td>
+                                    <td>
+                                        <div>
+                                            <strong>{customer.fullName || customer.name}</strong>
+                                            {customer.username && (
+                                                <div style={{ fontSize: '0.9em', color: '#666' }}>
+                                                    @{customer.username}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </td>
                                     <td>{customer.email}</td>
                                     <td>{customer.phone}</td>
                                     <td>

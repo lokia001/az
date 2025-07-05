@@ -34,6 +34,8 @@ import { getOwnerSpaces } from '../../services/api';
 import { getStatusText, fetchOwnerBookingsAPI } from './services/ownerBookingApi';
 import AddOwnerBookingModal from './components/AddOwnerBookingModal';
 import ConflictAlert from './components/ConflictAlert';
+import BookingServicesModal from '../ownerServicesManagement/components/BookingServicesModal';
+import BookingServicesSummary from '../ownerServicesManagement/components/BookingServicesSummary';
 
 const OwnerBookingManagement = () => {
     const { spaceId } = useParams(); // << LẤY spaceId từ URL
@@ -53,6 +55,7 @@ const OwnerBookingManagement = () => {
     const [viewMode, setViewMode] = useState('cards'); // Mặc định là card view
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [showAddBookingModal, setShowAddBookingModal] = useState(false);
+    const [showServicesModal, setShowServicesModal] = useState(false);
     const [selectedBooking, setSelectedBooking] = useState(null);
     const [ownerSpaces, setOwnerSpaces] = useState([]);
     const [loadingSpaces, setLoadingSpaces] = useState(true);
@@ -388,6 +391,18 @@ const OwnerBookingManagement = () => {
                 }}>
                     Xem chi tiết
                 </Dropdown.Item>
+                
+                {/* Services Management - Available for confirmed, checked-in bookings */}
+                {['Confirmed', 'CheckedIn', 'Completed'].includes(booking.status) && (
+                    <Dropdown.Item onClick={() => {
+                        setSelectedBooking(booking);
+                        setShowServicesModal(true);
+                    }}>
+                        🛎️ Quản lý dịch vụ
+                    </Dropdown.Item>
+                )}
+                
+                <Dropdown.Divider />
                 
                 {/* Pending status actions */}
                 {booking.status === 'Pending' && (
@@ -851,6 +866,11 @@ const OwnerBookingManagement = () => {
                                     <p className="mt-2">{selectedBooking.notes || 'Không có ghi chú'}</p>
                                 </Col>
                             </Row>
+                            <Row className="mb-3">
+                                <Col>
+                                    <BookingServicesSummary bookingId={selectedBooking.id} />
+                                </Col>
+                            </Row>
                         </div>
                     )}
                 </Modal.Body>
@@ -869,6 +889,23 @@ const OwnerBookingManagement = () => {
                 isSubmitting={createStatus === 'loading'}
                 error={createError}
                 currentUser={currentUser}
+            />
+
+            {/* Booking Services Modal */}
+            <BookingServicesModal
+                isOpen={showServicesModal}
+                onClose={() => setShowServicesModal(false)}
+                bookingId={selectedBooking?.id}
+                onUpdateTotal={() => {
+                    // Refetch bookings to update total
+                    if (filters.spaceId) {
+                        dispatch(fetchOwnerBookings({
+                            ...filters,
+                            page: pagination.page,
+                            limit: pagination.limit
+                        }));
+                    }
+                }}
             />
         </Container>
     );

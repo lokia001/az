@@ -70,6 +70,12 @@ const NearbySpacesPage = () => {
 
     const handleSearch = () => {
         if (userLocation) {
+            console.log('🔍 Searching for nearby spaces with params:', {
+                latitude: userLocation.latitude,
+                longitude: userLocation.longitude,
+                maxDistanceKm: searchRadius,
+                maxResults: 20
+            });
             dispatch(fetchNearbySpaces({
                 latitude: userLocation.latitude,
                 longitude: userLocation.longitude,

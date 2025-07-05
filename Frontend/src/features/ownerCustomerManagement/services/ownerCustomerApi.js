@@ -46,7 +46,7 @@ const calculateCustomerStats = (bookings) => {
 };
 
 /**
- * Fetch customers for owner's spaces
+ * Fetch customers for owner's spaces using the dedicated backend endpoint
  * @param {string} ownerId - Owner ID
  * @param {Object} params - Query parameters
  * @returns {Promise} API response with customers data
@@ -57,87 +57,25 @@ export const fetchOwnerCustomersAPI = async (ownerId, params = {}) => {
             throw new Error('Owner ID is required');
         }
 
-        // First, get owner's spaces
-        const spacesResponse = await api.get(`/owner/spaces/owner/${ownerId}`);
-        const ownerSpaces = spacesResponse.data || [];
+        console.log('fetchOwnerCustomersAPI - ownerId:', ownerId);
+        console.log('fetchOwnerCustomersAPI - params:', params);
 
-        if (ownerSpaces.length === 0) {
-            return {
-                data: [],
-                totalCount: 0,
-                pageNumber: 1,
-                pageSize: params.pageSize || 10,
-                totalPages: 0
-            };
-        }
-
-        // Get all bookings for owner's spaces
-        const allBookings = [];
+        // Use the dedicated owner customers endpoint
+        const response = await api.get('/owner/customers');
+        console.log('Owner customers response:', response);
         
-        for (const space of ownerSpaces) {
-            try {
-                const bookingsResponse = await api.get(`/bookings/space/${space.id}`);
-                const spaceBookings = bookingsResponse.data || [];
-                
-                // Add space info to each booking
-                spaceBookings.forEach(booking => {
-                    booking.spaceName = space.name;
-                    booking.spaceId = space.id;
-                });
-                
-                allBookings.push(...spaceBookings);
-            } catch (error) {
-                console.warn(`Failed to fetch bookings for space ${space.id}:`, error);
-            }
-        }
+        let customers = response.data?.data || [];
+        console.log('Owner customers:', customers);
 
-        // Group bookings by userId to create customer records
-        const customerMap = new Map();
-        
-        allBookings.forEach(booking => {
-            const userId = booking.userId;
-            if (!userId) return;
-
-            if (!customerMap.has(userId)) {
-                customerMap.set(userId, {
-                    id: userId,
-                    userId: userId,
-                    name: generateCustomerDisplayName(userId),
-                    email: 'Thông tin riêng tư', // Privacy protection
-                    phone: 'Thông tin riêng tư', // Privacy protection
-                    bookings: []
-                });
-            }
-
-            customerMap.get(userId).bookings.push(booking);
-        });
-
-        // Convert to customers array with statistics
-        let customers = Array.from(customerMap.values()).map(customer => {
-            const stats = calculateCustomerStats(customer.bookings);
-            
-            return {
-                id: customer.id,
-                userId: customer.userId,
-                name: customer.name,
-                email: customer.email,
-                phone: customer.phone,
-                totalBookings: stats.totalBookings,
-                completedBookings: stats.completedBookings,
-                cancelledBookings: stats.cancelledBookings,
-                totalSpent: stats.totalSpent,
-                lastBooking: stats.lastBookingDate,
-                bookings: customer.bookings // Keep for details
-            };
-        });
-
-        // Apply filters
+        // Apply frontend filters
         if (params.search) {
             const searchTerm = params.search.toLowerCase();
             customers = customers.filter(customer =>
-                customer.name.toLowerCase().includes(searchTerm) ||
-                customer.email.toLowerCase().includes(searchTerm) ||
-                customer.phone.toLowerCase().includes(searchTerm)
+                customer.name?.toLowerCase().includes(searchTerm) ||
+                customer.fullName?.toLowerCase().includes(searchTerm) ||
+                customer.username?.toLowerCase().includes(searchTerm) ||
+                customer.email?.toLowerCase().includes(searchTerm) ||
+                customer.phone?.toLowerCase().includes(searchTerm)
             );
         }
 
@@ -145,7 +83,7 @@ export const fetchOwnerCustomersAPI = async (ownerId, params = {}) => {
             customers = customers.filter(customer => {
                 switch (params.bookingStatus) {
                     case 'active':
-                        return customer.bookings.some(b => 
+                        return customer.bookings?.some(b => 
                             b.status === 'Confirmed' || b.status === 'Pending'
                         );
                     case 'completed':
@@ -192,25 +130,29 @@ export const fetchOwnerCustomersAPI = async (ownerId, params = {}) => {
 /**
  * Get detailed customer information including booking history
  * @param {string} customerId - Customer ID (userId)
- * @param {string} ownerId - Owner ID
+ * @param {string} ownerId - Owner ID (not needed with dedicated endpoint)
  * @returns {Promise} Customer details with booking history
  */
 export const getCustomerDetailsAPI = async (customerId, ownerId) => {
     try {
-        // Get all customers and find the specific one
-        const customersResponse = await fetchOwnerCustomersAPI(ownerId);
-        const customer = customersResponse.data.find(c => c.id === customerId);
+        console.log('getCustomerDetailsAPI - customerId:', customerId);
+        
+        // Use the dedicated customer detail endpoint
+        const response = await api.get(`/owner/customers/${customerId}`);
+        console.log('Customer details response:', response);
+        
+        const customer = response.data;
         
         if (!customer) {
             throw new Error('Customer not found');
         }
 
-        // Return detailed customer info
+        // Return detailed customer info with additional processing if needed
         return {
             ...customer,
-            bookingHistory: customer.bookings.sort((a, b) => 
+            bookingHistory: customer.bookings ? customer.bookings.sort((a, b) => 
                 new Date(b.startTime) - new Date(a.startTime)
-            )
+            ) : []
         };
     } catch (error) {
         console.error('Error fetching customer details:', error);

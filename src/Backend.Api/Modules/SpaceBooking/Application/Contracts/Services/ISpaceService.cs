@@ -23,5 +23,13 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Services
         Task<SpaceDto?> GetSpaceBySlugAsync(string slug);
         Task<PagedResultDto<SpaceDto>> SearchSpacesAsync(SpaceSearchCriteria criteria);
         Task<IEnumerable<SpaceWithDistanceDto>> FindNearbySpacesAsync(NearbySpaceSearchCriteria criteria);
+        
+        // Dashboard summary for owner
+        Task<DashboardSummaryDto> GetDashboardSummaryAsync(Guid ownerId);
+        
+        // Auto-update space status based on bookings
+        Task UpdateSpaceAutoStatusAsync(Guid spaceId);
+
+        Task<IEnumerable<SpaceDto>> GetAllAvailableSpacesAsync();
     }
 }

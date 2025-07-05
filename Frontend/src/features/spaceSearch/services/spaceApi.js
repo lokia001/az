@@ -81,7 +81,7 @@ export const searchSpacesAPI = async (params = {}) => {
         apiQueryParams.PageSize = params.pageSize;
     }
 
-    const endpoint = '/api/owner/spaces/search';
+    const endpoint = '/api/spaces/search';
     console.log(`[SpaceApiService] Calling GET ${endpoint} with query params:`, apiQueryParams);
     try {
         const response = await apiClient.get(endpoint, { params: apiQueryParams });

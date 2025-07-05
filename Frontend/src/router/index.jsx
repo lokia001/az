@@ -64,6 +64,8 @@ import SpaceDetails from '../features/manageSpace/components/SpaceDetails.jsx';
 import OwnerSpaceDetailPage from '../features/manageSpace/pages/OwnerSpaceDetailPage.jsx';
 import OwnerBookingManagement from '../features/ownerBookingManagement/OwnerBookingManagement.jsx';
 import OwnerCustomerManagement from '../features/ownerCustomerManagement/pages/OwnerCustomerManagement.jsx';
+import OwnerServicesManagementPage from '../features/ownerServicesManagement/pages/OwnerServicesManagementPage.jsx';
+import TestOwnerServices from '../features/ownerServicesManagement/components/TestOwnerServices.jsx';
 import ProtectedRoute from './ProtectedRoute.jsx';
 import RoleBasedHomepage from '../components/RoleBasedHomepage.jsx';
 
@@ -93,7 +95,16 @@ const AppRouter = () => {
 
                     {/* Owner Routes */}
                     <Route path="/owner/dashboard" element={<OwnerDashboard />} />
-                    <Route path="/owner/services-amenities" element={<NotFoundPage message="Owner Services & Amenities - Coming Soon" />} />
+                    <Route path="/owner/services-amenities" element={
+                        <ProtectedRoute requiredRole="Owner">
+                            <OwnerServicesManagementPage />
+                        </ProtectedRoute>
+                    } />
+                    <Route path="/owner/services-amenities-debug" element={
+                        <ProtectedRoute requiredRole="Owner">
+                            <TestOwnerServices />
+                        </ProtectedRoute>
+                    } />
                     
                     {/* Admin Routes */}
                     <Route path="/admin/dashboard" element={<AdminDashboard />} />

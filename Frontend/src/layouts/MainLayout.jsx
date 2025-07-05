@@ -8,8 +8,12 @@ import "./MainLayout.css";
 
 function MainLayout() {
     const { isAuthenticated, currentUser } = useSelector(state => state.auth);
+    const location = useLocation();
     const isOwner = currentUser?.role?.toLowerCase() === 'owner';
     const isAdmin = currentUser?.role?.toLowerCase() === 'sysadmin' || currentUser?.role?.toLowerCase() === 'admin';
+    
+    // Chatbot chỉ hiển thị ở home page và không phải Owner/Admin
+    const shouldShowChatbot = location.pathname === '/' && !isOwner && !isAdmin;
 
     return (
         <div className="site-wrapper" >
@@ -17,7 +21,7 @@ function MainLayout() {
             <div className="content"  >
                 <Outlet />
             </div>
-            {isAuthenticated && !isOwner && !isAdmin && <CustomChatWidget />}
+            {shouldShowChatbot && <CustomChatWidget />}
             <Footer />
         </div>
     );

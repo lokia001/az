@@ -1,5 +1,6 @@
 // File: Backend.Api/Modules/SpaceBooking/Domain/Entities/Booking.cs
 using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations; // Sẽ dùng ít lại, ưu tiên Fluent API
 using System.ComponentModel.DataAnnotations.Schema;
 using Backend.Api.Modules.SpaceBooking.Domain.Enums;
@@ -96,5 +97,8 @@ namespace Backend.Api.Modules.SpaceBooking.Domain.Entities
         public bool IsExternalBooking { get; set; }
 
         public DateTime? LastSyncedAt { get; set; } // Thời điểm cuối cùng đồng bộ với lịch bên ngoài
+
+        // Navigation properties
+        public virtual ICollection<BookingService> BookingServices { get; set; } = new List<BookingService>();
     }
 }

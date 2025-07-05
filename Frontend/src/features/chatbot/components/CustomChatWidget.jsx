@@ -6,7 +6,7 @@ import '../styles/ChatbotWidget.css';
 const CustomChatWidget = () => {
     const [messages, setMessages] = useState([]);
     const [inputMessage, setInputMessage] = useState('');
-    const [isOpen, setIsOpen] = useState(true);
+    const [isOpen, setIsOpen] = useState(false);
     const messagesEndRef = useRef(null);
     const { token } = useSelector((state) => state.auth);
     const { userId } = useSelector((state) => state.auth.user) || {};
@@ -16,7 +16,19 @@ const CustomChatWidget = () => {
             text: 'Xin chào! Tôi có thể giúp gì cho bạn?',
             sender: 'bot'
         }]);
+        
+        // Test chatbot connection on mount
+        testConnection();
     }, []);
+
+    const testConnection = async () => {
+        try {
+            const testResponse = await sendChatMessage('test connection', userId);
+            console.log('Chatbot connection test:', testResponse);
+        } catch (error) {
+            console.warn('Chatbot connection test failed:', error);
+        }
+    };
 
     useEffect(() => {
         scrollToBottom();
@@ -88,7 +100,7 @@ const CustomChatWidget = () => {
     };
 
     return (
-        <div className="chat-widget">
+        <div className={`chat-widget ${!isOpen ? 'minimized' : ''}`}>
             <div className="chat-header" onClick={toggleChat}>
                 <h3>ABC Workspace Assistant</h3>
                 <button className="toggle-button">

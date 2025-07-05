@@ -257,6 +257,32 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Mappings
             // Các mapping cho CustomAmenity, CustomService, và các bảng join nếu cần thiết
             // Thường thì các entity bảng join không cần DTO riêng và không cần map trực tiếp.
             // CustomFeatureDto đã được dùng trong SpaceDto.
+            
+            // --- PrivateService Mappings ---
+            CreateMap<CreatePrivateServiceRequest, PrivateService>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.LastEditedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.BookingServices, opt => opt.Ignore());
+
+            CreateMap<PrivateService, PrivateServiceDto>();
+
+            CreateMap<UpdatePrivateServiceRequest, PrivateService>()
+                .ForMember(dest => dest.Id, opt => opt.Ignore())
+                .ForMember(dest => dest.OwnerId, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.UpdatedAt, opt => opt.Ignore())
+                .ForMember(dest => dest.CreatedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.LastEditedByUserId, opt => opt.Ignore())
+                .ForMember(dest => dest.IsDeleted, opt => opt.Ignore())
+                .ForMember(dest => dest.BookingServices, opt => opt.Ignore());
+
+            // --- BookingService Mappings ---
+            CreateMap<Domain.Entities.BookingService, BookingServiceDto>();
         }
     }
 }

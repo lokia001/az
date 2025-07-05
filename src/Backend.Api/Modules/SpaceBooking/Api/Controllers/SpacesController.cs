@@ -331,23 +331,6 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             }
         }
 
-        // GET api/spaces/search
-        [HttpGet("search")]
-        [AllowAnonymous]
-        public async Task<IActionResult> SearchSpaces([FromQuery] SpaceSearchCriteria criteria)
-        {
-            try
-            {
-                var pagedResult = await _spaceService.SearchSpacesAsync(criteria);
-                return Ok(pagedResult);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "SearchSpaces: Error searching spaces with criteria {@Criteria}", criteria);
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while searching for spaces.");
-            }
-        }
-
         // GET api/owner/spaces/{spaceId}/images
         [HttpGet("{spaceId:guid}/images")]
         [Authorize(Roles = "Owner,SysAdmin")]
@@ -377,23 +360,6 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             {
                 _logger.LogError(ex, "GetImagesForSpace: Error for Space {SpaceId} by User {UserId}", spaceId, userIdString);
                 return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while retrieving images for the space.");
-            }
-        }
-
-        // GET api/spaces/nearby (override route để public)
-        [HttpGet("~/api/spaces/nearby")]
-        [AllowAnonymous]
-        public async Task<IActionResult> FindNearbySpaces([FromQuery] NearbySpaceSearchCriteria criteria)
-        {
-            try
-            {
-                var result = await _spaceService.FindNearbySpacesAsync(criteria);
-                return Ok(result);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "FindNearbySpaces: Error finding nearby spaces");
-                return StatusCode(StatusCodes.Status500InternalServerError, "An error occurred while finding nearby spaces.");
             }
         }
 
@@ -439,5 +405,18 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
                 return StatusCode(StatusCodes.Status500InternalServerError, "An unexpected error occurred while updating the space status.");
             }
         }
+
+        // GET api/owner/dashboard-summary
+        [HttpGet("dashboard-summary")]
+        [Authorize(Roles = "Owner")]  // only owner
+        public async Task<IActionResult> GetDashboardSummary()
+        {
+            var ownerIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(ownerIdString, out var ownerId))
+                return Unauthorized();
+            var summary = await _spaceService.GetDashboardSummaryAsync(ownerId);
+            return Ok(summary);
+        }
+
     }
 }

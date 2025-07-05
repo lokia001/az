@@ -27,6 +27,7 @@ public class BookingService : IBookingService
     private readonly AppDbContext _dbContext; // Unit of Work
     private readonly IUserService _userService; // Cần để lấy email user cho NotificationEmail
     private readonly IEmailService _emailService; // For sending booking confirmation emails
+    private readonly ISpaceService _spaceService; // For auto-updating space status
     private readonly ILogger<BookingService> _logger;
     
     // Vietnam timezone for proper time validation
@@ -39,6 +40,7 @@ public class BookingService : IBookingService
         AppDbContext dbContext,
         IUserService userService,
         IEmailService emailService,
+        ISpaceService spaceService,
         ILogger<BookingService> logger
         )
     {
@@ -48,6 +50,7 @@ public class BookingService : IBookingService
         _dbContext = dbContext;
         _userService = userService;
         _emailService = emailService;
+        _spaceService = spaceService;
         _logger = logger;
     }
     
@@ -351,6 +354,18 @@ public class BookingService : IBookingService
             // Don't fail the booking creation, just log the error
         }
 
+        // Auto-update space status after booking creation
+        try
+        {
+            await _spaceService.UpdateSpaceAutoStatusAsync(booking.SpaceId);
+            _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after booking creation", booking.SpaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after booking creation", booking.SpaceId);
+            // Don't fail the main operation, just log the error
+        }
+
 
         // Lấy lại booking với thông tin Space để map SpaceName
         var createdBookingWithDetails = await _bookingRepository.GetByIdAsync(booking.Id); // BookingRepository.GetByIdAsync cần Include(b => b.Space)
@@ -520,6 +535,21 @@ public class BookingService : IBookingService
         // Không cần làm giàu BookerUsername ở đây vì đây là Owner xem, họ quan tâm ai đặt chứ không phải tên của chính họ.
     }
 
+    // Method for internal use without permission checks (used by OwnerCustomersController)
+    public async Task<IEnumerable<BookingDto>> GetBookingsBySpaceIdAsync(Guid spaceId)
+    {
+        _logger.LogInformation("Fetching bookings for SpaceId: {SpaceId} (internal)", spaceId);
+
+        var bookings = await _bookingRepository.GetBySpaceIdAsync(spaceId);
+        
+        // Check and update overdue status for all bookings before mapping
+        await CheckAndMarkOverdueBookingsAsync(bookings);
+        
+        var bookingDtos = _mapper.Map<IEnumerable<BookingDto>>(bookings).ToList();
+        
+        return bookingDtos;
+    }
+
     public async Task<IEnumerable<BookingDto>> GetMyBookingsAsync(Guid userId, BookingSearchParameters? parameters = null)
     {
         _logger.LogInformation("Fetching bookings for User {UserId} with parameters: {@Parameters}", userId, parameters);
@@ -654,6 +684,19 @@ public class BookingService : IBookingService
         if (result > 0)
         {
             _logger.LogInformation("Booking {BookingId} cancelled successfully by User {UserId}.", bookingId, userId);
+            
+            // Auto-update space status after booking cancellation
+            try
+            {
+                await _spaceService.UpdateSpaceAutoStatusAsync(booking.SpaceId);
+                _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after booking cancellation", booking.SpaceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after booking cancellation", booking.SpaceId);
+                // Don't fail the main operation, just log the error
+            }
+            
             // TODO: Gửi thông báo cho Owner và User (nếu có Notification module)
         }
         return result > 0;
@@ -879,6 +922,18 @@ public class BookingService : IBookingService
         _logger.LogInformation("Status for BookingId: {BookingId} updated to {NewStatus} by UpdaterId: {UpdaterId}",
             bookingId, request.NewStatus, updaterUserId);
 
+        // Auto-update space status after booking status change
+        try
+        {
+            await _spaceService.UpdateSpaceAutoStatusAsync(booking.SpaceId);
+            _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after booking status change", booking.SpaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after booking status change", booking.SpaceId);
+            // Don't fail the main operation, just log the error
+        }
+
         // Auto-cancel conflicting bookings if this booking was confirmed
         List<Guid> cancelledBookingIds = new List<Guid>();
         if (wasConfirmed)
@@ -1021,6 +1076,19 @@ public class BookingService : IBookingService
         _bookingRepository.Update(booking);
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("BookingId: {BookingId} checked-in successfully by StaffId: {StaffId}", bookingId, staffUserId);
+        
+        // Auto-update space status after check-in
+        try
+        {
+            await _spaceService.UpdateSpaceAutoStatusAsync(booking.SpaceId);
+            _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after check-in", booking.SpaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after check-in", booking.SpaceId);
+            // Don't fail the main operation, just log the error
+        }
+        
         return _mapper.Map<BookingDto>(await _bookingRepository.GetByIdAsync(bookingId));
     }
 
@@ -1061,6 +1129,19 @@ public class BookingService : IBookingService
         _bookingRepository.Update(booking);
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("BookingId: {BookingId} checked-out successfully (Status: {Status}) by StaffId: {StaffId}", bookingId, booking.Status, staffUserId);
+        
+        // Auto-update space status after check-out
+        try
+        {
+            await _spaceService.UpdateSpaceAutoStatusAsync(booking.SpaceId);
+            _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after check-out", booking.SpaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after check-out", booking.SpaceId);
+            // Don't fail the main operation, just log the error
+        }
+        
         return _mapper.Map<BookingDto>(await _bookingRepository.GetByIdAsync(bookingId));
     }
 
@@ -1093,6 +1174,19 @@ public class BookingService : IBookingService
         _bookingRepository.Update(booking);
         await _dbContext.SaveChangesAsync();
         _logger.LogInformation("BookingId: {BookingId} marked as NoShow successfully by MarkerId: {MarkerId}", bookingId, markerUserId);
+        
+        // Auto-update space status after marking as no-show
+        try
+        {
+            await _spaceService.UpdateSpaceAutoStatusAsync(booking.SpaceId);
+            _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after marking booking as no-show", booking.SpaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after marking booking as no-show", booking.SpaceId);
+            // Don't fail the main operation, just log the error
+        }
+        
         return _mapper.Map<BookingDto>(await _bookingRepository.GetByIdAsync(bookingId));
     }
 
@@ -1277,55 +1371,64 @@ public class BookingService : IBookingService
                 notificationEmail = booking.NotificationEmail ?? booking.GuestEmail;
             }
 
-            if (!string.IsNullOrWhiteSpace(notificationEmail) && !string.IsNullOrWhiteSpace(customerName))
+            if (!string.IsNullOrWhiteSpace(notificationEmail) && !string.IsNullOrWhiteSpace(customerName) && booking.Space != null)
             {
                 // Get owner email from space
                 var ownerUser = await _userService.GetUserByIdAsync(space.OwnerId);
-                var ownerEmail = ownerUser?.Email ?? "support@workingspace.com"; // Fallback email
+                var ownerEmail = ownerUser?.Email ?? "support@workingspace.com";
 
                 // Format dates for email
-                var vietnamTime = TimeZoneInfo.FindSystemTimeZoneById("SE Asia Standard Time");
-                var startTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(booking.StartTime, vietnamTime);
-                var endTimeLocal = TimeZoneInfo.ConvertTimeFromUtc(booking.EndTime, vietnamTime);
-
+                var startTimeLocal = ConvertToVietnamTime(booking.StartTime);
+                var endTimeLocal = ConvertToVietnamTime(booking.EndTime);
                 var startTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm");
                 var endTimeStr = endTimeLocal.ToString("dd/MM/yyyy HH:mm");
-                var checkInTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm"); // Use StartTime as check-in time
+                var checkInTimeStr = startTimeLocal.ToString("dd/MM/yyyy HH:mm");
 
-                // Send confirmation email
+                // Send confirmation email (not cancellation!)
                 await _emailService.SendBookingConfirmationEmailAsync(
                     toEmail: notificationEmail,
                     customerName: customerName,
-                    spaceName: space.Name,
+                    spaceName: booking.Space?.Name ?? "Unknown Space",
                     startTime: startTimeStr,
                     endTime: endTimeStr,
                     checkInTime: checkInTimeStr,
                     ownerEmail: ownerEmail,
-                    bookingCode: booking.Id.ToString("N")[..8].ToUpper() // Use first 8 chars of GUID as booking code
+                    bookingCode: booking.Id.ToString("N")[..8].ToUpper()
                 );
 
-                _logger.LogInformation("Booking confirmation email sent to {Email} for owner-created booking {BookingId}", 
+                _logger.LogInformation("Sent confirmation email to {Email} for owner booking {BookingId}", 
                     notificationEmail, booking.Id);
             }
             else
             {
-                _logger.LogWarning("Could not determine notification email or customer name for owner-created booking {BookingId}", 
+                _logger.LogWarning("Could not send confirmation email for owner booking {BookingId} - missing email or customer name", 
                     booking.Id);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to send booking confirmation email for owner-created booking {BookingId}", booking.Id);
-            // Don't throw exception - email failure shouldn't affect booking creation
+            _logger.LogError(ex, "Failed to send confirmation email for owner booking {BookingId}", booking.Id);
+            // Don't fail the entire operation, just log the error
         }
 
-        // Get booking with space details for response
+        // Auto-update space status after owner booking creation
+        try
+        {
+            await _spaceService.UpdateSpaceAutoStatusAsync(booking.SpaceId);
+            _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after owner booking creation", booking.SpaceId);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after owner booking creation", booking.SpaceId);
+            // Don't fail the main operation, just log the error
+        }
+
+        // Get booking with space details and return
         var createdBookingWithDetails = await _bookingRepository.GetByIdAsync(booking.Id);
         if (createdBookingWithDetails == null)
         {
-            throw new Exception("Booking was created but could not be retrieved.");
+            throw new Exception("Owner booking was created but could not be retrieved.");
         }
-
         return _mapper.Map<BookingDto>(createdBookingWithDetails);
     }
 
@@ -1508,6 +1611,22 @@ public class BookingService : IBookingService
             await _dbContext.SaveChangesAsync();
             
             _logger.LogInformation("Automatically marked {Count} bookings as overdue", overdueCount);
+            
+            // Auto-update space status for all affected spaces
+            var affectedSpaceIds = bookingsToUpdate.Select(b => b.SpaceId).Distinct();
+            foreach (var spaceId in affectedSpaceIds)
+            {
+                try
+                {
+                    await _spaceService.UpdateSpaceAutoStatusAsync(spaceId);
+                    _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after marking bookings as overdue", spaceId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after marking bookings as overdue", spaceId);
+                    // Don't fail the main operation, just log the error
+                }
+            }
         }
 
         return overdueCount;
@@ -1547,6 +1666,7 @@ public class BookingService : IBookingService
                 pendingBooking.UpdatedAt = DateTime.UtcNow;
                 
                 // Add conflict details to notes
+
                 var conflictDetails = string.Join(", ", conflictingBookings.Select(cb => 
                     $"ID:{cb.Id.ToString("N")[..8]} ({ConvertToVietnamTime(cb.StartTime):dd/MM/yyyy HH:mm}-{ConvertToVietnamTime(cb.EndTime):HH:mm})"));
                 
@@ -1572,6 +1692,22 @@ public class BookingService : IBookingService
             await _dbContext.SaveChangesAsync();
             
             _logger.LogInformation("Automatically marked {Count} bookings as conflict", conflictCount);
+            
+            // Auto-update space status for all affected spaces
+            var affectedSpaceIds = bookingsToUpdate.Select(b => b.SpaceId).Distinct();
+            foreach (var spaceId in affectedSpaceIds)
+            {
+                try
+                {
+                    await _spaceService.UpdateSpaceAutoStatusAsync(spaceId);
+                    _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after marking bookings as conflict", spaceId);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after marking bookings as conflict", spaceId);
+                    // Don't fail the main operation, just log the error
+                }
+            }
         }
 
         return conflictCount;
@@ -1637,6 +1773,18 @@ public class BookingService : IBookingService
         if (cancelledBookingIds.Any())
         {
             await _dbContext.SaveChangesAsync();
+            
+            // Auto-update space status after auto-cancelling conflicting bookings
+            try
+            {
+                await _spaceService.UpdateSpaceAutoStatusAsync(confirmedBooking.SpaceId);
+                _logger.LogInformation("Auto-updated space status for SpaceId: {SpaceId} after auto-cancelling conflicting bookings", confirmedBooking.SpaceId);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Failed to auto-update space status for SpaceId: {SpaceId} after auto-cancelling conflicting bookings", confirmedBooking.SpaceId);
+                // Don't fail the main operation, just log the error
+            }
             
             // Send cancellation emails to affected users
             await SendCancellationEmailsAsync(conflictingBookings);

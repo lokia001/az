@@ -55,8 +55,8 @@ namespace Backend.Api.Modules.UserRelated.Api.Controllers
             var currentUserIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
             Guid.TryParse(currentUserIdString, out var currentUserId);
 
-            // Chỉ cho phép SysAdmin hoặc user tự xem profile của mình bằng ID
-            if (!User.IsInRole("SysAdmin") && currentUserId != id)
+            // Chỉ cho phép SysAdmin, Owner, hoặc user tự xem profile của mình bằng ID
+            if (!User.IsInRole("SysAdmin") && !User.IsInRole("Owner") && currentUserId != id)
             {
                 return Forbid(); // Hoặc NotFound() để không tiết lộ sự tồn tại
             }

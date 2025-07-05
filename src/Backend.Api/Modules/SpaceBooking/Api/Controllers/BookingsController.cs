@@ -17,11 +17,16 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
     public class BookingsController : ControllerBase
     {
         private readonly IBookingService _bookingService;
+        private readonly IBookingServiceService _bookingServiceService;
         private readonly ILogger<BookingsController> _logger;
 
-        public BookingsController(IBookingService bookingService, ILogger<BookingsController> logger)
+        public BookingsController(
+            IBookingService bookingService, 
+            IBookingServiceService bookingServiceService,
+            ILogger<BookingsController> logger)
         {
             _bookingService = bookingService;
+            _bookingServiceService = bookingServiceService;
             _logger = logger;
         }
 
@@ -382,6 +387,163 @@ namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
             {
                 _logger.LogError(ex, "MarkBookingAsNoShow: Error for Booking {BookingId}", id);
                 return StatusCode(StatusCodes.Status500InternalServerError, "Error marking booking as no-show.");
+            }
+        }
+
+        // ========== BOOKING SERVICES ENDPOINTS ==========
+
+        // GET api/bookings/{id}/services
+        [HttpGet("{id}/services")]
+        [Authorize]
+        public async Task<IActionResult> GetBookingServices(Guid id)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid user identifier in token." });
+            }
+
+            try
+            {
+                var services = await _bookingServiceService.GetBookingServicesAsync(id, userId);
+                return Ok(services);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("GetBookingServices: Booking {BookingId} not found by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("GetBookingServices: Unauthorized access to Booking {BookingId} by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "GetBookingServices: Unexpected error for Booking {BookingId} by User {UserId}", id, userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, 
+                    new { message = "An unexpected error occurred while retrieving booking services." });
+            }
+        }
+
+        // POST api/bookings/{id}/services
+        [HttpPost("{id}/services")]
+        [Authorize(Roles = "Owner,SysAdmin")]
+        public async Task<IActionResult> AddServiceToBooking(Guid id, [FromBody] AddServiceToBookingRequest request)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid user identifier in token." });
+            }
+
+            try
+            {
+                var bookingService = await _bookingServiceService.AddServiceToBookingAsync(id, request, userId);
+                return Ok(bookingService);
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("AddServiceToBooking: Resource not found for Booking {BookingId} by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("AddServiceToBooking: Unauthorized access to Booking {BookingId} by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (ArgumentException ex)
+            {
+                _logger.LogWarning("AddServiceToBooking: Invalid input for Booking {BookingId} by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return BadRequest(new { message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning("AddServiceToBooking: Business logic error for Booking {BookingId} by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return Conflict(new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "AddServiceToBooking: Unexpected error for Booking {BookingId} by User {UserId}", id, userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, 
+                    new { message = "An unexpected error occurred while adding service to booking." });
+            }
+        }
+
+        // PUT api/bookings/{id}/services
+        [HttpPut("{id}/services")]
+        [Authorize(Roles = "Owner,SysAdmin")]
+        public async Task<IActionResult> UpdateBookingServices(Guid id, [FromBody] BookingServicesUpdateRequest request)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid user identifier in token." });
+            }
+
+            try
+            {
+                await _bookingServiceService.UpdateBookingServicesAsync(id, request, userId);
+                return Ok(new { message = "Booking services updated successfully." });
+            }
+            catch (KeyNotFoundException ex)
+            {
+                _logger.LogWarning("UpdateBookingServices: Booking {BookingId} not found by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return NotFound(new { message = ex.Message });
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("UpdateBookingServices: Unauthorized access to Booking {BookingId} by User {UserId}. Message: {Message}", 
+                    id, userId, ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "UpdateBookingServices: Unexpected error for Booking {BookingId} by User {UserId}", id, userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, 
+                    new { message = "An unexpected error occurred while updating booking services." });
+            }
+        }
+
+        // DELETE api/bookings/services/{serviceId}
+        [HttpDelete("services/{serviceId}")]
+        [Authorize(Roles = "Owner,SysAdmin")]
+        public async Task<IActionResult> RemoveServiceFromBooking(Guid serviceId)
+        {
+            var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (!Guid.TryParse(userIdString, out var userId))
+            {
+                return Unauthorized(new { message = "Invalid user identifier in token." });
+            }
+
+            try
+            {
+                var removed = await _bookingServiceService.RemoveServiceFromBookingAsync(serviceId, userId);
+                if (!removed)
+                {
+                    return NotFound(new { message = $"Booking service with ID {serviceId} not found." });
+                }
+
+                return NoContent();
+            }
+            catch (UnauthorizedAccessException ex)
+            {
+                _logger.LogWarning("RemoveServiceFromBooking: Unauthorized access to BookingService {ServiceId} by User {UserId}. Message: {Message}", 
+                    serviceId, userId, ex.Message);
+                return StatusCode(StatusCodes.Status403Forbidden, new { message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "RemoveServiceFromBooking: Unexpected error for BookingService {ServiceId} by User {UserId}", serviceId, userId);
+                return StatusCode(StatusCodes.Status500InternalServerError, 
+                    new { message = "An unexpected error occurred while removing service from booking." });
             }
         }
 

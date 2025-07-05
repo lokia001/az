@@ -24,6 +24,8 @@ namespace Backend.Api.Data
         public DbSet<SpaceCustomService> SpaceCustomServices { get; set; } = default!;
         public DbSet<SpaceSystemAmenity> SpaceSystemAmenities { get; set; } = default!;
         public DbSet<SpaceSystemSpaceService> SpaceSystemSpaceServices { get; set; } = default!;
+        public DbSet<PrivateService> PrivateServices { get; set; } = default!;
+        public DbSet<Backend.Api.Modules.SpaceBooking.Domain.Entities.BookingService> BookingServices { get; set; } = default!;
 
         // UserRelated Module DbSets
         public DbSet<User> Users { get; set; } = default!;

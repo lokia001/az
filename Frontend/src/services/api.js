@@ -526,17 +526,21 @@ export const updateOwnerProfile = async (profileData) => {
  */
 export const findNearbySpaces = async ({ latitude, longitude, maxDistanceKm = 5, maxResults = 20 }) => {
     try {
-        const response = await api.get('/spaces/nearby', {
-            params: {
-                userLatitude: latitude,
-                userLongitude: longitude,
-                maxDistanceKm,
-                maxResults
-            }
-        });
+        const params = {
+            UserLatitude: latitude,
+            UserLongitude: longitude,
+            MaxDistanceKm: maxDistanceKm,
+            MaxResults: maxResults
+        };
+        console.log('🌍 Calling findNearbySpaces API with params:', params);
+        
+        const response = await api.get('/spaces/nearby', { params });
+        
+        console.log('🌍 findNearbySpaces API response:', response.data);
         return response.data;
     } catch (error) {
-        console.error('Error finding nearby spaces:', error);
+        console.error('❌ Error finding nearby spaces:', error);
+        console.error('❌ Error response:', error.response?.data);
         throw error;
     }
 };

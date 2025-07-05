@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace Backend.Api.Modules.SpaceBooking.Api.Controllers
 {
     [ApiController]
-    [Route("api/spaces")]
+    [Route("api/owner/spaces")]
     [Authorize]
     public class SpaceIcalSettingsController : ControllerBase
     {

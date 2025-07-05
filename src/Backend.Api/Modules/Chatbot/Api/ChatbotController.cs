@@ -9,7 +9,7 @@ using Backend.Api.Modules.Chatbot.Application;
 namespace Backend.Api.Modules.Chatbot.Api
 {
     [ApiController]
-    [Route("chatbot")]
+    [Route("api/chatbot")]
     [Authorize]
     public class ChatbotController : ControllerBase
     {
@@ -28,6 +28,7 @@ namespace Backend.Api.Modules.Chatbot.Api
         }
 
         [HttpPost("dialogflow-webhook")]
+        [AllowAnonymous]  // Allow both authenticated and anonymous users
         public async Task<IActionResult> DialogflowWebhook([FromBody] DialogflowWebhookRequest request)
         {
             // Log authentication information
@@ -43,8 +44,9 @@ namespace Backend.Api.Modules.Chatbot.Api
 
             try
             {
-                // Use the DialogflowService with isAnonymous = false since this is the authenticated endpoint
-                var result = await _dialogflowService.DetectIntentAsync(request.LastMessage, false);
+                // Check if user is authenticated to determine if this is anonymous access
+                var isAnonymous = !User?.Identity?.IsAuthenticated ?? true;
+                var result = await _dialogflowService.DetectIntentAsync(request.LastMessage, isAnonymous);
                 return Ok(result);
             }
             catch (Exception ex)

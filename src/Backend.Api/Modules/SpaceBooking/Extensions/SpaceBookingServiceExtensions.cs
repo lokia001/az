@@ -4,6 +4,7 @@ using Backend.Api.Modules.SpaceBooking.Application.Contracts.Services;
 using Backend.Api.Modules.SpaceBooking.Application.Services;
 using Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories;
 using Backend.Api.Modules.SpaceBooking.Infrastructure.Persistence.Repositories;
+using Backend.Api.Modules.SpaceBooking.Infrastructure.Repositories;
 using Backend.Api.Modules.SpaceBooking.Application.Contracts.Infrastructure;
 using Backend.Api.Modules.SpaceBooking.Infrastructure.Services;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,12 +23,16 @@ namespace Backend.Api.Modules.SpaceBooking.Extensions
             services.AddScoped<ISystemSpaceServiceRepository, SystemSpaceServiceRepository>();
             services.AddScoped<ISpaceRepository, SpaceRepository>();
             services.AddScoped<IBookingRepository, BookingRepository>();
+            services.AddScoped<IPrivateServiceRepository, PrivateServiceRepository>();
+            services.AddScoped<IBookingServiceRepository, BookingServiceRepository>();
 
             // Register application services
             services.AddScoped<ISystemAmenityService, SystemAmenityService>();
             services.AddScoped<ISystemSpaceServiceService, SystemSpaceServiceService>();
             services.AddScoped<ISpaceService, Backend.Api.Modules.SpaceBooking.Application.Services.SpaceService>();
             services.AddScoped<IBookingService, BookingService>();
+            services.AddScoped<IPrivateServiceService, PrivateServiceService>();
+            // services.AddScoped<IBookingServiceService, BookingServiceService>(); // TODO: Implement this service
 
             // Register infrastructure services
             services.AddScoped<IFileStorageService, LocalFileStorageService>();

@@ -13,6 +13,7 @@ using Backend.Api.Modules.SpaceBooking.Domain.Enums;
 using Backend.Api.Modules.SpaceBooking.Domain.Interfaces.Repositories;
 using Backend.Api.SharedKernel.Dtos;
 using Backend.Api.Services; // << THÊM ĐỂ SỬ DỤNG CLOUDINARY SERVICE
+using Backend.Api.Modules.UserRelated.Application.Contracts.Services; // for IUserLookupService
 using Backend.Api.Utils; // << THÊM ĐỂ SỬ DỤNG LOCATIONHELPER
 
 // using Backend.Api.Modules.UserRelated.Application.Contracts.Services; // CHỈ THÊM NẾU CẦN CHO LOGIC NGHIỆP VỤ, KHÔNG PHẢI ĐỂ LÀM GIÀU DTO
@@ -35,6 +36,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
 
 
         private readonly ILogger<SpaceService> _logger;
+        private readonly IUserLookupService _userLookupService;
 
 
         public SpaceService(
@@ -47,6 +49,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             AppDbContext dbContext,
             IFileStorageService fileStorageService,
             ICloudinaryService cloudinaryService, // << THÊM CLOUDINARY
+            IUserLookupService userLookupService,
             ILogger<SpaceService> logger
             )
         {
@@ -59,6 +62,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             _dbContext = dbContext;
             _fileStorageService = fileStorageService; // << GÁN GIÁ TRỊ
             _cloudinaryService = cloudinaryService; // << GÁN GIÁ TRỊ CLOUDINARY
+            _userLookupService = userLookupService;
             _logger = logger;
         }
 
@@ -159,6 +163,51 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             if (space == null) return null;
             // Map sang SpaceDto (DTO của bạn không có OwnerName, OwnerAvatarUrl)
             return _mapper.Map<SpaceDto>(space);
+        }
+        
+        // Dashboard summary for owner
+        public async Task<DashboardSummaryDto> GetDashboardSummaryAsync(Guid ownerId)
+        {
+            // Fetch all non-deleted spaces for this owner
+            var spaces = await _dbContext.Set<Space>()
+                .Where(s => s.OwnerId == ownerId && !s.IsDeleted)
+                .ToListAsync();
+
+            // List of space IDs for this owner
+            var spaceIds = spaces.Select(s => s.Id).ToList();
+            var summary = new DashboardSummaryDto
+            {
+                TotalSpaces = spaces.Count,
+                MaintenanceSpaces = 0 // Remove maintenance spaces calculation
+            };
+            // Booking stats for current month
+            var now = DateTime.UtcNow;
+            var monthStart = new DateTime(now.Year, now.Month, 1);
+            var monthEnd = monthStart.AddMonths(1);
+            var monthlyBookings = await _dbContext.Set<Booking>()
+                .Where(b => spaceIds.Contains(b.SpaceId)
+                            && b.CreatedAt >= monthStart && b.CreatedAt < monthEnd
+                            && !b.IsDeleted)
+                .ToListAsync();
+            summary.TotalBookings = monthlyBookings.Count;
+            summary.CompletedBookings = monthlyBookings.Count(b => b.Status == BookingStatus.Completed);
+            // Count unique users who made bookings this month (including guest bookings)
+            var uniqueUserIds = monthlyBookings
+                .Where(b => b.UserId.HasValue)
+                .Select(b => b.UserId!.Value)
+                .Distinct()
+                .ToList();
+            var uniqueGuestEmails = monthlyBookings
+                .Where(b => b.IsGuestBooking && !string.IsNullOrEmpty(b.GuestEmail))
+                .Select(b => b.GuestEmail!)
+                .Distinct()
+                .ToList();
+            summary.UniqueUsers = uniqueUserIds.Count + uniqueGuestEmails.Count;
+            summary.Revenue = monthlyBookings
+                .Where(b => b.Status == BookingStatus.Completed)
+                .Sum(b => b.TotalPrice);
+
+            return summary;
         }
 
 
@@ -893,6 +942,89 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Services
             // 6. Return the updated space with details
             var updatedSpaceWithDetails = await _spaceRepository.GetByIdWithDetailsAsync(space.Id);
             return _mapper.Map<SpaceDto>(updatedSpaceWithDetails);
+        }
+
+        // Auto-update space status based on current bookings
+        public async Task UpdateSpaceAutoStatusAsync(Guid spaceId)
+        {
+            var space = await _dbContext.Set<Space>()
+                .FirstOrDefaultAsync(s => s.Id == spaceId && !s.IsDeleted);
+            
+            if (space == null || space.Status == SpaceStatus.Maintenance)
+                return;
+
+            var now = DateTime.UtcNow;
+            
+            // Get active bookings for this space that indicate the space is in use
+            var activeBookings = await _dbContext.Set<Booking>()
+                .Where(b => b.SpaceId == spaceId && !b.IsDeleted)
+                .Where(b => b.Status == BookingStatus.CheckedIn 
+                         || b.Status == BookingStatus.OverdueCheckin 
+                         || b.Status == BookingStatus.OverdueCheckout
+                         || b.Status == BookingStatus.OverduePending) // Added OverduePending as requested
+                .ToListAsync();
+
+            SpaceStatus newStatus;
+
+            // Check if space is currently in use
+            if (activeBookings.Any())
+            {
+                newStatus = SpaceStatus.Booked; // "Đang sử dụng"
+            }
+            else
+            {
+                // Check if space is in cleaning period after recent checkout
+                var recentCheckout = await _dbContext.Set<Booking>()
+                    .Where(b => b.SpaceId == spaceId && !b.IsDeleted)
+                    .Where(b => b.Status == BookingStatus.Completed && b.ActualCheckOut.HasValue)
+                    .OrderByDescending(b => b.ActualCheckOut)
+                    .FirstOrDefaultAsync();
+
+                if (recentCheckout?.ActualCheckOut != null)
+                {
+                    var cleaningEndTime = recentCheckout.ActualCheckOut.Value
+                        .AddMinutes(space.CleaningDurationMinutes + space.BufferMinutes);
+                    
+                    if (now <= cleaningEndTime)
+                    {
+                        newStatus = SpaceStatus.Cleaning;
+                    }
+                    else
+                    {
+                        newStatus = SpaceStatus.Available;
+                    }
+                }
+                else
+                {
+                    newStatus = SpaceStatus.Available;
+                }
+            }
+
+            // Update status if different (except for Maintenance which can only be changed manually)
+            if (space.Status != newStatus)
+            {
+                space.Status = newStatus;
+                space.UpdatedAt = DateTime.UtcNow;
+                await _dbContext.SaveChangesAsync();
+                
+                _logger.LogInformation("Auto-updated Space {SpaceId} status from {OldStatus} to {NewStatus}", 
+                    spaceId, space.Status, newStatus);
+            }
+        }        
+        public async Task<IEnumerable<SpaceDto>> GetAllAvailableSpacesAsync()
+        {
+            var spaces = await _dbContext.Set<Space>()
+                .Where(s => !s.IsDeleted && s.Status == SpaceStatus.Available)
+                .Include(s => s.SpaceImages)
+                .Include(s => s.SystemAmenitiesLink)
+                    .ThenInclude(sa => sa.SystemAmenity)
+                .Include(s => s.SystemServicesLink)
+                    .ThenInclude(ss => ss.SystemSpaceService)
+                .Include(s => s.CustomAmenities)
+                .Include(s => s.CustomServices)
+                .ToListAsync();
+
+            return _mapper.Map<IEnumerable<SpaceDto>>(spaces);
         }
     }
 }

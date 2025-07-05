@@ -16,6 +16,7 @@ namespace Backend.Api.Modules.SpaceBooking.Application.Contracts.Services
         Task<IEnumerable<BookingDto>> GetMyBookingsAsync(Guid userId, BookingSearchParameters? parameters = null); // API mới cho user lấy booking của họ
         Task<IEnumerable<BookingDto>> GetBookingsForUserAsync(Guid userId); // Giữ lại nếu có mục đích khác, hoặc có thể thay thế bằng GetMyBookingsAsync
         Task<IEnumerable<BookingDto>> GetBookingsForSpaceAsync(Guid spaceId, Guid requestorUserId); // Đổi ownerId thành requestorUserId cho nhất quán
+        Task<IEnumerable<BookingDto>> GetBookingsBySpaceIdAsync(Guid spaceId); // For internal use without permissions check
         Task<bool> CancelBookingAsync(Guid bookingId, Guid userId, string? cancellationReason = null);
         Task<BookingDto?> UpdateBookingStatusAsync(Guid bookingId, UpdateBookingStatusRequest request, Guid updaterUserId); // Truyền DTO thay vì từng tham số
         Task<BookingDto?> CheckInAsync(Guid bookingId, CheckInRequest request, Guid staffUserId); // Truyền DTO

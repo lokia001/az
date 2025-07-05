@@ -30,6 +30,9 @@ import myBookingsReducer from '../features/myBookings/slices/myBookingsSlice';
 import favoriteSpacesReducer from '../features/favoriteSpaces/slices/favoriteSpacesSlice';
 import nearbySpacesReducer from '../features/nearbySpaces/slices/nearbySpacesSlice';
 
+// Import RTK Query APIs
+import { ownerServicesApi } from '../features/ownerServicesManagement/services/ownerServicesApi';
+
 const persistConfig = {
     key: 'root',
     storage,
@@ -65,13 +68,15 @@ export const store = configureStore({
         myBookings: myBookingsReducer,
         favoriteSpaces: favoriteSpacesReducer,
         nearbySpaces: nearbySpacesReducer,
+        // RTK Query APIs
+        [ownerServicesApi.reducerPath]: ownerServicesApi.reducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware({
             serializableCheck: {
                 ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
             },
-        }),
+        }).concat(ownerServicesApi.middleware),
 });
 
 export const persistor = persistStore(store);

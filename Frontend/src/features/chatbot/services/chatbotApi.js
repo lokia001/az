@@ -40,7 +40,7 @@ export const sendChatMessage = async (message, userId = null) => {
           }
         };
 
-        const response = await apiClient.post(endpoint, requestData, config);
+        const response = await api.post(endpoint, requestData, config);
 
         if (response.data) {
           return response.data;
@@ -97,7 +97,7 @@ export const getPersonalizedSuggestions = async (userId = null) => {
           }
         };
 
-        const response = await apiClient.post(endpoint, requestData, config);
+        const response = await api.post(endpoint, requestData, config);
 
         if (response.data) {
           return response.data;
